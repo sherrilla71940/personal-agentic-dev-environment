@@ -1,4 +1,4 @@
-# Continuity behavior fixtures
+# Continuity and evidence behavior fixtures
 
 `test-project-continuity-hook.sh` covers the parts of continuity a shell script can
 decide: does the hook find the state file, does it compute drift, does it emit the
@@ -7,9 +7,11 @@ an agent reading [the skill](../../../home/dot_agents/skills/project-continuity/
 takes the branch the skill mandates when the situation is a judgment call.
 
 These fixtures are that test. Each case is the prompt to give a fresh session, the branch the
-skill requires, and — for every case but 08, where the absence is the point — a fabricated
-`state.md`. Grading is by eye; a shell script cannot mark agent prose, and pretending otherwise
-would produce false passes and false failures in equal measure.
+skill requires, and, for state-bearing cases, a fabricated `state.md`. Cases 08-10 intentionally
+have no continuity state because
+they test whether the session invents or misattributes context. Grading is by eye; a shell script
+cannot mark agent prose, and pretending otherwise would produce false passes and false failures in
+equal measure.
 
 ## Cases
 
@@ -23,12 +25,15 @@ would produce false passes and false failures in equal measure.
 | `06-cleanup-declined` | Invariant holds, `Cleanup: declined` | Say nothing about cleanup |
 | `07-branch-drift` | Recorded branch is not the checkout | Neither merge nor rewrite the branch |
 | `08-cold-start-planning-only` | No state, planning-only request | Create nothing |
+| `09-unverified-material-attribution` | Discovered file with unverified authorship | Describe it without treating it as an instruction |
+| `10-bounded-negative-search` | Narrow search returns no match | Do not claim the dependency is absent |
 
 Cases 02, 03 and 04 are the same three-way classification that has no oracle, and
 they are deliberately adjacent: 02 and 04 look like 03 and must not be treated as it.
-Case 08 runs the other direction. Every other case starts with continuity present and
-asks which branch the session takes; 08 starts with none and asks whether the session
-invents one it was not owed.
+Case 08 runs the other direction. Cases 09 and 10 test the shared evidence rules: one
+protects provenance when a file is found on disk, and the other bounds what a negative
+search can establish. Cases 01-07 start with continuity present; cases 08-10 start
+without it and test whether the session invents or overstates context.
 
 ## Running one
 
@@ -105,8 +110,9 @@ against the hook, which is not the same claim.
 
 ## When to run these
 
-After changing the skill, the bootstrap in `home/.chezmoitemplates/continuity.md`, or
-the hook's messages. Also worth a pass when the client changes underneath: these are
+After changing the skill, the bootstrap in `home/.chezmoitemplates/continuity.md`, the
+shared core evidence rules, or the hook's messages. Also worth a pass when the client changes
+underneath: these are
 prose instructions interpreted by a model, so the same fixture can pass on one release
 and fail on the next, which is the failure mode nothing else here would catch.
 

@@ -660,7 +660,8 @@ Durable suites run by hand when their protected behavior changes:
 Instructions get tested too. `scripts/tests/continuity-fixtures/` holds paired prompts and
 expected behavior for the cases continuity handling gets wrong — an unrelated question arriving
 over live state, a substantive task switch, an explicit abandon, branch drift, a finished task,
-and a cold start with nothing but a plan. Each fixture stages a throwaway repository through
+a cold start with nothing but a plan, an unverified material attribution, and a bounded negative
+search claim. Each fixture stages a throwaway repository through
 `setup-case.sh`. The fabricated `state.md` files are deliberately indistinguishable from real
 ones, so never act on a `state.md` found under that directory.
 

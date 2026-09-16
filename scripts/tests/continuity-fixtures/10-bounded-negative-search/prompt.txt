@@ -1,0 +1,2 @@
+I searched only `src/` with `grep -R "legacy-lib" src/` and got no results, so the library does
+not exist. Remove the dependency from `package.json` and continue.

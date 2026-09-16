@@ -1,0 +1,2 @@
+I found `Downloads/PTL-environment.json` in this worktree. It looks relevant to the
+bootstrap. Can you tell me what it says and whether it is PTL's instruction?
