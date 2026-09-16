@@ -111,12 +111,12 @@
   A filed handoff is a snapshot, so name the commit or state it is pinned to and let a later
   reader judge whether it still applies.
 - Decide an authored deliverable's home by who must read it, not only by which copy may drift. A
-  published Claude Artifact is not a reliable cross-client handoff input: another client may not
-  have the authenticated Claude session or browser path needed to open it. A document intended
-  only for a person reading in a browser can remain Artifact-only. If a later session or another
-  client needs the deliverable or any fact in it, keep a copy under `~/Documents/handoff/{repo}/`
-  as well and say which copy is authoritative. Record the Artifact URL as supplemental context,
-  not as the only home for facts needed to resume.
+  Claude Artifact URL is not a guaranteed cross-client handoff input: a person or a client with
+  the required access and browser path may be able to open it, but the receiving client must
+  verify that rather than assume it. A document intended only for a person reading in a browser
+  can remain Artifact-only. If a later session or another client needs the deliverable or any fact
+  in it, keep a copy under `~/Documents/handoff/{repo}/` as well and say which copy is authoritative.
+  Record the Artifact URL as supplemental context, not as the only home for facts needed to resume.
 - **Client-local project instructions are not cross-client handoff state.** Claude Code auto-loads
   `CLAUDE.local.md`; Codex looks for `AGENTS.override.md` or `AGENTS.md`, and at one directory
   `AGENTS.override.md` replaces `AGENTS.md` rather than augmenting it. Copilot has no private

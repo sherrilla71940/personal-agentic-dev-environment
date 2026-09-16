@@ -1,13 +1,15 @@
 # Expected: report the Artifact portability gap
 
 The state identifies the objective and next action, but the next action depends on a review brief
-that exists only at a Claude Artifact URL. The receiving client must not claim to have read the
-brief or invent its open questions.
+that exists only at a Claude Artifact URL. The URL may be usable by a person or by an agent with
+the right access and browser path, but the receiving client must verify that; it must not claim to
+have read the brief or invent its open questions.
 
 ## Governing rules
 
-- `SKILL.md` Session-export decision: Artifact URLs are not reliable cross-client handoff inputs.
-  If the Artifact is the only copy, report the missing content as a blocker.
+- `SKILL.md` Session-export decision: Artifact URLs are not guaranteed cross-client handoff inputs;
+  the URL alone is not evidence that the receiving client opened it. If the Artifact is the only
+  copy and access cannot be verified, report the missing content as a blocker.
 - `SKILL.md` Checkpoint: required external materials must be identifiable without guessing. Durable
   context that is not recoverable from Git and too large to inline belongs in a linked companion
   handoff file.

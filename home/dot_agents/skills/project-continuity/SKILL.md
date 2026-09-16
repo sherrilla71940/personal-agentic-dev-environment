@@ -253,9 +253,10 @@ Use exactly one of these labels in the user-facing response:
   one focused user answer would resolve the gap, ask that question instead of requiring a full
   export.
 
-**Artifact URLs are not reliable cross-client handoff inputs.** Another client may not have the
-authenticated Claude session or browser path needed to open a Claude Artifact. Record an Artifact
-URL for the source client's convenience, but put any fact or deliverable a receiving client needs in
+**Artifact URLs are not guaranteed cross-client handoff inputs.** A person or a client may be able
+to open a Claude Artifact when it has the required access and browser path, but the receiving client
+must verify that; the URL alone is not evidence that the content was opened. Record an Artifact URL
+for the source client's convenience, but put any fact or deliverable a receiving client needs in
 `state.md` or a companion file under `~/Documents/handoff/{repo}/`. If the Artifact is the only copy,
 say so explicitly and treat the missing content as a blocker rather than guessing or claiming to
 have read it. When both an Artifact and a file exist, record which one is authoritative.
