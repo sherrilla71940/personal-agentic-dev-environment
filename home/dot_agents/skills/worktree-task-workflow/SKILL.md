@@ -1,6 +1,6 @@
 ---
 name: worktree-task-workflow
-description: "Start or continue one isolated implementation task through its lifecycle in a Codex worktree, from an explicit task or requested material inference through manual testing, publishing, and branch-preserving handoff."
+description: "Start or continue one isolated implementation task through its lifecycle in a Codex worktree, creating the task branch from a user-provided base branch and carrying it through manual testing, publishing, and branch-preserving handoff."
 disable-model-invocation: true
 ---
 
@@ -28,13 +28,15 @@ Read [references/invocation.md](references/invocation.md) and follow it through 
 Invoke this skill as either:
 
 ```text
-$worktree-task-workflow <base> "<task>" [materials...] [options...]
-$worktree-task-workflow <base> --infer-task <materials...> [options...]
+$worktree-task-workflow <base-branch> "<task>" [materials...] [options...]
+$worktree-task-workflow <base-branch> --infer-task <materials...> [options...]
 ```
 
-`base` is required. Task identity requires exactly one non-empty explicit task or requested
-inference from readable materials. `task=""` is invalid; omit `task` when using inference. Do not
-touch Git before showing the resolved echo.
+`base` is required and means the user-provided existing branch on `origin`. The workflow creates
+the task branch from `origin/<base>` in a new worktree, and the eventual pull or merge request
+targets that same base branch. Task identity requires exactly one non-empty explicit task or
+requested inference from readable materials. `task=""` is invalid; omit `task` when using
+inference. Do not touch Git before showing the resolved echo.
 
 ## 2. Prepare the working-tree entry point
 
@@ -55,7 +57,7 @@ resolved echo and remote-base validation, then use section 4 to enter or provisi
 There are two Codex entry paths:
 
 - In the Codex desktop app, a Local chat should use the chat header's Handoff control to move to
-  Worktree after the resolved echo. Select the requested `<base>` branch. Codex creates the
+  Worktree after the resolved echo. Select the requested `<base-branch>`. Codex creates the
   managed detached worktree, copies the repository's `.worktreeinclude` entries, and keeps the
   chat associated with that worktree. Do not create a second terminal worktree for this path.
 - In the Codex CLI or IDE extension, the adapter can provision the worktree, but a shell command
@@ -66,7 +68,7 @@ There are two Codex entry paths:
 Stop if repository instructions forbid worktrees. This developer environment repository does, identifiable by
 its root `.chezmoiroot`; offer to run that task in place instead.
 
-## 3. Establish names and the remote base
+## 3. Establish names and the remote base branch
 
 Unless supplied, derive:
 
@@ -74,7 +76,7 @@ Unless supplied, derive:
 - an ASCII two-to-four-word kebab-case `slug` from the task's meaning;
 - `branch` as `{type}/{slug}/{suffix}`.
 
-Then fetch and verify:
+Then fetch and verify the user-provided base branch and the new task branch:
 
 ```bash
 git fetch origin --prune
@@ -94,7 +96,7 @@ If the current root is already a linked worktree, continue to section 5.
 If the current root is the primary checkout, use the entry path that matches the current Codex
 surface:
 
-- For a Codex desktop Local chat, use Handoff to Worktree and select `<base>`. After Codex moves
+- For a Codex desktop Local chat, use Handoff to Worktree and select `<base-branch>`. After Codex moves
   the chat, resume this workflow in the associated worktree. Do not use a shell `cd` as a
   substitute; it does not move the chat's workspace.
 - For Codex CLI or the IDE extension, create a detached worktree from the recorded remote base:

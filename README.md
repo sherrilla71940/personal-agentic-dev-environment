@@ -203,6 +203,9 @@ Continuity is scoped to a directory, so isolation is what lets several tasks run
 `worktree-task-workflow` skill drives one task through its whole lifecycle in a worktree of its
 own.
 
+This workflow starts with a user-provided base branch. It creates a new task branch from that base
+in a new worktree, and the eventual pull or merge request targets the same base branch.
+
 **Figure: one task's lifecycle, including material review, worktree provisioning, automated agent
 verification, and the user manual-test gate.** The worktree path and removal step are
 Claude-specific; the Codex differences are in the linked guide.
@@ -211,12 +214,12 @@ Claude-specific; the Codex differences are in the linked guide.
 %%{init: {"theme": "base", "themeVariables": {"fontSize": "16px", "fontFamily": "system-ui, sans-serif"}, "flowchart": {"useMaxWidth": false, "nodeSpacing": 100, "rankSpacing": 60}}}%%
 flowchart TD
     subgraph resolve["Before creating anything"]
-        A["Confirm the request<br/>base, task, materials, options"]
+        A["Confirm the request<br/>base branch, task, materials, options"]
         B["Read supplied materials<br/>before creating anything"]
         C{"Task supplied?"}
         D["Infer one task<br/>from the materials"]
         E["Cross-check the task<br/>against the materials"]
-        F["Show the plan<br/>task, branch, worktree, options"]
+        F["Show the plan<br/>base branch, task branch<br/>worktree, options"]
         Z["Stop and ask for a task<br/>or whether to infer one"]
         A --> B --> C
         C -->|"Infer from materials"| D
@@ -227,7 +230,7 @@ flowchart TD
     end
 
     subgraph isolate["In the isolated worktree"]
-        G["Create an isolated worktree<br/>from the selected branch"]
+        G["Create a task branch<br/>from the base branch<br/>in a new worktree"]
         H{"Ignored files<br/>needed?"}
         I["Review missing files<br/>exclude secrets, get approval"]
         J["Enter and verify<br/>path, branch, starting commit"]
@@ -254,7 +257,7 @@ flowchart TD
 
     subgraph publish["After you approve"]
         Q["Create the commit<br/>using the active profile"]
-        R["Push the branch<br/>open a pull or merge request"]
+        R["Push the task branch<br/>open a pull or merge request<br/>to the base branch"]
         S["Remove the worktree when appropriate<br/>keep the branch and request"]
         Q --> R --> S
     end
@@ -263,11 +266,13 @@ flowchart TD
     O -->|"Passes"| Q
 ```
 
-The workflow gives every task its own directory, branch, and continuity file. If a session ends
-because it reaches its token limit, the next client can start in the same path and read the
-recorded objective, decisions, materials, blockers, and next action without a manual handoff
-document. When agent verification is enabled, the workflow runs automated checks and, for UI
-changes, drives a real browser test; only your manual test opens the publishing gate.
+The workflow gives every task its own directory, task branch, and continuity file. The user-provided
+base branch is both the starting point for the task branch and the target of the eventual pull or
+merge request. If a session ends because it reaches its token limit, the next client can start in
+the same path and read the recorded objective, decisions, materials, blockers, and next action
+without a manual handoff document. When agent verification is enabled, the workflow runs automated
+checks and, for UI changes, drives a real browser test; only your manual test opens the publishing
+gate.
 
 The linked [worktree provisioning guide](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
 covers material handling, branch naming, missing-file manifests, browser-driver limits, and

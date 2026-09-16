@@ -183,6 +183,9 @@ dotfiles，也不會翻譯這份 README。明確傳入 `en` 或 `zhtw` 可以覆
 連續性的範圍是目錄，所以要同時進行多個任務，靠的就是隔離。`worktree-task-workflow` 技能會把一個
 任務放進專屬的 worktree，從頭帶到尾。
 
+這套流程從使用者指定的基底分支開始：流程會從該分支建立新的任務分支，放進新的 worktree；最後的 pull
+或 merge request 也會以同一個基底分支為目標。
+
 **圖：一個任務的生命週期，包含素材檢閱、worktree 佈建、agent 自動驗證與使用者人工測試關卡。** 工作區路徑與
 移除步驟是 Claude adapter 專用；Codex 的差異寫在下方連結的指南裡。
 
@@ -190,12 +193,12 @@ dotfiles，也不會翻譯這份 README。明確傳入 `en` 或 `zhtw` 可以覆
 %%{init: {"theme": "base", "themeVariables": {"fontSize": "16px", "fontFamily": "system-ui, sans-serif"}, "flowchart": {"useMaxWidth": false, "nodeSpacing": 100, "rankSpacing": 60}}}%%
 flowchart TD
     subgraph resolve["開始建立任何東西之前"]
-        A["確認任務請求<br/>起始分支、任務、素材、選項"]
+        A["確認任務請求<br/>基底分支、任務、素材、選項"]
         B["閱讀提供的素材<br/>再建立任何東西"]
         C{"有提供任務嗎？"}
         D["從素材推導一個任務"]
         E["核對任務與素材"]
-        F["顯示計畫<br/>任務、分支、worktree、選項"]
+        F["顯示計畫<br/>基底分支、任務分支<br/>worktree、選項"]
         Z["停止並要求提供任務<br/>或確認是否要推導"]
         A --> B --> C
         C -->|"從素材推導"| D
@@ -206,7 +209,7 @@ flowchart TD
     end
 
     subgraph isolate["在隔離的 worktree 裡"]
-        G["建立隔離的 worktree<br/>從選定的分支開始"]
+        G["從基底分支建立<br/>任務分支<br/>放進新的 worktree"]
         H{"需要被忽略的<br/>本機檔案嗎？"}
         I["檢查缺少的檔案<br/>排除機密並取得核准"]
         J["進入並驗證<br/>路徑、分支與起始 commit"]
@@ -233,7 +236,7 @@ flowchart TD
 
     subgraph publish["你確認結果之後"]
         Q["建立 commit<br/>使用目前的 profile"]
-        R["推送分支<br/>開啟 pull 或 merge request"]
+        R["推送任務分支<br/>開啟 pull 或 merge request<br/>目標為基底分支"]
         S["適當時移除 worktree<br/>保留分支與 request"]
         Q --> R --> S
     end
@@ -242,8 +245,9 @@ flowchart TD
     O -->|"通過"| Q
 ```
 
-這套流程讓每個任務都有自己的目錄、分支與連續性檔案。工作階段因為 token 上限而結束時，下一個用戶端可以
-進入同一路徑，讀取記錄的目標、決策、素材、阻礙與下一步，不需要手動整理交接文件。啟用 agent 驗證時，流程
+這套流程讓每個任務都有自己的目錄、任務分支與連續性檔案。使用者指定的基底分支同時是任務分支的建立起點，
+也是最後 pull 或 merge request 的目標。工作階段因為 token 上限而結束時，下一個用戶端可以進入同一路徑，
+讀取記錄的目標、決策、素材、阻礙與下一步，不需要手動整理交接文件。啟用 agent 驗證時，流程
 會執行自動檢查，UI 變更會跑真實瀏覽器測試；只有你親自測試並回報後，流程才會進入發佈階段。
 
 素材處理、分支命名、缺少檔案時的 manifest、瀏覽器 driver 的限制，以及保留分支的清理規則，都寫在

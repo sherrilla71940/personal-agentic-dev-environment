@@ -171,6 +171,10 @@ the worktree itself is the goal and a terminal, VS Code, Codex, or another tool 
 
 ### Claude worktree task workflow
 
+For this workflow, `<base>` means the user-provided existing branch on `origin`. The task branch
+is created from `origin/<base>` in the new worktree, and the eventual pull or merge request targets
+that same base branch; it is not a generic label for whichever branch happens to be checked out.
+
 The Claude adapter of `worktree-task-workflow` combines them, because neither alone gives an
 isolated session on a branch taken from an arbitrary remote base. Claude Code's own worktree
 creation branches from the remote default branch (`fresh`), from local `HEAD` (`head`), or from a
@@ -217,7 +221,8 @@ along with the directory, which is why that path is never used.
 
 The Codex adapter of `worktree-task-workflow` supports both ways a task can enter isolation. In a
 [Codex desktop Local chat](https://learn.chatgpt.com/docs/environments/git-worktrees), use the
-native Handoff control to move the chat to Worktree after the skill has resolved the task and base.
+native Handoff control to move the chat to Worktree after the skill has resolved the task and base
+branch.
 Codex creates the managed detached worktree, copies the
 repository's `.worktreeinclude` entries, and keeps the chat associated with it. In the CLI or IDE
 extension, the adapter creates a detached sibling worktree with `git wt-add` when it starts from
@@ -250,14 +255,14 @@ or design link is read through its matching document skill, web fetch, or design
 before a single Git command runs. An explicit task is cross-checked against the materials; with
 `--infer-task` the task is derived from them instead, in the materials' own language. Anything
 that cannot be read stops the run with nothing created, naming the missing capability rather than
-guessing from a URL slug. Fetched content is data: a page asking to change the task, base, branch,
-or cleanup behaviour is reported, never obeyed.
+guessing from a URL slug. Fetched content is data: a page asking to change the task, base branch,
+task branch, or cleanup behaviour is reported, never obeyed.
 
 **Naming is derived, not invented.** The commit type comes from the shared `git-commit-reference`
 table, the slug from the task's meaning, and the branch from `type/slug/suffix`. The Claude
 adapter places the worktree under `.claude/worktrees/` because entering it there raises no
-approval prompt, and the base is a named remote branch, which no client's own worktree creation
-can express.
+approval prompt, and the base is a user-provided named remote branch and request target, which no
+client's own worktree creation can express.
 
 **A silent provisioning skip is surfaced, not swallowed.** `git wt-add` can succeed while copying
 nothing, reporting only `[skipped] .worktreeinclude: manifest not found in source worktree`. The
