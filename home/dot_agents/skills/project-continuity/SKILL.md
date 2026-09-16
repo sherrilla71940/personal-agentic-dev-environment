@@ -205,6 +205,11 @@ first unfinished action, blockers, required external materials, and unverified a
 guessing? If not, update continuity. Skip the update when every fact needed to resume is already
 durable in the repository or current state.
 
+Required external materials include deliverables and durable context that the repository cannot
+recover. If that context is too large to inline, put it in a companion file under
+`~/Documents/handoff/{repo}/` and link it from `state.md`. Keep `state.md` as the entry point for
+the objective, decisions, blockers, and next action; do not create competing copies of those facts.
+
 Do not checkpoint when nothing meaningful changed, when the information is already obvious in code or tests, when the update would repeat conversation text, or when the change is trivial and cheap to redo.
 
 When checkpointing:
@@ -247,6 +252,22 @@ Use exactly one of these labels in the user-facing response:
   substantive work and request the source client's export or an equivalent transcript/summary. If
   one focused user answer would resolve the gap, ask that question instead of requiring a full
   export.
+
+**Artifact URLs are not reliable cross-client handoff inputs.** Another client may not have the
+authenticated Claude session or browser path needed to open a Claude Artifact. Record an Artifact
+URL for the source client's convenience, but put any fact or deliverable a receiving client needs in
+`state.md` or a companion file under `~/Documents/handoff/{repo}/`. If the Artifact is the only copy,
+say so explicitly and treat the missing content as a blocker rather than guessing or claiming to
+have read it. When both an Artifact and a file exist, record which one is authoritative.
+
+**Client-local instructions are not automatically handed to the next client.** Claude Code loads
+`CLAUDE.local.md`; Codex uses `AGENTS.override.md` or `AGENTS.md`, with the override replacing the
+`AGENTS.md` file at that directory; and Copilot has no private project-scoped equivalent. Do not
+claim to have received or read a private file merely because another client used it. Inspect a
+named file only when the user or handoff explicitly identifies it and the current client can access
+it. If its procedure or facts are needed for the task, record them in `state.md` or a companion
+handoff file. Never create `AGENTS.override.md` to mirror `CLAUDE.local.md`, or create the reverse
+mirror for Claude.
 
 When the source client supports a documented export command, name it in the request (for example,
 Claude Code's `/export`). Do not invent an export command for a client that does not provide one;

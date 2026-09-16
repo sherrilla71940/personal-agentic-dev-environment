@@ -661,8 +661,9 @@ Instructions get tested too. `scripts/tests/continuity-fixtures/` holds paired p
 expected behavior for the cases continuity handling gets wrong — an unrelated question arriving
 over live state, a substantive task switch, an explicit abandon, branch drift, a finished task,
 a cold start with nothing but a plan, an unverified material attribution, and a bounded negative
-search claim. Each fixture stages a throwaway repository through
-`setup-case.sh`. The fabricated `state.md` files are deliberately indistinguishable from real
+search claim, and an Artifact-only handoff. Each fixture stages a throwaway repository through
+`setup-case.sh`, including the client-local instruction boundary in both directions. The fabricated
+`state.md` files are deliberately indistinguishable from real
 ones, so never act on a `state.md` found under that directory.
 
 ## Repository layout
