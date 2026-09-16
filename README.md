@@ -58,6 +58,10 @@ reusable and client-exclusive sources into each client's native output.
 rendering. Dotted arrows show links, discovery, or the hand-run Claude MCP installer; each dotted
 arrow is labeled with its specific meaning.
 
+The figures use a shared color key: blue marks entry points and handoffs; purple marks orchestration
+and publishing; green marks state and native outputs; amber marks active work and verification; gray
+marks decisions and Git authority; and red marks blocked or parked paths.
+
 ```mermaid
 %%{init: {"themeVariables": {"clusterBkg": "transparent"}, "flowchart": {"useMaxWidth": false}}}%%
 flowchart LR
@@ -128,6 +132,17 @@ flowchart LR
     agents -.->|"discovered; host gate applies"| copilotCli
     agents -.->|"discovered by"| copilotHost
     agents -.->|"discovered by"| vscode
+
+    class core,rules,portableSkills,codexSkills,claudeNative,codexNative,copilotNative,copilotCliNative,vscodeBody,platform input
+    class claudeMcp,instructionAdapters,ruleAdapters,skillDelivery,osAdapters orchestration
+    class claude,claudeState,codex,copilotFiles,copilotCli,copilotCliState,copilotHost,agents,vscode,other output
+
+    classDef input fill:#dbeafe,stroke:#2563eb,color:#111827
+    classDef orchestration fill:#f3e8ff,stroke:#9333ea,color:#111827
+    classDef output fill:#dcfce7,stroke:#16a34a,color:#111827
+    classDef work fill:#fef3c7,stroke:#d97706,color:#111827
+    classDef control fill:#f3f4f6,stroke:#4b5563,color:#111827
+    classDef exception fill:#fee2e2,stroke:#dc2626,color:#111827
 
     style source fill:none,stroke:transparent
     style tooling fill:none,stroke:transparent
@@ -219,25 +234,25 @@ labels instead of Mermaid subgraph containers so the entire figure keeps one pag
 ```mermaid
 %%{init: {"flowchart": {"useMaxWidth": false, "nodeSpacing": 70, "rankSpacing": 55}}}%%
 flowchart TD
-    workflow["worktree-task-workflow<br/>creates a task branch from the user-provided base<br/>inside a new isolated worktree"]:::workflow
-    start["A client starts in one physical worktree"]:::client
-    scope["One physical worktree<br/>has one active state.md"]:::state
-    check{"Does state.md track<br/>this task?"}:::decision
-    create["Create state.md<br/>record objective, phase, and next action"]:::state
-    resume["Read and reconcile state<br/>against Git and the current task"]:::state
+    workflow["worktree-task-workflow<br/>creates a task branch from the user-provided base<br/>inside a new isolated worktree"]:::input
+    start["A client starts in one physical worktree"]:::input
+    scope["One physical worktree<br/>has one active state.md"]:::output
+    check{"Does state.md track<br/>this task?"}:::control
+    create["Create state.md<br/>record objective, phase, and next action"]:::output
+    resume["Read and reconcile state<br/>against Git and the current task"]:::output
     work["Implement and checkpoint<br/>decisions, blockers, and next action"]:::work
-    event{"Session ends, task switches,<br/>or task finishes?"}:::decision
-    handoff["Session ends or reaches its token limit<br/>state remains in the same worktree"]:::handoff
-    nextClient["Start the next client in the same path<br/>type `continue from project continuity`"]:::client
-    park["Park the active state<br/>move it to parked/<slug>.md"]:::parked
-    parkedRule["A parked task stays inactive<br/>resume it into state.md before continuing"]:::parked
-    newState["Start the new task<br/>with a new state.md"]:::state
-    complete["Finished-state invariant holds<br/>no unfinished sections remain"]:::decision
-    offer["Offer cleanup of the active state<br/>or named completed parked state"]:::cleanup
-    confirm{"User confirms deletion?"}:::decision
-    delete["Delete only confirmed state<br/>leave Git history and the Git exclude rule"]:::cleanup
-    retain["Keep the state<br/>record Cleanup: declined"]:::parked
-    git["Git remains authoritative<br/>for code, branches, and commits"]:::git
+    event{"Session ends, task switches,<br/>or task finishes?"}:::control
+    handoff["Session ends or reaches its token limit<br/>state remains in the same worktree"]:::input
+    nextClient["Start the next client in the same path<br/>type `continue from project continuity`"]:::input
+    park["Park the active state<br/>move it to parked/<slug>.md"]:::exception
+    parkedRule["A parked task stays inactive<br/>resume it into state.md before continuing"]:::exception
+    newState["Start the new task<br/>with a new state.md"]:::output
+    complete["Finished-state invariant holds<br/>no unfinished sections remain"]:::control
+    offer["Offer cleanup of the active state<br/>or named completed parked state"]:::orchestration
+    confirm{"User confirms deletion?"}:::control
+    delete["Delete only confirmed state<br/>leave Git history and the Git exclude rule"]:::orchestration
+    retain["Keep the state<br/>record Cleanup: declined"]:::exception
+    git["Git remains authoritative<br/>for code, branches, and commits"]:::control
 
     workflow --> start --> scope --> check
     check -->|"No state"| create --> work
@@ -251,15 +266,12 @@ flowchart TD
     git -.->|"reconcile and verify"| resume
     git -.->|"authoritative result"| work
 
-    classDef workflow fill:#dbeafe,stroke:#2563eb,color:#111827
-    classDef client fill:#ede9fe,stroke:#7c3aed,color:#111827
-    classDef state fill:#dcfce7,stroke:#16a34a,color:#111827
+    classDef input fill:#dbeafe,stroke:#2563eb,color:#111827
+    classDef orchestration fill:#f3e8ff,stroke:#9333ea,color:#111827
+    classDef output fill:#dcfce7,stroke:#16a34a,color:#111827
     classDef work fill:#fef3c7,stroke:#d97706,color:#111827
-    classDef handoff fill:#e0f2fe,stroke:#0284c7,color:#111827
-    classDef parked fill:#fee2e2,stroke:#dc2626,color:#111827
-    classDef cleanup fill:#f3e8ff,stroke:#9333ea,color:#111827
-    classDef decision fill:#f3f4f6,stroke:#4b5563,color:#111827
-    classDef git fill:#e5e7eb,stroke:#374151,color:#111827
+    classDef control fill:#f3f4f6,stroke:#4b5563,color:#111827
+    classDef exception fill:#fee2e2,stroke:#dc2626,color:#111827
 ```
 
 The worktree workflow supplies the isolated physical directory. Project continuity then keeps the
@@ -376,6 +388,14 @@ flowchart TD
 
     AA -->|"Passes"| AC
 
+    class A input
+    class B,D,E,F,G,I,J,L,M,O,P,Q,R orchestration
+    class C,H,K,N,U,AA,AF control
+    class S output
+    class T,V,W,X,Y,AB work
+    class Z exception
+    class AC,AD,AE,AG,AH orchestration
+
     style resolve fill:none,stroke:transparent
     style isolate fill:none,stroke:transparent
     style publish fill:none,stroke:transparent
@@ -463,6 +483,17 @@ flowchart LR
     workB --> gate
     copilotC --> gate
     gate --> out
+
+    class claudeA,codexA,claudeB,prepC,copilotC input
+    class workA,workB,workC,out output
+    class gate control
+
+    classDef input fill:#dbeafe,stroke:#2563eb,color:#111827
+    classDef orchestration fill:#f3e8ff,stroke:#9333ea,color:#111827
+    classDef output fill:#dcfce7,stroke:#16a34a,color:#111827
+    classDef work fill:#fef3c7,stroke:#d97706,color:#111827
+    classDef control fill:#f3f4f6,stroke:#4b5563,color:#111827
+    classDef exception fill:#fee2e2,stroke:#dc2626,color:#111827
 
     style taskA fill:none,stroke:transparent
     style taskB fill:none,stroke:transparent

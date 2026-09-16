@@ -49,6 +49,9 @@ chezmoi 和手動執行的 Claude MCP 安裝程式，怎麼把可重用來源與
 **圖：每一類受追蹤的來源，各自怎麼走到它的原生目標。** 實線箭頭代表 chezmoi 產生檔案；虛線箭頭代表連結、探索，
 或手動執行 Claude MCP 安裝程式。每條虛線都標示了它的實際用途。
 
+三張圖共用以下配色：藍色表示進入點與交接；紫色表示流程協調與發佈；綠色表示狀態與原生輸出；琥珀色表示進行中的工作與驗證；
+灰色表示決策與 Git 權威來源；紅色表示受阻或停放的流程。
+
 ```mermaid
 %%{init: {"themeVariables": {"clusterBkg": "transparent"}, "flowchart": {"useMaxWidth": false}}}%%
 flowchart LR
@@ -119,6 +122,17 @@ flowchart LR
     agents -.->|"會被發現；套用主機閘門"| copilotCli
     agents -.->|"由 VS Code 發現"| copilotHost
     agents -.->|"由 VS Code 發現"| vscode
+
+    class core,rules,portableSkills,codexSkills,claudeNative,codexNative,copilotNative,copilotCliNative,vscodeBody,platform input
+    class claudeMcp,instructionAdapters,ruleAdapters,skillDelivery,osAdapters orchestration
+    class claude,claudeState,codex,copilotFiles,copilotCli,copilotCliState,copilotHost,agents,vscode,other output
+
+    classDef input fill:#dbeafe,stroke:#2563eb,color:#111827
+    classDef orchestration fill:#f3e8ff,stroke:#9333ea,color:#111827
+    classDef output fill:#dcfce7,stroke:#16a34a,color:#111827
+    classDef work fill:#fef3c7,stroke:#d97706,color:#111827
+    classDef control fill:#f3f4f6,stroke:#4b5563,color:#111827
+    classDef exception fill:#fee2e2,stroke:#dc2626,color:#111827
 
     style source fill:none,stroke:transparent
     style tooling fill:none,stroke:transparent
@@ -203,25 +217,25 @@ dotfiles，也不會翻譯這份 README。明確傳入 `en` 或 `zhtw` 可以覆
 ```mermaid
 %%{init: {"flowchart": {"useMaxWidth": false, "nodeSpacing": 70, "rankSpacing": 55}}}%%
 flowchart TD
-    workflow["worktree-task-workflow<br/>從使用者提供的基底分支建立任務分支<br/>放進新的隔離 worktree"]:::workflow
-    start["用戶端在一個實體 worktree 中啟動"]:::client
-    scope["一個實體 worktree<br/>只能有一份 active state.md"]:::state
-    check{"state.md 記錄的是<br/>目前這個任務嗎？"}:::decision
-    create["建立 state.md<br/>記錄目標、階段與下一步"]:::state
-    resume["先讀取並核對狀態<br/>對照 Git 與目前任務"]:::state
+    workflow["worktree-task-workflow<br/>從使用者提供的基底分支建立任務分支<br/>放進新的隔離 worktree"]:::input
+    start["用戶端在一個實體 worktree 中啟動"]:::input
+    scope["一個實體 worktree<br/>只能有一份 active state.md"]:::output
+    check{"state.md 記錄的是<br/>目前這個任務嗎？"}:::control
+    create["建立 state.md<br/>記錄目標、階段與下一步"]:::output
+    resume["先讀取並核對狀態<br/>對照 Git 與目前任務"]:::output
     work["實作並 checkpoint<br/>記錄決策、阻礙與下一步"]:::work
-    event{"工作階段結束、任務切換，<br/>或任務完成？"}:::decision
-    handoff["工作階段結束或到達 token 上限<br/>狀態留在同一個 worktree"]:::handoff
-    nextClient["在同一路徑啟動下一個用戶端<br/>輸入 `continue from project continuity`"]:::client
-    park["停放目前狀態<br/>移到 parked/<slug>.md"]:::parked
-    parkedRule["停放的任務維持未啟用狀態<br/>要繼續前先移回 state.md"]:::parked
-    newState["開始新的任務<br/>建立新的 state.md"]:::state
-    complete["完成條件成立<br/>沒有未完成區段"]:::decision
-    offer["提供清理目前狀態<br/>或已完成的指定 parked state"]:::cleanup
-    confirm{"使用者確認刪除嗎？"}:::decision
-    delete["只刪除已確認的狀態<br/>保留 Git 歷史與 Git exclude 規則"]:::cleanup
-    retain["保留狀態<br/>記錄 Cleanup: declined"]:::parked
-    git["Git 仍是程式碼、分支與 commit 的真相來源"]:::git
+    event{"工作階段結束、任務切換，<br/>或任務完成？"}:::control
+    handoff["工作階段結束或到達 token 上限<br/>狀態留在同一個 worktree"]:::input
+    nextClient["在同一路徑啟動下一個用戶端<br/>輸入 `continue from project continuity`"]:::input
+    park["停放目前狀態<br/>移到 parked/<slug>.md"]:::exception
+    parkedRule["停放的任務維持未啟用狀態<br/>要繼續前先移回 state.md"]:::exception
+    newState["開始新的任務<br/>建立新的 state.md"]:::output
+    complete["完成條件成立<br/>沒有未完成區段"]:::control
+    offer["提供清理目前狀態<br/>或已完成的指定 parked state"]:::orchestration
+    confirm{"使用者確認刪除嗎？"}:::control
+    delete["只刪除已確認的狀態<br/>保留 Git 歷史與 Git exclude 規則"]:::orchestration
+    retain["保留狀態<br/>記錄 Cleanup: declined"]:::exception
+    git["Git 仍是程式碼、分支與 commit 的真相來源"]:::control
 
     workflow --> start --> scope --> check
     check -->|"沒有狀態"| create --> work
@@ -235,15 +249,12 @@ flowchart TD
     git -.->|"核對並驗證"| resume
     git -.->|"以 Git 的結果為準"| work
 
-    classDef workflow fill:#dbeafe,stroke:#2563eb,color:#111827
-    classDef client fill:#ede9fe,stroke:#7c3aed,color:#111827
-    classDef state fill:#dcfce7,stroke:#16a34a,color:#111827
+    classDef input fill:#dbeafe,stroke:#2563eb,color:#111827
+    classDef orchestration fill:#f3e8ff,stroke:#9333ea,color:#111827
+    classDef output fill:#dcfce7,stroke:#16a34a,color:#111827
     classDef work fill:#fef3c7,stroke:#d97706,color:#111827
-    classDef handoff fill:#e0f2fe,stroke:#0284c7,color:#111827
-    classDef parked fill:#fee2e2,stroke:#dc2626,color:#111827
-    classDef cleanup fill:#f3e8ff,stroke:#9333ea,color:#111827
-    classDef decision fill:#f3f4f6,stroke:#4b5563,color:#111827
-    classDef git fill:#e5e7eb,stroke:#374151,color:#111827
+    classDef control fill:#f3f4f6,stroke:#4b5563,color:#111827
+    classDef exception fill:#fee2e2,stroke:#dc2626,color:#111827
 ```
 
 worktree task workflow 負責提供隔離的實體目錄；專案連續性則把未完成的任務狀態留在那個目錄中，不管下一次是由哪個
@@ -348,6 +359,14 @@ flowchart TD
 
     AA -->|"通過"| AC
 
+    class A input
+    class B,D,E,F,G,I,J,L,M,O,P,Q,R orchestration
+    class C,H,K,N,U,AA,AF control
+    class S output
+    class T,V,W,X,Y,AB work
+    class Z exception
+    class AC,AD,AE,AG,AH orchestration
+
     style resolve fill:none,stroke:transparent
     style isolate fill:none,stroke:transparent
     style publish fill:none,stroke:transparent
@@ -421,6 +440,17 @@ flowchart LR
     workB --> gate
     copilotC --> gate
     gate --> out
+
+    class claudeA,codexA,claudeB,prepC,copilotC input
+    class workA,workB,workC,out output
+    class gate control
+
+    classDef input fill:#dbeafe,stroke:#2563eb,color:#111827
+    classDef orchestration fill:#f3e8ff,stroke:#9333ea,color:#111827
+    classDef output fill:#dcfce7,stroke:#16a34a,color:#111827
+    classDef work fill:#fef3c7,stroke:#d97706,color:#111827
+    classDef control fill:#f3f4f6,stroke:#4b5563,color:#111827
+    classDef exception fill:#fee2e2,stroke:#dc2626,color:#111827
 
     style taskA fill:none,stroke:transparent
     style taskB fill:none,stroke:transparent
