@@ -2,12 +2,12 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-> **快速摘要：** 這是一套以 [chezmoi](https://www.chezmoi.io/) 管理的個人跨平台開發環境。內容包括
-> dotfiles、Claude Code、Codex、GitHub Copilot 的 AI 用戶端整合，以及 VS Code、Zsh、Git、Windows
-> Terminal 等開發設定。其中最具特色的是以任務為核心的代理式工作流程系統（**agentic workflow system**），
-> 支援平行 worktree、跨用戶端連續性、驗證與交接。所有工具的原生檔案都由同一份 Git 追蹤的來源樹產生。
-> 每條共用規則只保留一份本文，不會變成三份各自飄移的副本；每個 worktree 的任務狀態能跨工作階段保留，
-> 讓平行任務彼此隔離；應用程式自己管理的設定則留在本機。
+> **快速摘要：** 這是一套跨平台的開發環境，內含一套代理式工作流程系統（**agentic workflow system**），支援
+> 隔離的平行開發、跨用戶端 AI 交接、自動化驗證，以及可重現的設定。它由 [chezmoi](https://www.chezmoi.io/) 管理，
+> 包含 Claude Code、Codex 與 GitHub Copilot 的 dotfiles 和 AI 用戶端整合，以及 VS Code、Zsh、Git、Windows
+> Terminal 等開發設定。同一份 Git 追蹤的來源樹會產生各工具實際讀取的原生檔案。共用規則只保留一份本文，
+> 不會變成三份各自飄移的副本；每個 worktree 的任務狀態能跨工作階段保留，讓平行任務彼此隔離；應用程式自己
+> 管理的設定則留在本機。
 
 ```text
 home/dot_bashrc  ──chezmoi apply──▶  ~/.bashrc
@@ -261,9 +261,19 @@ worktree task workflow 負責提供隔離的實體目錄；專案連續性則把
 連續性的範圍是目錄，所以要同時進行多個任務，靠的就是隔離。`worktree-task-workflow` 技能會把一個
 任務放進專屬的 worktree，從頭帶到尾。
 
+啟動位置也很重要。請從儲存庫目前的工作目錄（CWD）啟動流程；這個目錄可以是主要 checkout，也可以是已連結的
+worktree。CWD 用來辨識儲存庫、檢查 worktree 註冊資訊，以及從啟動流程的 worktree 讀取 `.worktreeinclude` 來佈建檔案。
+建立新任務時，流程不會在主要 checkout 中編輯：若從主要 checkout 啟動，流程只會在那裡解析並驗證請求，接著把用戶端交給
+或佈建到隔離 worktree。之後用戶端必須實際在那個路徑中執行；只改變 shell 的 CWD 不會移動現有的 Codex 對話。從這一步開始，
+任務分支、連續性狀態、編輯、檢查與發佈都屬於隔離 worktree。
+
 這套流程從使用者啟動 `worktree-task-workflow` 開始，啟動時提供基底分支、任務（或要求推導任務）、參考素材與
 選項。流程會從 `origin/<base>` 建立新的 worktree，透過 `.worktreeinclude` 佈建核准的 Git 忽略檔案，再從同一個
 基底 commit 建立任務分支。最後的 pull 或 merge request 也會以同一個基底分支為目標。
+
+`worktree-task-workflow` 會把一項實質的開發任務轉成可重複的隔離流程：先驗證起始分支，建立專用 worktree 與任務分支，讓任務脈絡
+能跨 AI 工作階段保留，執行自動化驗證，請求使用者進行人工測試，再把變更發佈到正確的基底分支。這能降低分支或基底選錯、脈絡遺失、
+漏做驗證、request 目標不一致，以及同時處理多個任務或 AI 用戶端時的手動設定負擔。
 
 **圖：一個新任務的生命週期，包含素材檢閱、worktree 佈建、agent 自動驗證與使用者人工測試關卡。** 圖中標出
 Claude 與 Codex 的分支流程；worktree 路徑與清理方式也會依 adapter 而不同。
@@ -272,7 +282,7 @@ Claude 與 Codex 的分支流程；worktree 路徑與清理方式也會依 adapt
 %%{init: {"themeVariables": {"clusterBkg": "transparent"}, "flowchart": {"useMaxWidth": false, "nodeSpacing": 100, "rankSpacing": 60}}}%%
 flowchart TD
     subgraph resolve["開始建立任何東西之前"]
-        A["使用者啟動 worktree-task-workflow<br/>基底分支 + 任務或 --infer-task<br/>選填素材 + 選項"]
+        A["從目前儲存庫的 CWD<br/>使用者啟動 worktree-task-workflow<br/>基底分支 + 任務或 --infer-task<br/>選填素材 + 選項"]
         B["解析並驗證<br/>啟動參數"]
         C{"有提供任務嗎？"}
         D["執行任何 Git 指令前<br/>閱讀提供的素材<br/>推導一個任務"]

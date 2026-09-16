@@ -2,14 +2,13 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-> **TL;DR:** A personal, cross-platform developer environment managed with
-> [chezmoi](https://www.chezmoi.io/). It includes dotfiles and AI-client integrations for Claude Code,
-> Codex, and GitHub Copilot, alongside developer settings for VS Code, Zsh, Git, Windows Terminal,
-> and more. Its distinctive layer is a task-oriented **agentic workflow system** for parallel
-> worktrees, cross-client continuity, verification, and handoff. One Git-tracked source tree renders
-> the native files each tool actually reads. It keeps one body per shared rule instead of three
-> drifting copies, preserves per-worktree task state across sessions, and leaves application-owned
-> settings local.
+> **TL;DR:** A cross-platform developer environment with an agentic workflow system for isolated
+> parallel development, cross-client AI handoff, automated verification, and reproducible configuration.
+> Managed with [chezmoi](https://www.chezmoi.io/), it includes dotfiles and AI-client integrations for
+> Claude Code, Codex, and GitHub Copilot, alongside developer settings for VS Code, Zsh, Git, Windows
+> Terminal, and more. One Git-tracked source tree renders the native files each tool actually reads.
+> It keeps one body per shared rule instead of three drifting copies, preserves per-worktree task state
+> across sessions, and leaves application-owned settings local.
 
 ```text
 home/dot_bashrc  ──chezmoi apply──▶  ~/.bashrc
@@ -283,10 +282,25 @@ Continuity is scoped to a directory, so isolation is what lets several tasks run
 `worktree-task-workflow` skill drives one task through its whole lifecycle in a worktree of its
 own.
 
+Invocation context matters. Start the workflow from the repository's current working directory
+(CWD), either the primary checkout or a linked worktree. The CWD identifies the repository and
+worktree context used to inspect the Git registry and provision `.worktreeinclude`. A new task
+must not edit the primary checkout: when invoked there, the workflow resolves and validates the
+request, then hands the client off to or provisions the isolated worktree. The client must then
+run in that exact path; changing a shell's CWD does not move an existing Codex chat. From that
+point, the task branch, continuity state, edits, checks, and publishing all belong to the isolated
+worktree.
+
 This workflow starts when the user invokes `worktree-task-workflow` with a base branch, a task (or
 task-inference request), reference materials, and options. It creates a new worktree from
 `origin/<base>`, provisions approved ignored files through `.worktreeinclude`, and creates the task
 branch from that base commit. The eventual pull or merge request targets the same base branch.
+
+`worktree-task-workflow` turns a substantial coding task into a repeatable isolated lifecycle: it
+validates the starting branch, creates a dedicated worktree and task branch, preserves task context
+across AI sessions, runs automated verification, requests a manual test, and publishes the change
+to the correct base branch. This reduces branch and base mistakes, context loss, skipped verification,
+inconsistent request targets, and setup friction when several tasks or AI clients are active at once.
 
 **Figure: one new task's lifecycle, including material review, worktree provisioning, automated
 agent verification, and the user manual-test gate.** The common contract is shown with the
@@ -296,7 +310,7 @@ Claude and Codex branch paths called out; worktree location and cleanup also dif
 %%{init: {"themeVariables": {"clusterBkg": "transparent"}, "flowchart": {"useMaxWidth": false, "nodeSpacing": 100, "rankSpacing": 60}}}%%
 flowchart TD
     subgraph resolve["Before creating anything"]
-        A["User invokes worktree-task-workflow<br/>base branch + task or --infer-task<br/>optional materials + options"]
+        A["From the current repository CWD<br/>invoke worktree-task-workflow<br/>base branch + task or --infer-task<br/>optional materials + options"]
         B["Resolve and validate<br/>the invocation"]
         C{"Task supplied?"}
         D["Read supplied materials<br/>before any Git command;<br/>infer one task"]
