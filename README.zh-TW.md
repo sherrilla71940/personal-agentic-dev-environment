@@ -211,8 +211,7 @@ dotfiles，也不會翻譯這份 README。明確傳入 `en` 或 `zhtw` 可以覆
 連續性狀態屬於實體目錄，而 worktree task workflow 會建立這個目錄與任務分支。下面的生命週期圖說明兩套流程
 怎麼接在一起。
 
-**圖：專案連續性的生命週期，以及它和隔離 worktree 的關係。** 這張圖用標籤取代 Mermaid 的 subgraph 容器，讓
-整張圖維持單一的頁面背景色。
+**圖：專案連續性的生命週期，以及它和隔離 worktree 的關係。**
 
 ```mermaid
 %%{init: {"flowchart": {"useMaxWidth": false, "nodeSpacing": 70, "rankSpacing": 55}}}%%

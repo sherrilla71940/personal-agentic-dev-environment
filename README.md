@@ -229,8 +229,7 @@ Continuity belongs to one physical working tree, and each tree holds at most one
 The continuity state belongs to the physical directory, while the worktree task workflow creates
 that directory and its task branch. The lifecycle below shows how the two systems connect.
 
-**Figure: project-continuity lifecycle and its connection to isolated worktrees.** The diagram uses
-labels instead of Mermaid subgraph containers so the entire figure keeps one page-colored background.
+**Figure: project-continuity lifecycle and its connection to isolated worktrees.**
 
 ```mermaid
 %%{init: {"flowchart": {"useMaxWidth": false, "nodeSpacing": 70, "rankSpacing": 55}}}%%
