@@ -103,7 +103,7 @@ The path convention lives in the skill and is enforced by nothing but consistenc
 - `home/dot_agents/skills/project-continuity/references/state-format.md` — file format
 - `home/.chezmoitemplates/continuity.md` — the activation rule all three clients receive
 - `home/dot_config/git/ignore` — the managed global ignore entry
-- `home/dot_local/share/maintain-project-continuity.sh` — `ensure_private_state_path`, the
+- `home/dot_local/share/maintain-project-continuity.sh.tmpl` — `ensure_private_state_path`, the
   per-clone fallback, and the SessionStart and Stop reporting
 
 Verify the two privacy layers from any repository that has continuity state:

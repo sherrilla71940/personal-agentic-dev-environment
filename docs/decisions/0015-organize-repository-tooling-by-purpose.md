@@ -1,6 +1,6 @@
 # ADR-0015: Organize repository tooling by purpose
 
-- Status: Accepted
+- Status: Superseded by [ADR-0016](./0016-rename-the-project-facing-tooling-command.md)
 - Date: 2026-09-14
 
 ## Context

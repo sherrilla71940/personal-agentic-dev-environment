@@ -224,7 +224,7 @@ For a key that does qualify, copy the value into
 ```bash
 chezmoi diff ~/.claude/settings.json   # confirm only the promoted key changes
 chezmoi apply
-git add home/.chezmoitemplates/claude/settings-durable.json && git commit
+git commit --only -m "<message>" -- home/.chezmoitemplates/claude/settings-durable.json
 ```
 
 Promotion stays manual on purpose. `chezmoi re-add` is not an option here: it skips modify
