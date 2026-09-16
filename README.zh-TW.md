@@ -44,63 +44,80 @@ Chezmoi 把 `home/` 下的檔案視為**來源狀態**：也就是你應該編�
 [chezmoi 工作流程](./docs/chezmoi-workflow.md)。
 
 Claude Code、Codex 與 GitHub Copilot 會從不同的原生檔案與套用範圍規則探索指示。下面的架構圖會說明
-chezmoi 怎麼把可重用來源與用戶端專屬來源，產生各用戶端自己的原生輸出。
+chezmoi 和手動執行的 Claude MCP 安裝程式，怎麼把可重用來源與用戶端專屬來源，產生各用戶端自己的原生輸出。
 
-**圖：每一類受追蹤的來源，各自怎麼走到它的實際目標。** 實線箭頭代表「產生為」，虛線箭頭代表「連結到或探索
-現有目標」——因此不必複製內容，就能交付給第二個宿主。
+**圖：每一類受追蹤的來源，各自怎麼走到它的原生目標。** 實線箭頭代表 chezmoi 產生檔案；虛線箭頭代表連結、探索，
+或手動執行 Claude MCP 安裝程式。每條虛線都標示了它的實際用途。
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontSize": "16px", "fontFamily": "system-ui, sans-serif"}, "flowchart": {"useMaxWidth": false}}}%%
+%%{init: {"themeVariables": {"clusterBkg": "transparent"}, "flowchart": {"useMaxWidth": false}}}%%
 flowchart LR
     subgraph source["Git 追蹤的來源 — home/"]
-        core["共用指示本文<br/>personal 或 company 情境<br/>選用的連續性"]
-        rules["共用的路徑範圍規則"]
-        skills["可攜式與主機閘門技能"]
-        claudeNative["Claude 專屬來源<br/>skills、agents、commands、MCP、settings"]
-        codexNative["Codex 專屬來源<br/>agents、MCP、create-once 設定"]
-        copilotNative["Copilot 專屬來源<br/>instructions、agents、skills、MCP、settings"]
-        vscodeBody["共用 VS Code 本文"]
+        core["共用核心<br/>所選情境與連續性"]
+        rules["共用規則本文<br/>路徑 glob"]
+        portableSkills["可攜式技能"]
+        codexSkills["Codex 對象技能<br/>.codex-only；不連到 Claude"]
+        claudeNative["Claude 來源<br/>skills、commands、hooks、<br/>themes、settings"]
+        codexNative["Codex 來源<br/>AGENTS.md、hooks、MCP、<br/>create-once 設定"]
+        copilotNative["Copilot 共用來源<br/>instructions、agents、skills"]
+        copilotCliNative["Copilot CLI 專用來源<br/>MCP 與 settings"]
+        vscodeBody["共用 VS Code 本文<br/>settings、keybindings、MCP"]
         platform["Shell、Git、Terminal<br/>與輔助來源"]
     end
 
-    subgraph render["Chezmoi 組合"]
-        instructionAdapters["原生指示包裝器<br/>選擇情境與連續性"]
-        ruleAdapters["套用範圍包裝器<br/>Claude：paths<br/>Copilot：applyTo"]
-        skillDelivery["交付技能<br/>檔案、連結與主機閘門"]
-        osAdapters["作業系統包裝器<br/>VS Code 路徑"]
+    subgraph tooling["Git 追蹤的儲存庫工具 — scripts/"]
+        claudeMcp["Claude MCP manifest<br/>與安裝程式"]
     end
 
-    subgraph targets["Live 目標"]
-        claude["Claude Code<br/>~/.claude 下的原生檔案"]
-        codex["Codex<br/>~/.codex 下的原生檔案"]
-        copilot["GitHub Copilot<br/>CLI 與 VS Code"]
+    subgraph render["組合與交付"]
+        instructionAdapters["直接嵌入共用核心<br/>選擇 profile 與連續性"]
+        ruleAdapters["加入套用範圍 metadata<br/>Claude：paths／Copilot：applyTo"]
+        skillDelivery["產生技能<br/>連結與主機閘門"]
+        osAdapters["產生作業系統專用<br/>VS Code 目標"]
+    end
+
+    subgraph targets["原生目標"]
+        claude["Claude Code<br/>~/.claude"]
+        claudeState["Claude 使用者狀態<br/>~/.claude.json"]
+        codex["Codex<br/>~/.codex"]
+        copilotFiles["Copilot 共用使用者檔案<br/>~/.copilot/instructions、skills、agents"]
+        copilotCli["Copilot CLI<br/>讀取共用檔案與 CLI 狀態"]
+        copilotCliState["Copilot CLI 狀態<br/>~/.copilot/mcp-config.json 與 settings"]
+        copilotHost["VS Code Copilot<br/>讀取共用的 ~/.copilot 檔案"]
         agents["共用技能目錄<br/>~/.agents/skills"]
-        vscode["VS Code 使用者設定檔<br/>Windows 或 macOS"]
+        vscode["VS Code 使用者設定檔<br/>settings、keybindings、MCP<br/>Windows 或 macOS"]
         other["Shell、Git、Windows Terminal<br/>與共用輔助檔案"]
     end
 
     core --> instructionAdapters
     instructionAdapters --> claude
     instructionAdapters --> codex
-    instructionAdapters --> copilot
+    instructionAdapters --> copilotCli
 
     rules --> ruleAdapters
     ruleAdapters --> claude
-    ruleAdapters --> copilot
+    ruleAdapters --> copilotCli
 
-    skills --> skillDelivery
+    portableSkills --> skillDelivery
+    codexSkills --> skillDelivery
     skillDelivery --> agents
-    agents -.->|"symlink 連到"| claude
+    agents -.->|"只有可攜式技能"| claude
 
     claudeNative --> claude
+    claudeMcp -.->|"手動安裝程式補上缺少的定義"| claudeState
     codexNative --> codex
-    copilotNative --> copilot
+    copilotNative --> copilotFiles
+    copilotCliNative --> copilotCliState
 
     vscodeBody --> osAdapters --> vscode
     platform --> other
 
-    agents -.->|"由 Codex 發現"| codex
-    agents -.->|"由 Copilot 發現"| copilot
+    copilotFiles -.->|"由 Copilot CLI 發現"| copilotCli
+    copilotFiles -.->|"由 VS Code 發現共用檔案"| copilotHost
+    copilotCliState -.->|"由 Copilot CLI 讀取"| copilotCli
+    agents -.->|"會被發現；套用主機閘門"| codex
+    agents -.->|"會被發現；套用主機閘門"| copilotCli
+    agents -.->|"由 VS Code 發現"| copilotHost
     agents -.->|"由 VS Code 發現"| vscode
 ```
 
@@ -183,72 +200,106 @@ dotfiles，也不會翻譯這份 README。明確傳入 `en` 或 `zhtw` 可以覆
 連續性的範圍是目錄，所以要同時進行多個任務，靠的就是隔離。`worktree-task-workflow` 技能會把一個
 任務放進專屬的 worktree，從頭帶到尾。
 
-這套流程從使用者指定的基底分支開始：流程會從該分支建立新的任務分支，放進新的 worktree；最後的 pull
-或 merge request 也會以同一個基底分支為目標。
+這套流程從使用者啟動 `worktree-task-workflow` 開始，啟動時提供基底分支、任務（或要求推導任務）、參考素材與
+選項。流程會從 `origin/<base>` 建立新的 worktree，透過 `.worktreeinclude` 佈建核准的 Git 忽略檔案，再從同一個
+基底 commit 建立任務分支。最後的 pull 或 merge request 也會以同一個基底分支為目標。
 
-**圖：一個任務的生命週期，包含素材檢閱、worktree 佈建、agent 自動驗證與使用者人工測試關卡。** 工作區路徑與
-移除步驟是 Claude adapter 專用；Codex 的差異寫在下方連結的指南裡。
+**圖：一個新任務的生命週期，包含素材檢閱、worktree 佈建、agent 自動驗證與使用者人工測試關卡。** 圖中標出
+Claude 與 Codex 的分支流程；worktree 路徑與清理方式也會依 adapter 而不同。
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontSize": "16px", "fontFamily": "system-ui, sans-serif"}, "flowchart": {"useMaxWidth": false, "nodeSpacing": 100, "rankSpacing": 60}}}%%
+%%{init: {"themeVariables": {"clusterBkg": "transparent"}, "flowchart": {"useMaxWidth": false, "nodeSpacing": 100, "rankSpacing": 60}}}%%
 flowchart TD
     subgraph resolve["開始建立任何東西之前"]
-        A["確認任務請求<br/>基底分支、任務、素材、選項"]
-        B["閱讀提供的素材<br/>再建立任何東西"]
+        A["使用者啟動 worktree-task-workflow<br/>基底分支 + 任務或 --infer-task<br/>選填素材 + 選項"]
+        B["解析並驗證<br/>啟動參數"]
         C{"有提供任務嗎？"}
-        D["從素材推導一個任務"]
-        E["核對任務與素材"]
-        F["顯示計畫<br/>基底分支、任務分支<br/>worktree、選項"]
-        Z["停止並要求提供任務<br/>或確認是否要推導"]
+        D["執行任何 Git 指令前<br/>閱讀提供的素材<br/>推導一個任務"]
+        E["執行任何 Git 指令前<br/>閱讀提供的素材<br/>核對明確任務"]
+        F["顯示解析後的計畫<br/>基底分支 = 任務起點 + PR/MR 目標<br/>任務、分支、worktree、檢查、清理"]
+        G["fetch origin 並驗證<br/>origin/&lt;base&gt; 與任務分支狀態"]
+        H{"基底存在，而且<br/>任務分支狀態有效嗎？"}
+        Z["停止並回報問題<br/>沒有建立任何東西"]
         A --> B --> C
-        C -->|"從素材推導"| D
-        C -->|"使用提供的任務"| E
-        C -->|"不要推導"| Z
+        C -->|"沒有任務，進行推導"| D
+        C -->|"有提供任務"| E
+        C -->|"沒有任務，也不推導"| Z
         D --> F
         E --> F
+        F --> G --> H
+        H -->|"否"| Z
     end
 
-    subgraph isolate["在隔離的 worktree 裡"]
-        G["從基底分支建立<br/>任務分支<br/>放進新的 worktree"]
-        H{"需要被忽略的<br/>本機檔案嗎？"}
-        I["檢查缺少的檔案<br/>排除機密並取得核准"]
-        J["進入並驗證<br/>路徑、分支與起始 commit"]
-        K["記錄任務脈絡<br/>目標、決策、素材、下一步"]
-        L["實作變更"]
-        M{"執行 agent 驗證？"}
-        N["執行自動檢查<br/>typecheck、lint、測試與 build"]
-        N2["UI 變更時<br/>agent 執行真實瀏覽器測試"]
-        N3["驗證執行中的應用程式<br/>真實路由或執行期檢查"]
-        O{{"由你執行人工測試<br/>通過後才能發佈"}}
-        P["修正失敗<br/>再次執行驗證"]
-        G --> H
-        H -->|"缺少檔案"| I
-        I --> J
-        H -->|"沒有缺少檔案"| J
-        J --> K --> L --> M
-        M -->|"是"| N
-        N --> N2 --> N3
-        M -->|"否"| N3
-        N3 --> O
-        O -->|"失敗"| P
-        P --> M
+    subgraph isolate["建立並驗證隔離的 worktree"]
+        I["從已驗證的 origin/&lt;base&gt;<br/>建立或進入 worktree"]
+        J["讀取追蹤中的 .worktreeinclude<br/>複製核准的 Git 忽略檔案"]
+        K{"執行所需的 Git 忽略檔案<br/>都在嗎？"}
+        L["用 git wt-copy、請使用者放置檔案，<br/>或建立 manifest 任務來補齊；<br/>沒有安全作法就停止"]
+        M["驗證 worktree 路徑<br/>與起始 commit"]
+        N{"adapter 產生的是哪種<br/>分支狀態？"}
+        O["Claude adapter：<br/>建立 worktree 時已建立任務分支"]
+        P["Codex desktop／CLI／IDE：<br/>停在基底 commit 的 detached 狀態"]
+        Q["在 worktree 裡從 origin/&lt;base&gt;<br/>建立任務分支"]
+        R["驗證任務分支、HEAD，<br/>以及乾淨或核准的狀態"]
+        S["啟用連續性並記錄<br/>素材、目標、計畫、<br/>決策與下一步"]
+        T["實作變更"]
+        U{"執行完整的選用 agent 驗證？<br/>預設：是"}
+        V["執行 typecheck、lint、<br/>聚焦測試與有意義的 build"]
+        W["涉及視覺 UI 時，若工具可用，<br/>操作指定的瀏覽器流程"]
+        X["任務需要執行應用程式時，<br/>啟動它並請求真實路由"]
+        Y["執行最低限度的合理檢查<br/>（完整驗證關閉時也要執行）"]
+        AA{{"提供明確步驟並請使用者<br/>執行人工測試；<br/>停止並等待"}}
+        AB["修正失敗；重新執行適用的<br/>檢查與執行期驗證"]
+        H -->|"是"| I
+        I --> J --> K
+        K -->|"否"| L --> K
+        K -->|"是"| M --> N
+        N -->|"Claude"| O --> R
+        N -->|"Codex"| P --> Q --> R
+        R --> S --> T --> U
+        U -->|"是"| V --> W --> X
+        U -->|"否"| Y --> X
+        X --> AA
+        AA -->|"失敗"| AB --> U
     end
 
-    subgraph publish["你確認結果之後"]
-        Q["建立 commit<br/>使用目前的 profile"]
-        R["推送任務分支<br/>開啟 pull 或 merge request<br/>目標為基底分支"]
-        S["適當時移除 worktree<br/>保留分支與 request"]
-        Q --> R --> S
+    subgraph publish["使用者回報人工測試通過之後"]
+        AC["建立 commit<br/>使用目前的 profile"]
+        AD["推送任務分支"]
+        AE["開啟 pull 或 merge request<br/>目標為基底分支"]
+        AF{"套用 adapter 清理規則<br/>不刪除任務分支？"}
+        AG["Claude：核准且符合安全條件時，<br/>移除 worktree；保留分支與 request"]
+        AH["Codex：保留目前 worktree；<br/>由應用程式或使用者決定何時處理"]
+        AC --> AD --> AE --> AF
+        AF -->|"Claude + 已核准"| AG
+        AF -->|"Codex 或 cleanup=keep"| AH
     end
 
-    F --> G
-    O -->|"通過"| Q
+    AA -->|"通過"| AC
 ```
 
 這套流程讓每個任務都有自己的目錄、任務分支與連續性檔案。使用者指定的基底分支同時是任務分支的建立起點，
-也是最後 pull 或 merge request 的目標。工作階段因為 token 上限而結束時，下一個用戶端可以進入同一路徑，
-讀取記錄的目標、決策、素材、阻礙與下一步，不需要手動整理交接文件。啟用 agent 驗證時，流程
-會執行自動檢查，UI 變更會跑真實瀏覽器測試；只有你親自測試並回報後，流程才會進入發佈階段。
+也是最後 pull 或 merge request 的目標。流程會先解析啟動參數與提供的素材，顯示解析後的計畫，再 fetch `origin`，
+確認基底分支有效後才建立任何東西。
+
+worktree 階段會依 adapter 採用不同的 Git 流程：
+
+- Claude adapter 用 `git wt-add` 從 `origin/<base>` 一次建立任務分支與 worktree，再用 `EnterWorktree` 進入該路徑。
+- Codex desktop 透過 Handoff 建立 detached worktree 並複製 `.worktreeinclude`。Codex CLI 與 IDE extension 會先佈建
+  detached worktree、回報路徑，再讓 Codex 在該路徑建立或接續工作階段，最後從基底 commit 建立任務分支。
+
+對 terminal Git 來說，先建立 worktree 再讀取 `.worktreeinclude` 是刻意的順序：`git wt-add` 先建立目的地，接著才讀取
+追蹤中的 manifest 並複製核准的 Git 忽略檔案。如果缺少必要檔案，流程會使用 `git wt-copy`、請使用者放置指定檔案，或
+提供 `worktree-manifest` 技能作為範圍明確的任務；沒有安全的處理方式就會停止。
+
+工作階段因為 token 上限而結束時，下一個用戶端可以進入同一路徑，讀取記錄的目標、決策、素材、阻礙與下一步，
+不需要手動整理交接文件。`agent-test=true` 會執行 typecheck、lint、聚焦測試、有意義的 build，以及視覺工作可用時的
+瀏覽器或執行期驗證；`agent-test=false` 仍會執行最低限度的合理檢查。任務需要執行應用程式時，執行期驗證會啟動
+應用程式並請求真實路由；指定的瀏覽器流程則驗證特定 UI 操作。兩者都不取代人工測試。
+
+人工測試關卡會提供 worktree 絕對路徑、啟動命令、路由、前置條件、操作順序與預期結果，接著停止並等待。只有使用者
+回報人工測試通過後，流程才會建立 commit、推送任務分支，並開啟以基底分支為目標的 request。Claude 會在通過安全檢查
+後移除 worktree；Codex 則把目前 worktree 留給應用程式或使用者處理。兩個 adapter 都不會刪除任務分支。
 
 素材處理、分支命名、缺少檔案時的 manifest、瀏覽器 driver 的限制，以及保留分支的清理規則，都寫在
 [worktree 佈建指南](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)。
@@ -264,53 +315,57 @@ flowchart TD
 **圖：儲存庫 A 用多個 worktree 平行執行任務，其中一個任務透過連續性狀態跨用戶端接續。**
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontSize": "16px", "fontFamily": "system-ui, sans-serif"}, "flowchart": {"useMaxWidth": false}}}%%
+%%{init: {"themeVariables": {"clusterBkg": "transparent"}, "flowchart": {"useMaxWidth": false}}}%%
 flowchart LR
     subgraph taskA["儲存庫 A — Worktree 1：任務 A 接續"]
-        claudeA["Claude Code<br/>開始任務 A"]
-        workA["儲存庫 A / Worktree 1<br/>任務分支與連續性狀態"]
-        codexA["Codex<br/>從狀態接續任務 A"]
-        claudeA -->|"checkpoint 任務 A"| workA
+        claudeA["Claude 啟動工作流程<br/>基底分支 = PR/MR 目標"]
+        workA["儲存庫 A / Worktree 1<br/>從基底建立的任務分支<br/>連續性狀態"]
+        codexA["Codex 在同一個實體<br/>worktree 讀取狀態後接續"]
+        claudeA -->|"建立並進入隔離 worktree<br/>接著 checkpoint 任務狀態"| workA
         workA -->|"工作階段到達 token 上限<br/>狀態保留，不需人工交接"| codexA
     end
 
     subgraph taskB["儲存庫 A — Worktree 2：任務 B 平行執行"]
-        claudeB["Claude Code<br/>開始任務 B"]
-        workB["儲存庫 A / Worktree 2<br/>獨立分支與連續性狀態"]
-        claudeB -->|"獨立啟動"| workB
+        claudeB["另一個工作流程啟動<br/>使用選定的基底分支"]
+        workB["儲存庫 A / Worktree 2<br/>從基底建立的任務分支<br/>獨立的連續性狀態"]
+        claudeB -->|"建立並進入另一個 worktree"| workB
     end
 
     subgraph taskC["儲存庫 B — Worktree 1：任務 C"]
-        copilotC["GitHub Copilot<br/>遵循連續性協定"]
-        workC["儲存庫 B / Worktree 1<br/>獨立分支與連續性狀態"]
-        copilotC -->|"獨立啟動"| workC
+        prepC["使用者或其他工具<br/>先準備 worktree"]
+        workC["儲存庫 B / Worktree 1<br/>獨立的任務分支<br/>連續性狀態"]
+        copilotC["Copilot 在準備好的 worktree 裡工作<br/>並遵循連續性協定"]
+        prepC --> workC
+        workC -->|"Copilot 進入準備好的 worktree"| copilotC
     end
 
-    gate{{"你為每個任務<br/>執行人工測試"}}
-    out["每個任務保留自己的分支<br/>與 pull 或 merge request"]
+    gate{{"流程請求使用者為每個任務<br/>執行人工測試"}}
+    out["每個任務保留自己的任務分支<br/>PR/MR 目標為各自的基底分支"]
 
     codexA --> gate
     workB --> gate
-    workC --> gate
+    copilotC --> gate
     gate --> out
 ```
 
-這張圖的核心是任務 A：Claude Code 把任務狀態 checkpoint 在 worktree 裡。AI 工作階段到達 token 上限後，
-Codex 進到同一路徑並讀取原本的連續性狀態。任務 B 可以同時在同一個儲存庫的另一個 worktree 執行，任務 C
-則可以在另一個儲存庫執行。
+這張圖的核心是任務 A：Claude 啟動工作流程時提供基底分支；這個分支既是任務分支的建立起點，也是之後
+PR/MR 的目標分支。流程會建立並進入隔離 worktree，接著把任務狀態 checkpoint 在其中。AI 工作階段到達 token
+上限後，Codex 進入同一個實體路徑並讀取原本的連續性狀態。任務 B 是同一個儲存庫中的另一個工作流程啟動，
+有自己的基底分支、任務分支、worktree 與狀態。任務 C 表示由使用者或其他工具先準備好 worktree，Copilot
+進入後遵循連續性協定；目前沒有自動建立 worktree 的 Copilot adapter。
 Git 仍然是程式碼、分支與 commit 的真相來源；連續性只補上 Git 記不住的目標、決策、阻礙、素材與下一步。
 
-工作階段可以丟棄，但 worktree、分支與連續性狀態會保留。清理可能會移除由用戶端管理的 worktree，但任務分支
-與 pull 或 merge request 仍可供檢閱。Copilot 在進入 worktree 後可以遵循相同的連續性協定，但這個儲存庫目前
-只有 Claude Code 與 Codex 的自動 worktree 轉接層。
+工作階段可以丟棄，但 worktree、分支與連續性狀態會保留。Claude 通過安全檢查後可以移除由它管理的 worktree；
+Codex 則把目前的 worktree 留給應用程式或使用者處理。無論哪一種情況，任務分支與 PR/MR 都會保留供檢閱，
+清理不會刪除任務分支。Copilot 進入準備好的 worktree 後可以遵循相同的連續性協定，但這個儲存庫目前只有
+Claude Code 與 Codex 的自動 worktree 轉接層。
 
-人工測試關卡就是無法平行化的那一段。agent 可以散開來跑，驗證最後還是收斂到你身上。
+人工測試關卡就是無法平行化的那一段。agent 可以散開來跑，驗證最後仍要匯聚到使用者的人工測試。
 
-這個技能有 Claude 與 Codex 兩個轉接層，因為沒有任何一個用戶端能單獨做到「從任意遠端 base 開分支，
-再給你一個隔離的工作階段」；兩者的差別在於 worktree 放在哪裡、以及誰有權移除它。另外，剛建立的
-worktree 不會帶任何被忽略的檔案，所以由 `worktree-manifest` 技能撰寫核准過的 `.worktreeinclude`，
-再由 `git wt-add` 依此佈建。這兩件事都寫在
-[worktree 佈建指南](./docs/worktree-provisioning.md)。
+這個技能有 Claude 與 Codex 兩個轉接層，因為兩者提供的隔離任務路徑不同：Claude 會建立並進入它管理的
+worktree；Codex 會建立或進入 detached worktree，再從選定的基底分支建立任務分支。剛建立的 worktree 不會
+帶任何被忽略的檔案，所以由 `worktree-manifest` 技能撰寫核准過的 `.worktreeinclude`，再由 `git wt-add` 依此
+佈建。[worktree 佈建指南](./docs/worktree-provisioning.md)說明兩個 adapter 與 Copilot 的獨立協定。
 
 這個儲存庫本身是例外：它固定留在主要 checkout，因為 chezmoi 的來源解析綁在那一個工作樹上。
 

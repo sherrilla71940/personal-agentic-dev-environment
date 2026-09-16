@@ -52,65 +52,82 @@ target. Read [the chezmoi workflow](./docs/chezmoi-workflow.md) before adding or
 source file.
 
 Claude Code, Codex, and GitHub Copilot discover instructions through different native files and
-scope rules. The architecture below shows how chezmoi turns reusable and client-exclusive sources
-into each client's native output.
+scope rules. The architecture below shows how chezmoi and the hand-run Claude MCP installer turn
+reusable and client-exclusive sources into each client's native output.
 
-**Figure: how each kind of tracked source reaches its live target.** Solid arrows mean "renders
-into". Dotted arrows mean "links to or discovers an existing target", so content is not duplicated
-to reach a second host.
+**Figure: how each kind of tracked source reaches its native target.** Solid arrows show chezmoi
+rendering. Dotted arrows show links, discovery, or the hand-run Claude MCP installer; each dotted
+arrow is labeled with its specific meaning.
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontSize": "16px", "fontFamily": "system-ui, sans-serif"}, "flowchart": {"useMaxWidth": false}}}%%
+%%{init: {"themeVariables": {"clusterBkg": "transparent"}, "flowchart": {"useMaxWidth": false}}}%%
 flowchart LR
     subgraph source["Git-tracked source — home/"]
-        core["Shared instruction bodies<br/>Personal or company context<br/>Optional continuity"]
-        rules["Shared path-scoped rules"]
-        skills["Portable and host-gated skills"]
-        claudeNative["Claude-only sources<br/>Skills, agents, commands, MCP, settings"]
-        codexNative["Codex-only sources<br/>Agents, MCP, create-once settings"]
-        copilotNative["Copilot-only sources<br/>Instructions, agents, skills, MCP, settings"]
-        vscodeBody["Shared VS Code bodies"]
+        core["Shared core<br/>Selected context + continuity"]
+        rules["Shared rule bodies<br/>Path globs"]
+        portableSkills["Portable skills"]
+        codexSkills["Codex-targeted skills<br/>.codex-only; no Claude link"]
+        claudeNative["Claude sources<br/>Skills, commands, hooks,<br/>themes, settings"]
+        codexNative["Codex sources<br/>AGENTS.md, hooks, MCP,<br/>create-once config"]
+        copilotNative["Copilot shared sources<br/>Instructions, agents, skills"]
+        copilotCliNative["Copilot CLI-only sources<br/>MCP and settings"]
+        vscodeBody["Shared VS Code bodies<br/>settings, keybindings, MCP"]
         platform["Shell, Git, Terminal<br/>and helper sources"]
     end
 
-    subgraph render["Chezmoi composition"]
-        instructionAdapters["Native instruction wrappers<br/>Select context and continuity"]
-        ruleAdapters["Scope wrappers<br/>Claude: paths<br/>Copilot: applyTo"]
-        skillDelivery["Skill delivery<br/>Files, links, host gates"]
-        osAdapters["OS-specific wrappers<br/>VS Code paths"]
+    subgraph tooling["Git-tracked repository tooling — scripts/"]
+        claudeMcp["Claude MCP manifest<br/>and installer"]
     end
 
-    subgraph targets["Live targets"]
-        claude["Claude Code<br/>Native files under ~/.claude"]
-        codex["Codex<br/>Native files under ~/.codex"]
-        copilot["GitHub Copilot<br/>CLI and VS Code"]
+    subgraph render["Composition and delivery"]
+        instructionAdapters["Inline shared core<br/>Select profile + continuity"]
+        ruleAdapters["Add scope metadata<br/>Claude: paths / Copilot: applyTo"]
+        skillDelivery["Render skills<br/>Links + host gates"]
+        osAdapters["Render OS-specific<br/>VS Code targets"]
+    end
+
+    subgraph targets["Native targets"]
+        claude["Claude Code<br/>~/.claude"]
+        claudeState["Claude user state<br/>~/.claude.json"]
+        codex["Codex<br/>~/.codex"]
+        copilotFiles["Copilot shared user files<br/>~/.copilot/instructions, skills, agents"]
+        copilotCli["Copilot CLI<br/>reads shared files + CLI state"]
+        copilotCliState["Copilot CLI state<br/>~/.copilot/mcp-config.json + settings"]
+        copilotHost["VS Code Copilot<br/>reads shared ~/.copilot files"]
         agents["Shared skill directory<br/>~/.agents/skills"]
-        vscode["VS Code user profile<br/>Windows or macOS"]
+        vscode["VS Code user profile<br/>settings, keybindings, MCP<br/>Windows or macOS"]
         other["Shells, Git, Windows Terminal<br/>and shared helpers"]
     end
 
     core --> instructionAdapters
     instructionAdapters --> claude
     instructionAdapters --> codex
-    instructionAdapters --> copilot
+    instructionAdapters --> copilotCli
 
     rules --> ruleAdapters
     ruleAdapters --> claude
-    ruleAdapters --> copilot
+    ruleAdapters --> copilotCli
 
-    skills --> skillDelivery
+    portableSkills --> skillDelivery
+    codexSkills --> skillDelivery
     skillDelivery --> agents
-    agents -.->|"symlinked into"| claude
+    agents -.->|"portable skills only"| claude
 
     claudeNative --> claude
+    claudeMcp -.->|"hand-run installer adds missing definitions"| claudeState
     codexNative --> codex
-    copilotNative --> copilot
+    copilotNative --> copilotFiles
+    copilotCliNative --> copilotCliState
 
     vscodeBody --> osAdapters --> vscode
     platform --> other
 
-    agents -.->|"discovered by"| codex
-    agents -.->|"discovered by"| copilot
+    copilotFiles -.->|"discovered by"| copilotCli
+    copilotFiles -.->|"shared files discovered by"| copilotHost
+    copilotCliState -.->|"read by"| copilotCli
+    agents -.->|"discovered; host gate applies"| codex
+    agents -.->|"discovered; host gate applies"| copilotCli
+    agents -.->|"discovered by"| copilotHost
     agents -.->|"discovered by"| vscode
 ```
 
@@ -203,80 +220,122 @@ Continuity is scoped to a directory, so isolation is what lets several tasks run
 `worktree-task-workflow` skill drives one task through its whole lifecycle in a worktree of its
 own.
 
-This workflow starts with a user-provided base branch. It creates a new task branch from that base
-in a new worktree, and the eventual pull or merge request targets the same base branch.
+This workflow starts when the user invokes `worktree-task-workflow` with a base branch, a task (or
+task-inference request), reference materials, and options. It creates a new worktree from
+`origin/<base>`, provisions approved ignored files through `.worktreeinclude`, and creates the task
+branch from that base commit. The eventual pull or merge request targets the same base branch.
 
-**Figure: one task's lifecycle, including material review, worktree provisioning, automated agent
-verification, and the user manual-test gate.** The worktree path and removal step are
-Claude-specific; the Codex differences are in the linked guide.
+**Figure: one new task's lifecycle, including material review, worktree provisioning, automated
+agent verification, and the user manual-test gate.** The common contract is shown with the
+Claude and Codex branch paths called out; worktree location and cleanup also differ by adapter.
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontSize": "16px", "fontFamily": "system-ui, sans-serif"}, "flowchart": {"useMaxWidth": false, "nodeSpacing": 100, "rankSpacing": 60}}}%%
+%%{init: {"themeVariables": {"clusterBkg": "transparent"}, "flowchart": {"useMaxWidth": false, "nodeSpacing": 100, "rankSpacing": 60}}}%%
 flowchart TD
     subgraph resolve["Before creating anything"]
-        A["Confirm the request<br/>base branch, task, materials, options"]
-        B["Read supplied materials<br/>before creating anything"]
+        A["User invokes worktree-task-workflow<br/>base branch + task or --infer-task<br/>optional materials + options"]
+        B["Resolve and validate<br/>the invocation"]
         C{"Task supplied?"}
-        D["Infer one task<br/>from the materials"]
-        E["Cross-check the task<br/>against the materials"]
-        F["Show the plan<br/>base branch, task branch<br/>worktree, options"]
-        Z["Stop and ask for a task<br/>or whether to infer one"]
+        D["Read supplied materials<br/>before any Git command;<br/>infer one task"]
+        E["Read supplied materials<br/>before any Git command;<br/>cross-check the explicit task"]
+        F["Show the resolved plan<br/>base branch = task start + PR/MR target<br/>task, branch, worktree, checks, cleanup"]
+        G["Fetch origin and verify<br/>origin/&lt;base&gt; and task-branch state"]
+        H{"Base exists and<br/>task branch is valid?"}
+        Z["Stop and report the problem<br/>nothing was created"]
         A --> B --> C
-        C -->|"Infer from materials"| D
-        C -->|"Use supplied task"| E
-        C -->|"Do not infer"| Z
+        C -->|"No task; infer"| D
+        C -->|"Task supplied"| E
+        C -->|"No task and no inference"| Z
         D --> F
         E --> F
+        F --> G --> H
+        H -->|"No"| Z
     end
 
-    subgraph isolate["In the isolated worktree"]
-        G["Create a task branch<br/>from the base branch<br/>in a new worktree"]
-        H{"Ignored files<br/>needed?"}
-        I["Review missing files<br/>exclude secrets, get approval"]
-        J["Enter and verify<br/>path, branch, starting commit"]
-        K["Record task context<br/>objective, decisions, materials, next action"]
-        L["Implement the change"]
-        M{"Run agent verification?"}
-        N["Run automated checks<br/>typecheck, lint, tests, build"]
-        N2["For UI changes<br/>agent runs a real browser test"]
-        N3["Verify the running app<br/>real route or runtime check"]
-        O{{"You run the manual test<br/>before publishing"}}
-        P["Fix the failure<br/>run verification again"]
-        G --> H
-        H -->|"Missing files"| I
-        I --> J
-        H -->|"No missing files"| J
-        J --> K --> L --> M
-        M -->|"Yes"| N
-        N --> N2 --> N3
-        M -->|"No"| N3
-        N3 --> O
-        O -->|"Fails"| P
-        P --> M
+    subgraph isolate["Create and verify the isolated worktree"]
+        I["Create or enter a worktree<br/>from verified origin/&lt;base&gt;"]
+        J["Read tracked .worktreeinclude<br/>copy approved ignored files"]
+        K{"Required ignored files<br/>present?"}
+        L["Resolve the gap with git wt-copy,<br/>a user-placed file, or a manifest task;<br/>stop if no safe solution exists"]
+        M["Verify worktree path<br/>and starting commit"]
+        N{"Which branch state<br/>did the adapter produce?"}
+        O["Claude adapter:<br/>task branch already created with worktree"]
+        P["Codex desktop / CLI / IDE:<br/>detached at the base commit"]
+        Q["Create the task branch<br/>from origin/&lt;base&gt; inside the worktree"]
+        R["Verify task branch, HEAD,<br/>and clean or approved status"]
+        S["Enable continuity and record<br/>materials, objective, plan,<br/>decisions, and next action"]
+        T["Implement the change"]
+        U{"Run full optional agent verification?<br/>default: yes"}
+        V["Run typecheck, lint, focused tests,<br/>and a meaningful build"]
+        W["For visual UI work, when available,<br/>drive targeted browser interactions"]
+        X["If an app is part of the task,<br/>start it and request a real route"]
+        Y["Run minimum sanity checks<br/>(also when full verification is off)"]
+        AA{{"Give exact steps and request<br/>the user manual test;<br/>stop and wait"}}
+        AB["Fix the failure; rerun applicable<br/>checks and runtime verification"]
+        H -->|"Yes"| I
+        I --> J --> K
+        K -->|"No"| L --> K
+        K -->|"Yes"| M --> N
+        N -->|"Claude"| O --> R
+        N -->|"Codex"| P --> Q --> R
+        R --> S --> T --> U
+        U -->|"Yes"| V --> W --> X
+        U -->|"No"| Y --> X
+        X --> AA
+        AA -->|"Fails"| AB --> U
     end
 
-    subgraph publish["After you approve"]
-        Q["Create the commit<br/>using the active profile"]
-        R["Push the task branch<br/>open a pull or merge request<br/>to the base branch"]
-        S["Remove the worktree when appropriate<br/>keep the branch and request"]
-        Q --> R --> S
+    subgraph publish["After the user reports the manual test passed"]
+        AC["Create the commit<br/>using the active profile"]
+        AD["Push the task branch"]
+        AE["Open the pull or merge request<br/>targeting the base branch"]
+        AF{"Apply adapter cleanup policy<br/>without deleting the branch?"}
+        AG["Claude: if authorized and safe,<br/>remove the worktree; keep branch + request"]
+        AH["Codex: leave the active worktree;<br/>the app or user controls disposal"]
+        AC --> AD --> AE --> AF
+        AF -->|"Claude + authorized"| AG
+        AF -->|"Codex or cleanup=keep"| AH
     end
 
-    F --> G
-    O -->|"Passes"| Q
+    AA -->|"Passes"| AC
 ```
 
 The workflow gives every task its own directory, task branch, and continuity file. The user-provided
 base branch is both the starting point for the task branch and the target of the eventual pull or
-merge request. If a session ends because it reaches its token limit, the next client can start in
-the same path and read the recorded objective, decisions, materials, blockers, and next action
-without a manual handoff document. When agent verification is enabled, the workflow runs automated
-checks and, for UI changes, drives a real browser test; only your manual test opens the publishing
-gate.
+merge request. The workflow reads the invocation and supplied materials, shows the resolved plan,
+then fetches `origin` and verifies the base before creating anything.
+
+The worktree step is adapter-specific:
+
+- The Claude adapter uses `git wt-add` to create the task branch and worktree together from
+  `origin/<base>`, then enters that path with `EnterWorktree`.
+- Codex desktop uses Handoff to create a detached worktree and copy `.worktreeinclude`. Codex CLI
+  and the IDE extension provision a detached worktree, report its path, and start or resume Codex
+  there before creating the task branch from the base commit.
+
+For terminal Git, creating the worktree before reading `.worktreeinclude` is intentional:
+`git wt-add` creates the destination first, then reads the tracked manifest and copies approved
+Git-ignored files. If required files are missing, the workflow uses `git wt-copy`, asks for a
+specific user-placed file, or offers the `worktree-manifest` skill as a scoped task. It stops when
+the gap has no safe resolution.
+
+If a session ends because it reaches its token limit, the next client can start in the same path
+and read the recorded objective, decisions, materials, blockers, and next action without a manual
+handoff document. `agent-test=true` runs typecheck, lint, focused tests, a meaningful build, and a
+targeted browser or runtime pass for visual work when available. `agent-test=false` still runs
+minimum sanity checks. When an app is part of the task, runtime verification starts it and requests
+a real route; targeted browser interactions exercise a selected UI flow. Neither replaces the
+manual test.
+
+The manual-test node gives the user the exact path, startup command, route, preconditions, actions,
+and expected results, then stops and waits. Only after the user reports a passing manual test does
+the workflow create the commit, push the task branch, and open a request targeting the base branch.
+Claude may remove the worktree after its safety checks; Codex leaves its active worktree to the app
+or user. Neither adapter deletes the task branch.
 
 The linked [worktree provisioning guide](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
-covers material handling, branch naming, missing-file manifests, browser-driver limits, and
-branch-preserving cleanup.
+covers material handling, branch naming, `.worktreeinclude` provisioning, browser-driver limits,
+and branch-preserving cleanup.
 
 Project materials are part of the workflow. Before creating a worktree, the workflow reads
 supplied specifications, handoff notes, reference documents, and test inputs, classifies them, and
@@ -292,57 +351,65 @@ duplicated.
 state.**
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontSize": "16px", "fontFamily": "system-ui, sans-serif"}, "flowchart": {"useMaxWidth": false}}}%%
+%%{init: {"themeVariables": {"clusterBkg": "transparent"}, "flowchart": {"useMaxWidth": false}}}%%
 flowchart LR
     subgraph taskA["Repository A — Worktree 1: Task A handoff"]
-        claudeA["Claude Code<br/>starts Task A"]
-        workA["Repository A / Worktree 1<br/>Task branch + continuity state"]
-        codexA["Codex<br/>continues Task A from state"]
-        claudeA -->|"Checkpoints Task A"| workA
+        claudeA["Claude invokes the workflow<br/>base branch = PR/MR target"]
+        workA["Repository A / Worktree 1<br/>task branch from base<br/>continuity state"]
+        codexA["Codex resumes in the same<br/>physical worktree from state"]
+        claudeA -->|"Creates and enters isolated worktree<br/>then checkpoints task state"| workA
         workA -->|"Session reaches token limit<br/>state remains; no manual handoff"| codexA
     end
 
     subgraph taskB["Repository A — Worktree 2: Task B in parallel"]
-        claudeB["Claude Code<br/>starts Task B"]
-        workB["Repository A / Worktree 2<br/>Independent branch + continuity state"]
-        claudeB -->|"Starts independently"| workB
+        claudeB["Another workflow invocation<br/>from a selected base branch"]
+        workB["Repository A / Worktree 2<br/>task branch from base<br/>independent continuity state"]
+        claudeB -->|"Creates and enters a separate worktree"| workB
     end
 
     subgraph taskC["Repository B — Worktree 1: Task C"]
-        copilotC["GitHub Copilot<br/>follows continuity protocol"]
-        workC["Repository B / Worktree 1<br/>Independent branch + continuity state"]
-        copilotC -->|"Starts independently"| workC
+        prepC["User or another tool<br/>prepares the worktree"]
+        workC["Repository B / Worktree 1<br/>independent task branch<br/>continuity state"]
+        copilotC["Copilot works in the prepared worktree<br/>and follows the continuity protocol"]
+        prepC --> workC
+        workC -->|"Copilot enters the prepared worktree"| copilotC
     end
 
-    gate{{"You manually test<br/>each task"}}
-    out["Each task keeps its branch<br/>and pull or merge request"]
+    gate{{"Workflow requests a user manual test<br/>for each task"}}
+    out["Each task keeps its task branch<br/>and PR/MR targets its base branch"]
 
     codexA --> gate
     workB --> gate
-    workC --> gate
+    copilotC --> gate
     gate --> out
 ```
 
-Task A shows the central handoff: Claude Code checkpoints the task in its worktree. When the AI
-session reaches its token limit, Codex starts in the same path and reads the existing continuity
-state. Task B can run at
-the same time in a separate worktree, while Task C runs in another repository. Git remains the
+Task A shows the central handoff: Claude invokes the workflow with a base branch, which is both the
+starting point for the task branch and the eventual PR/MR target. The workflow creates and enters an
+isolated worktree, then checkpoints the task state there. When the AI session reaches its token limit,
+Codex starts in the same physical path and reads the existing continuity state. Task B is another
+workflow invocation in the same repository, with its own base-derived branch, worktree, and state.
+Task C represents a worktree prepared by the user or another tool; Copilot works there and follows
+the continuity protocol but does not currently have an automatic worktree adapter. Git remains the
 source of truth for code, branches, and commits; continuity supplies only the objective, decisions,
 blockers, materials, and next action that Git cannot hold.
 
-Sessions are disposable; worktrees, branches, and continuity state survive them. Cleanup may remove
-a client-managed worktree, but the task branch and its pull or merge request remain available for
-review. Copilot can follow the same continuity protocol when started in a worktree, but this
-repository's automatic worktree adapters currently target Claude Code and Codex.
+Sessions are disposable; worktrees, branches, and continuity state survive them. Claude may remove
+its client-managed worktree after the safety checks, while Codex leaves its active worktree to the
+application or user. The task branch and its PR/MR remain available for review in either case, and
+cleanup never deletes the task branch. Copilot can follow the same continuity protocol after entering
+a prepared worktree, but this repository's automatic worktree adapters currently target Claude Code
+and Codex.
 
 The manual-test gate is the part that does not parallelize. Agents fan out; verification converges
-on you.
+on the user's manual test.
 
-The skill has a Claude adapter and a Codex adapter, because neither client alone gives an isolated
-session on a branch taken from an arbitrary remote base; they differ in where the worktree lives
-and in who may remove it. A fresh worktree also carries no ignored files, so the
-`worktree-manifest` skill authors the approved `.worktreeinclude` that `git wt-add` provisions
-from. [The worktree provisioning guide](./docs/worktree-provisioning.md) covers both.
+The skill has a Claude adapter and a Codex adapter because neither client alone provides the same
+isolated-task path: Claude creates and enters its managed worktree, while Codex creates or enters a
+detached worktree and then creates the task branch from the selected base. A fresh worktree also
+carries no ignored files, so the `worktree-manifest` skill authors the approved `.worktreeinclude`
+that `git wt-add` provisions from. [The worktree provisioning guide](./docs/worktree-provisioning.md)
+covers both adapters and the separate Copilot protocol.
 
 This repository is itself an exception: it stays in its primary checkout, because chezmoi
 source resolution is tied to that one tree.
