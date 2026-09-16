@@ -58,9 +58,10 @@ reusable and client-exclusive sources into each client's native output.
 rendering. Dotted arrows show links, discovery, or the hand-run Claude MCP installer; each dotted
 arrow is labeled with its specific meaning.
 
-The figures use a shared color key: blue marks entry points and handoffs; purple marks orchestration
-and publishing; green marks state and native outputs; amber marks active work and verification; gray
-marks decisions and Git authority; and red marks blocked or parked paths.
+The figures use a shared color key: blue marks sources, actors, entry points, and handoffs; purple
+marks orchestration, adapters, publishing, and cleanup; green marks state, worktrees, and native
+outputs; amber marks active work and verification; gray marks decisions and Git authority; and red
+marks blocked or parked paths.
 
 ```mermaid
 %%{init: {"themeVariables": {"clusterBkg": "transparent"}, "flowchart": {"useMaxWidth": false}}}%%
