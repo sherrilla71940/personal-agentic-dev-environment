@@ -40,6 +40,7 @@ agent session.
 | [0014](./0014-machine-local-ai-configuration-profiles.md) | Accepted | Compose machine-local context and continuity profiles without duplicating skills |
 | [0015](./0015-organize-repository-tooling-by-purpose.md) | Superseded by 0016 | Organize repository tooling by purpose and expose one diagnostic entry point |
 | [0016](./0016-rename-the-project-facing-tooling-command.md) | Accepted | Rename the project-facing diagnostic command to `dev-env` while retaining chezmoi and local-path compatibility |
+| [0017](./0017-review-completed-parked-continuity-state.md) | Accepted | Review parked continuity state for completion and require confirmation before closure |
 
 ## Template
 

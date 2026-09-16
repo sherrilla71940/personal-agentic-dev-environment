@@ -53,6 +53,10 @@ If you need to work on something else before finishing, the unfinished task is p
 than overwritten — it moves to `.project-continuity/parked/<slug>.md` and moves back when you
 return. `ls .project-continuity/parked/` is the whole list command. A worktree is still the
 answer when the two tasks also need separate uncommitted changes.
+A parked task is not active: move it back to `state.md` and resume it before continuing work on
+that task. Every continuity review checks parked files for the finished-state invariant. A
+completed parked file is reported as a closure candidate, but deletion requires confirmation for
+that named file.
 
 Two cautions. Every client's own memory is separate, invisible to the others, and may hold stale
 claims about the task — continuity reconciled against Git is what establishes where things stand.

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Report what a hook can establish about continuity state without interpreting it: whether state
 # exists and what task it says it tracks, a recorded branch or HEAD that no longer matches the
-# checkout, and a task whose tracking sections hold nothing. Semantic state belongs to the
-# project-continuity skill.
+# checkout, a task whose tracking sections hold nothing, and completed parked-state candidates.
+# Semantic state belongs to the project-continuity skill.
 #
 # Deliberately client-neutral. Claude Code and Codex send the same fields and accept the same
 # output, so both run this one script; anything naming a specific client belongs in that
@@ -64,6 +64,29 @@ recorded_field() {
   local state_file="$1" field="$2" line
   line="$(grep -m1 -E "^- $field:" "$state_file" 2>/dev/null || true)"
   printf '%s' "$line" | sed -n 's/^[^`]*`\([^`]*\)`.*/\1/p'
+}
+
+# Apply the same structural finished-state test to active and parked state. The skill still
+# reconciles the result against Git and decides whether anything belongs elsewhere.
+count_open_items() {
+  local state_file="$1"
+
+  awk '
+    BEGIN {
+      tracked["In progress"] = 1
+      tracked["Next actions"] = 1
+      tracked["Blockers"] = 1
+      tracked["TODO / deferred"] = 1
+    }
+    /^## / {
+      section = substr($0, 4)
+      sub(/[[:space:]]+$/, "", section)
+      tracking = (section in tracked)
+      next
+    }
+    tracking && /^[[:space:]]*([-*]|[0-9]+[.])[[:space:]]+[^[:space:]]/ { count++ }
+    END { print count + 0 }
+  ' "$state_file" 2>/dev/null || printf '1'
 }
 
 # The Verification block records a branch and a HEAD, and git can answer both. Leaving that to
@@ -157,7 +180,8 @@ report_stale_verification() {
 # The skill's trigger for offering cleanup sat inside its checkpoint step, and a finished task
 # removes the reason to checkpoint, so a completed task's state file could sit in the tree
 # indefinitely. Whether these four sections hold any open item is the one part of that judgment a
-# hook can decide, so it is checked here and the semantic call is left to the skill.
+# hook can decide, so it is checked here for active and parked state; the semantic call is left to
+# the skill.
 report_finished_state() {
   local state_file="$1"
   local open_items message
@@ -167,22 +191,7 @@ report_finished_state() {
     return 0
   fi
 
-  open_items="$(awk '
-    BEGIN {
-      tracked["In progress"] = 1
-      tracked["Next actions"] = 1
-      tracked["Blockers"] = 1
-      tracked["TODO / deferred"] = 1
-    }
-    /^## / {
-      section = substr($0, 4)
-      sub(/[[:space:]]+$/, "", section)
-      tracking = (section in tracked)
-      next
-    }
-    tracking && /^[[:space:]]*([-*]|[0-9]+[.])[[:space:]]+[^[:space:]]/ { count++ }
-    END { print count + 0 }
-  ' "$state_file" 2>/dev/null || printf '1')"
+  open_items="$(count_open_items "$state_file")"
 
   if [[ "$open_items" != "0" ]]; then
     return 0
@@ -199,17 +208,61 @@ report_finished_state() {
   jq -cn --arg message "$message" '{systemMessage:$message}'
 }
 
+# A parked file is not active, so the ordinary active-state completion offer never reaches it.
+# Report structurally finished parked files as candidates; the skill requires confirmation before
+# any one is deleted.
+report_finished_parked_states() {
+  local root="$1"
+  local parked_directory="$root/.project-continuity/parked"
+  local parked_file open_items message candidates=""
+
+  [[ -d "$parked_directory" ]] || return 0
+
+  for parked_file in "$parked_directory"/*.md; do
+    [[ -f "$parked_file" ]] || continue
+    if [[ "$(recorded_field "$parked_file" "Cleanup")" == "declined" ]]; then
+      continue
+    fi
+
+    open_items="$(count_open_items "$parked_file")"
+    [[ "$open_items" == "0" ]] || continue
+
+    if [[ -n "$candidates" ]]; then
+      candidates="$candidates, "
+    fi
+    candidates="${candidates}${parked_file#"$root"/}"
+  done
+
+  [[ -n "$candidates" ]] || return 0
+
+  message="Completed parked continuity files are closure candidates: $candidates."
+  message="$message Do not delete them automatically. Ask the user to confirm each named file's"
+  message="$message deletion. If the user declines, record Cleanup: \`declined\` in that file's"
+  message="$message Verification block."
+
+  jq -cn --arg message "$message" '{systemMessage:$message}'
+}
+
 # A response carries at most one system message, so the notices are ranked. Drift comes first,
 # because a state file describing the wrong commit or branch actively misleads the next reader,
 # where an unretired finished file only wastes a cleanup.
 report_continuity_notice() {
   local state_file="$1"
-  local directory notice
+  local directory notice parked_notice first_message second_message
 
   directory="$(dirname "$(dirname "$state_file")")"
   notice="$(report_stale_verification "$state_file" "$directory")"
   if [[ -z "$notice" ]]; then
     notice="$(report_finished_state "$state_file")"
+  fi
+  parked_notice="$(report_finished_parked_states "$directory")"
+  if [[ -z "$notice" ]]; then
+    notice="$parked_notice"
+  elif [[ -n "$parked_notice" ]]; then
+    first_message="$(printf '%s' "$notice" | jq -r '.systemMessage // ""')"
+    second_message="$(printf '%s' "$parked_notice" | jq -r '.systemMessage // ""')"
+    notice="$(jq -cn --arg first "$first_message" --arg second "$second_message" \
+      '{systemMessage:($first + " " + $second)}')"
   fi
   if [[ -n "$notice" ]]; then
     printf '%s\n' "$notice"
@@ -306,6 +359,11 @@ case "$event_name" in
   Stop)
     if state_file="$(find_state_file)"; then
       report_continuity_notice "$state_file"
+    else
+      root="$(git -C "$working_directory" rev-parse --show-toplevel 2>/dev/null || true)"
+      if [[ -n "$root" ]]; then
+        report_finished_parked_states "$root"
+      fi
     fi
     ;;
 esac

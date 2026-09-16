@@ -73,7 +73,8 @@ to react to. A task can grow through investigation until it is expensive to reco
 the agent remains focused on its immediate implementation steps.
 
 Claude's hooks add only what Git can prove. A `Stop` hook reports a recorded branch or HEAD that
-no longer matches the checkout, and offers cleanup once every tracking section is empty; a
+no longer matches the checkout, offers cleanup when the active tracking sections are empty, and
+reports parked files with no unfinished sections as closure candidates; it never deletes them. A
 `SessionStart` hook keeps the state file excluded from Git. Compaction gets no dedicated
 backstop, because neither `PreCompact` nor `PostCompact` can put anything back into the model's
 context - a hook there could write unverified state but never ask for it to be reconciled, so

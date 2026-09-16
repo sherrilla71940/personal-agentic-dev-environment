@@ -54,7 +54,11 @@ The phase another session should resume from.
 - Branch is supporting evidence, not identity. A branch switch in the same working tree does not by itself mean a different task. Update the recorded branch when reconciling the same task, never merely to silence a drift notice.
 - Record in `Status` whether this task's uncommitted changes were stashed or carried, naming the stash message or ref when they were stashed. A branch switch is the common cause but not the only one; a plain `git stash` produces the same clean tree. Without that, a later reconciliation may conclude the work was finished or lost. Nothing can be recorded when someone stashes outside the session, so Resume also runs `git stash list` against a clean tree.
 - Record `Last reconciled` as a full ISO 8601 timestamp with timezone, for example `2026-09-03T17:13:26+08:00`, so stale or overlapping updates can be distinguished precisely.
-- Record `Parked` as a full ISO 8601 timestamp with timezone. During cleanup or an explicit parked-task listing, report entries older than 14 days as stale candidates with their paths and timestamps; never delete them automatically. Missing or invalid timestamps have unknown age.
+- Record `Parked` as a full ISO 8601 timestamp with timezone. During every continuity review,
+  inspect parked files for completion and report files with no unfinished sections as closure
+  candidates; never delete them automatically. During cleanup or an explicit parked-task listing,
+  also report entries older than 14 days as stale candidates with their paths and timestamps.
+  Missing or invalid timestamps have unknown age.
 - Keep the file under about 120 lines when practical. Compact it by removing resolved history, duplicated context, superseded decisions, and details already durable in the repository before it grows past that.
 - Treat the file as subject to concurrent edits from another session or client. Re-read it immediately before writing and compare against what was loaded earlier; merge non-conflicting changes automatically and ask the user only on an actual contradiction. Never overwrite a version that was not just re-read.
 - Concurrent edits are detected opportunistically, not transactionally protected. Two clients can
@@ -78,9 +82,13 @@ The phase another session should resume from.
   empty or absent. Claude's Stop hook reads that same test to raise the cleanup offer, so do not
   park a placeholder item in them to keep a finished file alive. Being finished is not by itself
   sufficient for cleanup, which also requires that nothing remains worth promoting elsewhere.
+- Apply the finished-state invariant to active `state.md` and to every file in `parked/` during a
+  continuity review. A completed parked file is a closure candidate, not permission to delete it;
+  ask for confirmation for the named file first.
 - Set `Cleanup: declined` only after the user has actually refused cleanup. It suppresses the offer for the rest of the task, so it must never be used to pre-empt asking.
 - A file in `parked/` keeps this same format. Add `Parked` and change nothing else; it is a
-  handoff that was set aside, not a summary of one.
+  handoff that was set aside, not a summary of one. Do not continue work on a parked task until
+  it has been moved back to `state.md` and resumed through the ordinary Resume workflow.
 - Keep durable environment facts out of this file - a toolchain version, a shell workaround,
   a local URL. They are not task state, they inflate the file, and a longer file is what
   makes rewriting it whole feel expensive. They belong in the client's private project

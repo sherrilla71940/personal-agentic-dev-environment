@@ -107,7 +107,7 @@ fi
 printf 'project continuity hook lifecycle OK\n'
 
 # --- Drift notices and the cleanup offer -------------------------------------------------------
-# Stop only ever reports; these exercise the two notices it can produce.
+# Stop only ever reports; these exercise drift, active cleanup, and parked closure notices.
 fixture_branch="$(git -C "$fixture" branch --show-current)"
 fixture_head="$(git -C "$fixture" rev-parse --short HEAD)"
 
@@ -244,6 +244,48 @@ case "$cleanup_message" in
   *"records no unfinished work"*"offer cleanup"*) ;;
   *) printf 'expected cleanup offer, got: %s\n' "$cleanup_message" >&2; exit 1 ;;
 esac
+
+# A completed parked state must be reported even though the active-state cleanup offer does not
+# inspect parked files. The report is a candidate only; deletion still needs confirmation.
+parked_directory="$fixture/.project-continuity/parked"
+parked_candidate="$parked_directory/completed-task.md"
+mkdir -p "$parked_directory"
+{
+  printf '# Project Continuity\n\n## Objective\n\nCompleted parked task.\n\n'
+  printf '## Verification\n\n- Parked: `2026-09-16T10:00:00+08:00`\n'
+} > "$parked_candidate"
+write_state "$fixture_branch" "$fixture_head"
+append_section 'Next actions' '1. Keep the active task open.'
+parked_message="$(notice_message "$(stop_notice)")"
+case "$parked_message" in
+  *"Completed parked continuity files are closure candidates"*"parked/completed-task.md"*"confirm"*) ;;
+  *) printf 'expected completed parked closure candidate, got: %s\n' "$parked_message" >&2; exit 1 ;;
+esac
+
+# The parked candidate is reported even when there is no active state file.
+rm -f "$state_file"
+no_active_parked_message="$(notice_message "$(stop_notice)")"
+case "$no_active_parked_message" in
+  *"Completed parked continuity files are closure candidates"*"parked/completed-task.md"*) ;;
+  *) printf 'expected parked candidate without active state, got: %s\n' "$no_active_parked_message" >&2; exit 1 ;;
+esac
+
+# A declined parked cleanup offer must stay quiet on later reviews.
+{
+  printf '# Project Continuity\n\n## Objective\n\nCompleted parked task.\n\n'
+  printf '## Verification\n\n- Cleanup: `declined`\n'
+} > "$parked_candidate"
+write_state "$fixture_branch" "$fixture_head"
+append_section 'Next actions' '1. Keep the active task open.'
+if notice_message "$(stop_notice)" | grep -q 'Completed parked continuity files'; then
+  printf 'a declined parked cleanup candidate must stay quiet\n' >&2
+  exit 1
+fi
+
+# Test fixtures must not let this candidate affect the remaining active-state cases.
+rm -f "$parked_candidate"
+write_state "$fixture_branch" "$fixture_head"
+append_section 'Next actions' '1. Keep the active task open.'
 
 # Present-but-empty tracking sections count as finished too.
 write_state "$fixture_branch" "$fixture_head"

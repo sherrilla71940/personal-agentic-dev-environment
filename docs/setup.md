@@ -353,8 +353,10 @@ deterministic reporting that the skill cannot do for itself. On `SessionStart` i
 continuity exists and, when it does, names the objective it tracks, so the decision about whether
 this is the same task is made
 against a shown fact rather than from recall; it also ensures `.project-continuity/` is excluded
-from Git. On `Stop` it compares the recorded branch and HEAD against the checkout and reports
-drift, and it offers cleanup once every tracking section is empty. HEAD is reported two ways. A
+from Git. On `Stop` it compares the recorded branch and HEAD against the checkout, offers cleanup
+when the active tracking sections are empty, and reports parked files with no unfinished sections
+as closure candidates. It never deletes parked state; the skill requires confirmation for each
+named file. HEAD is reported two ways. A
 recorded commit that has left the history - rebased, reset, or belonging to another line of work
 - means the recorded starting point cannot be trusted. A recorded commit that is still an
 ancestor but more than one commit behind means a checkpoint opportunity passed without the file
