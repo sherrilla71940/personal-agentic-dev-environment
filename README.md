@@ -396,6 +396,13 @@ flowchart TD
     class Z exception
     class AC,AD,AE,AG,AH orchestration
 
+    classDef input fill:#dbeafe,stroke:#2563eb,color:#111827
+    classDef orchestration fill:#f3e8ff,stroke:#9333ea,color:#111827
+    classDef output fill:#dcfce7,stroke:#16a34a,color:#111827
+    classDef work fill:#fef3c7,stroke:#d97706,color:#111827
+    classDef control fill:#f3f4f6,stroke:#4b5563,color:#111827
+    classDef exception fill:#fee2e2,stroke:#dc2626,color:#111827
+
     style resolve fill:none,stroke:transparent
     style isolate fill:none,stroke:transparent
     style publish fill:none,stroke:transparent
