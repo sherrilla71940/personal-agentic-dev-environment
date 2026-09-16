@@ -119,6 +119,11 @@ flowchart LR
     agents -.->|"會被發現；套用主機閘門"| copilotCli
     agents -.->|"由 VS Code 發現"| copilotHost
     agents -.->|"由 VS Code 發現"| vscode
+
+    style source fill:none,stroke:transparent
+    style tooling fill:none,stroke:transparent
+    style render fill:none,stroke:transparent
+    style targets fill:none,stroke:transparent
 ```
 
 三個細節就能解釋大部分的結構：
@@ -188,6 +193,62 @@ dotfiles，也不會翻譯這份 README。明確傳入 `en` 或 `zhtw` 可以覆
   放進去。
 - 開始另一個任務前，未完成的狀態要先停放到 `.project-continuity/parked/`，這樣一份交接紀錄才不會
   覆蓋掉另一份。
+
+連續性狀態屬於實體目錄，而 worktree task workflow 會建立這個目錄與任務分支。下面的生命週期圖說明兩套流程
+怎麼接在一起。
+
+**圖：專案連續性的生命週期，以及它和隔離 worktree 的關係。** 這張圖用標籤取代 Mermaid 的 subgraph 容器，讓
+整張圖維持單一的頁面背景色。
+
+```mermaid
+%%{init: {"flowchart": {"useMaxWidth": false, "nodeSpacing": 70, "rankSpacing": 55}}}%%
+flowchart TD
+    workflow["worktree-task-workflow<br/>從使用者提供的基底分支建立任務分支<br/>放進新的隔離 worktree"]:::workflow
+    start["用戶端在一個實體 worktree 中啟動"]:::client
+    scope["一個實體 worktree<br/>只能有一份 active state.md"]:::state
+    check{"state.md 記錄的是<br/>目前這個任務嗎？"}:::decision
+    create["建立 state.md<br/>記錄目標、階段與下一步"]:::state
+    resume["先讀取並核對狀態<br/>對照 Git 與目前任務"]:::state
+    work["實作並 checkpoint<br/>記錄決策、阻礙與下一步"]:::work
+    event{"工作階段結束、任務切換，<br/>或任務完成？"}:::decision
+    handoff["工作階段結束或到達 token 上限<br/>狀態留在同一個 worktree"]:::handoff
+    nextClient["在同一路徑啟動下一個用戶端<br/>輸入 `continue from project continuity`"]:::client
+    park["停放目前狀態<br/>移到 parked/<slug>.md"]:::parked
+    parkedRule["停放的任務維持未啟用狀態<br/>要繼續前先移回 state.md"]:::parked
+    newState["開始新的任務<br/>建立新的 state.md"]:::state
+    complete["完成條件成立<br/>沒有未完成區段"]:::decision
+    offer["提供清理目前狀態<br/>或已完成的指定 parked state"]:::cleanup
+    confirm{"使用者確認刪除嗎？"}:::decision
+    delete["只刪除已確認的狀態<br/>保留 Git 歷史與 Git exclude 規則"]:::cleanup
+    retain["保留狀態<br/>記錄 Cleanup: declined"]:::parked
+    git["Git 仍是程式碼、分支與 commit 的真相來源"]:::git
+
+    workflow --> start --> scope --> check
+    check -->|"沒有狀態"| create --> work
+    check -->|"同一個任務"| resume --> work
+    work --> event
+    event -->|"工作階段結束"| handoff --> nextClient --> resume
+    event -->|"不同的重大任務"| park --> parkedRule --> newState --> work
+    event -->|"任務完成"| complete --> offer --> confirm
+    confirm -->|"是"| delete
+    confirm -->|"否"| retain
+    git -.->|"核對並驗證"| resume
+    git -.->|"以 Git 的結果為準"| work
+
+    classDef workflow fill:#dbeafe,stroke:#2563eb,color:#111827
+    classDef client fill:#ede9fe,stroke:#7c3aed,color:#111827
+    classDef state fill:#dcfce7,stroke:#16a34a,color:#111827
+    classDef work fill:#fef3c7,stroke:#d97706,color:#111827
+    classDef handoff fill:#e0f2fe,stroke:#0284c7,color:#111827
+    classDef parked fill:#fee2e2,stroke:#dc2626,color:#111827
+    classDef cleanup fill:#f3e8ff,stroke:#9333ea,color:#111827
+    classDef decision fill:#f3f4f6,stroke:#4b5563,color:#111827
+    classDef git fill:#e5e7eb,stroke:#374151,color:#111827
+```
+
+worktree task workflow 負責提供隔離的實體目錄；專案連續性則把未完成的任務狀態留在那個目錄中，不管下一次是由哪個
+支援的用戶端接手。工作階段交接會保留 `state.md`；切換任務前會先停放這份檔案；任務完成後，只有使用者確認才會進入
+清理。Git 仍然是程式碼與分支的權威來源，所以連續性不會取代 commit、分支或 pull request。
 
 例如，Codex 工作階段到達 token 上限而結束後，請在同一個 worktree 開啟新的 Codex 工作階段，輸入
 `continue from project continuity`。Codex 會讀取 `.project-continuity/state.md`，從記錄的下一步繼續。
@@ -276,6 +337,10 @@ flowchart TD
     end
 
     AA -->|"通過"| AC
+
+    style resolve fill:none,stroke:transparent
+    style isolate fill:none,stroke:transparent
+    style publish fill:none,stroke:transparent
 ```
 
 這套流程讓每個任務都有自己的目錄、任務分支與連續性檔案。使用者指定的基底分支同時是任務分支的建立起點，
@@ -318,16 +383,16 @@ worktree 階段會依 adapter 採用不同的 Git 流程：
 %%{init: {"themeVariables": {"clusterBkg": "transparent"}, "flowchart": {"useMaxWidth": false}}}%%
 flowchart LR
     subgraph taskA["儲存庫 A — Worktree 1：任務 A 接續"]
-        claudeA["Claude 啟動工作流程<br/>基底分支 = PR/MR 目標"]
-        workA["儲存庫 A / Worktree 1<br/>從基底建立的任務分支<br/>連續性狀態"]
+        claudeA["Claude 啟動工作流程<br/>提供基底分支<br/>（也是 PR/MR 目標）"]
+        workA["儲存庫 A / Worktree 1<br/>從基底建立新的任務分支<br/>放在隔離的 worktree 中<br/>連續性狀態"]
         codexA["Codex 在同一個實體<br/>worktree 讀取狀態後接續"]
-        claudeA -->|"建立並進入隔離 worktree<br/>接著 checkpoint 任務狀態"| workA
+        claudeA -->|"建立 worktree 與任務分支<br/>接著 checkpoint 任務狀態"| workA
         workA -->|"工作階段到達 token 上限<br/>狀態保留，不需人工交接"| codexA
     end
 
     subgraph taskB["儲存庫 A — Worktree 2：任務 B 平行執行"]
-        claudeB["另一個工作流程啟動<br/>使用選定的基底分支"]
-        workB["儲存庫 A / Worktree 2<br/>從基底建立的任務分支<br/>獨立的連續性狀態"]
+        claudeB["另一個工作流程啟動<br/>提供基底分支<br/>（也是 PR/MR 目標）"]
+        workB["儲存庫 A / Worktree 2<br/>從基底建立新的任務分支<br/>放在隔離的 worktree 中<br/>獨立的連續性狀態"]
         claudeB -->|"建立並進入另一個 worktree"| workB
     end
 
@@ -346,6 +411,10 @@ flowchart LR
     workB --> gate
     copilotC --> gate
     gate --> out
+
+    style taskA fill:none,stroke:transparent
+    style taskB fill:none,stroke:transparent
+    style taskC fill:none,stroke:transparent
 ```
 
 這張圖的核心是任務 A：Claude 啟動工作流程時提供基底分支；這個分支既是任務分支的建立起點，也是之後

@@ -129,6 +129,11 @@ flowchart LR
     agents -.->|"discovered; host gate applies"| copilotCli
     agents -.->|"discovered by"| copilotHost
     agents -.->|"discovered by"| vscode
+
+    style source fill:none,stroke:transparent
+    style tooling fill:none,stroke:transparent
+    style render fill:none,stroke:transparent
+    style targets fill:none,stroke:transparent
 ```
 
 Three details explain most of the structure:
@@ -205,6 +210,64 @@ Continuity belongs to one physical working tree, and each tree holds at most one
   encrypted store, which is why the workflow forbids putting credentials in it.
 - Unfinished state is parked in `.project-continuity/parked/` before a different task starts, so
   one handoff never overwrites another.
+
+The continuity state belongs to the physical directory, while the worktree task workflow creates
+that directory and its task branch. The lifecycle below shows how the two systems connect.
+
+**Figure: project-continuity lifecycle and its connection to isolated worktrees.** The diagram uses
+labels instead of Mermaid subgraph containers so the entire figure keeps one page-colored background.
+
+```mermaid
+%%{init: {"flowchart": {"useMaxWidth": false, "nodeSpacing": 70, "rankSpacing": 55}}}%%
+flowchart TD
+    workflow["worktree-task-workflow<br/>creates a task branch from the user-provided base<br/>inside a new isolated worktree"]:::workflow
+    start["A client starts in one physical worktree"]:::client
+    scope["One physical worktree<br/>has one active state.md"]:::state
+    check{"Does state.md track<br/>this task?"}:::decision
+    create["Create state.md<br/>record objective, phase, and next action"]:::state
+    resume["Read and reconcile state<br/>against Git and the current task"]:::state
+    work["Implement and checkpoint<br/>decisions, blockers, and next action"]:::work
+    event{"Session ends, task switches,<br/>or task finishes?"}:::decision
+    handoff["Session ends or reaches its token limit<br/>state remains in the same worktree"]:::handoff
+    nextClient["Start the next client in the same path<br/>type `continue from project continuity`"]:::client
+    park["Park the active state<br/>move it to parked/<slug>.md"]:::parked
+    parkedRule["A parked task stays inactive<br/>resume it into state.md before continuing"]:::parked
+    newState["Start the new task<br/>with a new state.md"]:::state
+    complete["Finished-state invariant holds<br/>no unfinished sections remain"]:::decision
+    offer["Offer cleanup of the active state<br/>or named completed parked state"]:::cleanup
+    confirm{"User confirms deletion?"}:::decision
+    delete["Delete only confirmed state<br/>leave Git history and the Git exclude rule"]:::cleanup
+    retain["Keep the state<br/>record Cleanup: declined"]:::parked
+    git["Git remains authoritative<br/>for code, branches, and commits"]:::git
+
+    workflow --> start --> scope --> check
+    check -->|"No state"| create --> work
+    check -->|"Same task"| resume --> work
+    work --> event
+    event -->|"Session ends"| handoff --> nextClient --> resume
+    event -->|"Different substantial task"| park --> parkedRule --> newState --> work
+    event -->|"Task finishes"| complete --> offer --> confirm
+    confirm -->|"Yes"| delete
+    confirm -->|"No"| retain
+    git -.->|"reconcile and verify"| resume
+    git -.->|"authoritative result"| work
+
+    classDef workflow fill:#dbeafe,stroke:#2563eb,color:#111827
+    classDef client fill:#ede9fe,stroke:#7c3aed,color:#111827
+    classDef state fill:#dcfce7,stroke:#16a34a,color:#111827
+    classDef work fill:#fef3c7,stroke:#d97706,color:#111827
+    classDef handoff fill:#e0f2fe,stroke:#0284c7,color:#111827
+    classDef parked fill:#fee2e2,stroke:#dc2626,color:#111827
+    classDef cleanup fill:#f3e8ff,stroke:#9333ea,color:#111827
+    classDef decision fill:#f3f4f6,stroke:#4b5563,color:#111827
+    classDef git fill:#e5e7eb,stroke:#374151,color:#111827
+```
+
+The worktree workflow supplies the isolated physical directory. Project continuity then keeps the
+unfinished task state in that directory, regardless of which supported client opens it next. A
+session handoff preserves `state.md`; a task switch parks that file before creating a new one; a
+completed task reaches cleanup only after the user confirms deletion. Git remains the authority for
+the code and branch, so continuity never replaces a commit, branch, or pull request.
 
 For example, after a Codex session reaches its token limit, open a new Codex session in the same
 worktree and type `continue from project continuity`. Codex reads `.project-continuity/state.md`
@@ -298,6 +361,10 @@ flowchart TD
     end
 
     AA -->|"Passes"| AC
+
+    style resolve fill:none,stroke:transparent
+    style isolate fill:none,stroke:transparent
+    style publish fill:none,stroke:transparent
 ```
 
 The workflow gives every task its own directory, task branch, and continuity file. The user-provided
@@ -354,16 +421,16 @@ state.**
 %%{init: {"themeVariables": {"clusterBkg": "transparent"}, "flowchart": {"useMaxWidth": false}}}%%
 flowchart LR
     subgraph taskA["Repository A — Worktree 1: Task A handoff"]
-        claudeA["Claude invokes the workflow<br/>base branch = PR/MR target"]
-        workA["Repository A / Worktree 1<br/>task branch from base<br/>continuity state"]
+        claudeA["Claude invokes the workflow<br/>provides the base branch<br/>(also the PR/MR target)"]
+        workA["Repository A / Worktree 1<br/>new task branch from base<br/>inside an isolated worktree<br/>continuity state"]
         codexA["Codex resumes in the same<br/>physical worktree from state"]
-        claudeA -->|"Creates and enters isolated worktree<br/>then checkpoints task state"| workA
+        claudeA -->|"Creates the worktree and task branch<br/>then checkpoints task state"| workA
         workA -->|"Session reaches token limit<br/>state remains; no manual handoff"| codexA
     end
 
     subgraph taskB["Repository A — Worktree 2: Task B in parallel"]
-        claudeB["Another workflow invocation<br/>from a selected base branch"]
-        workB["Repository A / Worktree 2<br/>task branch from base<br/>independent continuity state"]
+        claudeB["Another workflow invocation<br/>provides a base branch<br/>(also the PR/MR target)"]
+        workB["Repository A / Worktree 2<br/>new task branch from base<br/>inside an isolated worktree<br/>independent continuity state"]
         claudeB -->|"Creates and enters a separate worktree"| workB
     end
 
@@ -382,6 +449,10 @@ flowchart LR
     workB --> gate
     copilotC --> gate
     gate --> out
+
+    style taskA fill:none,stroke:transparent
+    style taskB fill:none,stroke:transparent
+    style taskC fill:none,stroke:transparent
 ```
 
 Task A shows the central handoff: Claude invokes the workflow with a base branch, which is both the
