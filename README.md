@@ -338,7 +338,11 @@ when the consuming repository provides a tracked `.worktree-runtime.json` descri
 persists a preferred port per physical worktree, leases it during the server process, and reports
 fixed-port or otherwise unsupported runtime dependencies. This preserves the design boundary:
 strong runtime guarantees when the workflow is explicitly chosen, without forcing every task or
-every project into a rigid harness.
+every project into a rigid harness. `runtime=off` is the default and does not start a server. V1
+covers one HTTP development process and its port; the descriptor may classify databases, caches,
+queues, Docker services, and external services, but the helper reports those classifications rather
+than provisioning them. Runtime allocation stays in a user cache outside the worktree and Git, so
+`chezmoi apply` never starts a project server or restores runtime allocation state.
 
 `worktree-task-workflow` turns a substantial coding task into a repeatable isolated lifecycle: it
 validates the starting branch, creates a dedicated worktree and task branch, preserves task context
