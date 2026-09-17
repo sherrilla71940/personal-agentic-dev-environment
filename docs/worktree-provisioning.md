@@ -92,6 +92,11 @@ Claude's launch guard; native mode leaves those skills manual and does not regis
 launch guard. `ai_continuity` remains a separate preference for managed mode. General Git and
 worktree provisioning commands are unaffected by the harness selection.
 
+The task workflow is an explicit opt-in for substantial or isolation-sensitive work. It is not a
+mandatory entry point for every task: a small, self-contained edit that does not need parallel
+isolation may remain in the current valid worktree. Choose it when isolation, cross-session handoff,
+controlled verification, or publishing matters.
+
 The wrapper options are:
 
 | Option | Effect |

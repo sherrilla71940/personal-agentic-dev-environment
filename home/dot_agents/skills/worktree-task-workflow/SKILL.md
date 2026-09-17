@@ -22,6 +22,11 @@ skills for supplied containers, `project-continuity` for resumable state, `git-c
 commits, `git-commit-reference` for message conventions, and `natural-zhtw` for Traditional
 Chinese publishing text.
 
+This is an explicit opt-in workflow for substantial or isolation-sensitive tasks. Do not invoke it
+merely because an agent is making a change: a small, self-contained edit that does not need parallel
+isolation may stay in the current valid worktree. Use this workflow when isolation, cross-session
+handoff, controlled verification, or publishing matters.
+
 ## 1. Resolve the invocation
 
 Read [references/invocation.md](references/invocation.md) and follow it through the resolved echo.

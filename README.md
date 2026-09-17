@@ -327,6 +327,11 @@ task-inference request), reference materials, and options. It creates a new work
 `origin/<base>`, provisions approved ignored files through `.worktreeinclude`, and creates the task
 branch from that base commit. The eventual pull or merge request targets the same base branch.
 
+This workflow is an explicit opt-in for substantial or isolation-sensitive work, not a mandatory
+entry point for every task. A small, self-contained edit that does not need parallel isolation may
+stay in the current valid worktree; choose this workflow when isolation, cross-session handoff,
+controlled verification, or publishing matters.
+
 `worktree-task-workflow` turns a substantial coding task into a repeatable isolated lifecycle: it
 validates the starting branch, creates a dedicated worktree and task branch, preserves task context
 across AI sessions, runs automated verification, requests a manual test, and publishes the change

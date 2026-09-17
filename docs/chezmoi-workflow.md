@@ -69,6 +69,11 @@ local to the machine and are not committed or synchronized by this repository. W
 this repository, root `AGENTS.md` overrides the machine context and requires the effective context
 to be `personal`.
 
+The worktree task workflow is an opt-in for substantial or isolation-sensitive work, not a mandatory
+entry point for every task. Small, self-contained edits that do not need parallel isolation may stay
+in the current valid worktree; use the workflow when isolation, cross-session handoff, controlled
+verification, or publishing matters.
+
 After editing the config, use `chezmoi diff` to preview the selected render. Review it before
 `chezmoi apply`, then restart the affected client sessions. A dedicated profile CLI is deferred;
 the worktree skills remain installed and independently invokable in every selector combination.
