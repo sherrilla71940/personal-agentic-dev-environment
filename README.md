@@ -350,8 +350,8 @@ across AI sessions, runs automated verification, requests a manual test, and pub
 to the correct base branch. This reduces branch and base mistakes, context loss, skipped verification,
 inconsistent request targets, and setup friction when several tasks or AI clients are active at once.
 
-**Figure: one new task's lifecycle, including material review, worktree provisioning, automated
-agent verification, and the user manual-test gate.** The common contract is shown with the
+**Figure: one new task's lifecycle, including material review, worktree provisioning, optional
+runtime isolation, automated agent verification, and the user manual-test gate.** The common contract is shown with the
 Claude and Codex branch paths called out; worktree location and cleanup also differ by adapter.
 
 ```mermaid
@@ -393,7 +393,9 @@ flowchart TD
         U{"Run full optional agent verification?<br/>default: yes"}
         V["Run typecheck, lint, focused tests,<br/>and a meaningful build"]
         W["For visual UI work, when available,<br/>drive targeted browser interactions"]
-        X["If an app is part of the task,<br/>start it and request a real route"]
+        X{"Application runtime<br/>needed?"}
+        RUNTIME["runtime=auto + tracked descriptor:<br/>allocate and verify the per-worktree port"]
+        ORDINARY["runtime=off or runtime isolation unsupported:<br/>use project startup;<br/>report no per-worktree port guarantee"]
         Y["Run minimum sanity checks<br/>(also when full verification is off)"]
         AA{{"Give exact steps and request<br/>the user manual test;<br/>stop and wait"}}
         AB["Fix the failure; rerun applicable<br/>checks and runtime verification"]
@@ -406,7 +408,9 @@ flowchart TD
         R --> S --> T --> U
         U -->|"Yes"| V --> W --> X
         U -->|"No"| Y --> X
-        X --> AA
+        X -->|"No"| AA
+        X -->|"runtime=auto + descriptor"| RUNTIME --> AA
+        X -->|"runtime=off or unsupported"| ORDINARY --> AA
         AA -->|"Fails"| AB --> U
     end
 
@@ -426,9 +430,10 @@ flowchart TD
 
     class A input
     class B,D,E,F,G,I,J,L,M,O,P,Q,R orchestration
-    class C,H,K,N,U,AA,AF control
+    class C,H,K,N,U,X,AA,AF control
     class S output
-    class T,V,W,X,Y,AB work
+    class T,V,W,Y,AB work
+    class RUNTIME,ORDINARY orchestration
     class Z exception
     class AC,AD,AE,AG,AH orchestration
 
@@ -467,9 +472,11 @@ If a session ends because it reaches its token limit, the next client can start 
 and read the recorded objective, decisions, materials, blockers, and next action without a manual
 handoff document. `agent-test=true` runs typecheck, lint, focused tests, a meaningful build, and a
 targeted browser or runtime pass for visual work when available. `agent-test=false` still runs
-minimum sanity checks. When an app is part of the task, runtime verification starts it and requests
-a real route; targeted browser interactions exercise a selected UI flow. Neither replaces the
-manual test.
+minimum sanity checks. When an app is part of the task, the workflow checks whether the explicit
+runtime path is available: `runtime=auto` uses the tracked descriptor and verifies a per-worktree
+port; `runtime=off` or unsupported runtime isolation uses the project's ordinary startup path and
+reports that no per-worktree port guarantee was provided. Targeted browser interactions exercise a
+selected UI flow. Neither replaces the manual test.
 
 The manual-test node gives the user the exact path, startup command, route, preconditions, actions,
 and expected results, then stops and waits. Only after the user reports a passing manual test does

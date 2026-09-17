@@ -310,7 +310,7 @@ runtime 配置狀態。
 能跨 AI 工作階段保留，執行自動化驗證，請求使用者進行人工測試，再把變更發佈到正確的基底分支。這能降低分支或基底選錯、脈絡遺失、
 漏做驗證、request 目標不一致，以及同時處理多個任務或 AI 用戶端時的手動設定負擔。
 
-**圖：一個新任務的生命週期，包含素材檢閱、worktree 佈建、agent 自動驗證與使用者人工測試關卡。** 圖中標出
+**圖：一個新任務的生命週期，包含素材檢閱、worktree 佈建、選用的執行環境隔離、agent 自動驗證與使用者人工測試關卡。** 圖中標出
 Claude 與 Codex 的分支流程；worktree 路徑與清理方式也會依 adapter 而不同。
 
 ```mermaid
@@ -352,7 +352,9 @@ flowchart TD
         U{"執行完整的選用 agent 驗證？<br/>預設：是"}
         V["執行 typecheck、lint、<br/>聚焦測試與有意義的 build"]
         W["涉及視覺 UI 時，若工具可用，<br/>操作指定的瀏覽器流程"]
-        X["任務需要執行應用程式時，<br/>啟動它並請求真實路由"]
+        X{"任務需要執行應用程式嗎？"}
+        RUNTIME["runtime=auto + 追蹤中的描述檔：<br/>配置並驗證每個 worktree 的連接埠"]
+        ORDINARY["runtime=off 或執行環境隔離不支援：<br/>使用專案原本的啟動方式；<br/>回報不保證每個 worktree 有獨立連接埠"]
         Y["執行最低限度的合理檢查<br/>（完整驗證關閉時也要執行）"]
         AA{{"提供明確步驟並請使用者<br/>執行人工測試；<br/>停止並等待"}}
         AB["修正失敗；重新執行適用的<br/>檢查與執行期驗證"]
@@ -365,7 +367,9 @@ flowchart TD
         R --> S --> T --> U
         U -->|"是"| V --> W --> X
         U -->|"否"| Y --> X
-        X --> AA
+        X -->|"否"| AA
+        X -->|"runtime=auto + 描述檔"| RUNTIME --> AA
+        X -->|"runtime=off 或不支援"| ORDINARY --> AA
         AA -->|"失敗"| AB --> U
     end
 
@@ -385,9 +389,10 @@ flowchart TD
 
     class A input
     class B,D,E,F,G,I,J,L,M,O,P,Q,R orchestration
-    class C,H,K,N,U,AA,AF control
+    class C,H,K,N,U,X,AA,AF control
     class S output
-    class T,V,W,X,Y,AB work
+    class T,V,W,Y,AB work
+    class RUNTIME,ORDINARY orchestration
     class Z exception
     class AC,AD,AE,AG,AH orchestration
 
@@ -419,8 +424,9 @@ worktree 階段會依 adapter 採用不同的 Git 流程：
 
 工作階段因為 token 上限而結束時，下一個用戶端可以進入同一路徑，讀取記錄的目標、決策、素材、阻礙與下一步，
 不需要手動整理交接文件。`agent-test=true` 會執行 typecheck、lint、聚焦測試、有意義的 build，以及視覺工作可用時的
-瀏覽器或執行期驗證；`agent-test=false` 仍會執行最低限度的合理檢查。任務需要執行應用程式時，執行期驗證會啟動
-應用程式並請求真實路由；指定的瀏覽器流程則驗證特定 UI 操作。兩者都不取代人工測試。
+瀏覽器或執行期驗證；`agent-test=false` 仍會執行最低限度的合理檢查。任務需要執行應用程式時，流程會先判斷是否有明確指定的 runtime 路徑：
+`runtime=auto` 會使用追蹤中的描述檔並驗證每個 worktree 的連接埠；`runtime=off` 或執行環境隔離不支援時，會使用專案原本的啟動方式，
+並回報不保證每個 worktree 有獨立連接埠。指定的瀏覽器流程則驗證特定 UI 操作。兩者都不取代人工測試。
 
 人工測試關卡會提供 worktree 絕對路徑、啟動命令、路由、前置條件、操作順序與預期結果，接著停止並等待。只有使用者
 回報人工測試通過後，流程才會建立 commit、推送任務分支，並開啟以基底分支為目標的 request。Claude 會在通過安全檢查
