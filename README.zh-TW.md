@@ -659,6 +659,7 @@ docs/                              設定、工作流程、自訂與 ADR 指南
 | 新增 AI 指示、技能、agent、prompt、MCP 伺服器或 plugin | [docs/customization-support.md](./docs/customization-support.md) |
 | 查某一項自訂內容是哪個用戶端介面會讀到 | [支援對照表](./docs/customization-support.md#what-the-support-table-answers) |
 | 執行隔離任務，或在 worktree 中佈建被忽略的本機檔案 | [docs/worktree-provisioning.md](./docs/worktree-provisioning.md) |
+| 在不同 worktree 中執行平行應用程式實例 | [docs/worktree-runtime.md](./docs/worktree-runtime.md) |
 | Archive、restore 或 delete 可重複使用的 workflow | [docs/workflow-archives.md](./docs/workflow-archives.md) |
 | 了解儲存庫為什麼採用這種結構 | [docs/decisions/README.md](./docs/decisions/README.md) |
 | 在移除某條規則前先了解它為什麼存在 | [docs/rule-rationale.md](./docs/rule-rationale.md) |
