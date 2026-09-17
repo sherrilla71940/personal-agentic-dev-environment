@@ -1,0 +1,6 @@
+interface:
+  display_name: "Workflow Archive"
+  short_description: "Archive and retire a reusable workflow"
+  default_prompt: "Use $workflow-archive to discover, archive, and retire a reusable workflow."
+policy:
+  allow_implicit_invocation: false

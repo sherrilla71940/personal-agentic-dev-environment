@@ -60,6 +60,22 @@ After editing the config, use `chezmoi diff` to preview the selected render. Rev
 `chezmoi apply`, then restart the affected client sessions. A dedicated profile CLI is deferred;
 the worktree skills remain installed and independently invokable in every profile.
 
+## Archive, restore, or delete reusable workflows
+
+Workflow archives are tracked repository data under `archives/workflows/`, not chezmoi source and
+not client-discovery directories. Use the `workflow-archive`, `workflow-restore`, and
+`workflow-delete` skills. They accept a workflow name or description, perform bounded discovery,
+and use a reviewed explicit inventory under the shared engine
+`scripts/workflows/workflow-archive.py`.
+
+Archive creates a recoverable copy and then deletes only confirmed canonical source files in the
+same operation. It queues generated-target deletion through `home/.chezmoiremove` but does not
+delete live targets directly. Delete removes confirmed source files without creating a new archive.
+Restore defaults to a dry run, refuses collisions, writes only missing canonical files after
+explicit confirmation, and leaves profile selection and `chezmoi apply` to their separate
+workflows. Read the [workflow archive guide](./workflow-archives.md) before changing the definition
+or archive layout.
+
 From the repository root, `bash scripts/dev-env doctor` reports source identity, the resolved
 profile, unapplied target drift, Claude shared-skill link health, and required tool versions. It is
 repository tooling because it checks this checkout and live chezmoi state; it is not rendered into

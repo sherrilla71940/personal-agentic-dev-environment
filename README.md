@@ -547,13 +547,14 @@ source resolution is tied to that one tree.
 | VS Code | Windows and macOS user settings, keybindings, MCP configuration, an extension manifest, and supported Copilot customizations. |
 | Shells and Git | Bash, Zsh, profile startup, lazy `nvm` loading, Git identity and aliases, and the `git wt-add` / `git wt-copy` worktree commands. |
 | Windows Terminal | Durable font and input behavior plus the complete actions and keybindings arrays, while generated machine-specific profiles stay application-owned. |
-| Repository tooling | Bootstrap scripts, Claude MCP installers, MCP and extension manifests, diagnostics, cross-platform helpers, regression suites, and architecture decision records. |
+| Repository tooling | Bootstrap scripts, Claude MCP installers, MCP, extension, and workflow manifests, diagnostics, cross-platform helpers, workflow archive and deletion tooling, regression suites, and architecture decision records. |
 
 The portable skill library covers accessibility review, browser collaboration, Word, PowerPoint,
 Excel and PDF handling, commit conventions and commit authoring, natural Traditional Chinese,
-prompt optimization, technical writing, project continuity, worktree manifests, and the worktree
-task workflow. Client-only skills sit beside them where a workflow depends on one client's
-machinery. Copilot adds repository-architecture, frontend-performance, and security-review agents.
+prompt optimization, technical writing, project continuity, worktree manifests, the worktree task
+workflow, and workflow archive/restore/delete. Client-only skills sit beside them where a workflow depends
+on one client's machinery. Copilot adds repository-architecture, frontend-performance, and
+security-review agents.
 
 This list is representative. New applications, dotfiles, integrations, and AI-client adapters
 follow the same source-to-native-target model.
@@ -656,6 +657,7 @@ Durable suites run by hand when their protected behavior changes:
 | Shared worktree contract or safety boundary | Run both worktree provisioning suites. |
 | Project-continuity lifecycle or recovery contract | `bash scripts/tests/test-project-continuity-hook.sh` |
 | AI profile selectors, composition, language defaults, or continuity toggle | `bash scripts/tests/test-ai-configuration-profiles.sh` |
+| Workflow archive, restore, and deletion contract | `bash scripts/tests/test-workflow-archive.sh` |
 
 Instructions get tested too. `scripts/tests/continuity-fixtures/` holds paired prompts and
 expected behavior for the cases continuity handling gets wrong — an unrelated question arriving
@@ -684,10 +686,12 @@ home/                              chezmoi source state
 
 scripts/bootstrap/                 manual new-machine setup
 scripts/install/                   Claude MCP installers
-scripts/manifests/                 MCP and VS Code extension declarations
+scripts/manifests/                 MCP, VS Code extension, and workflow declarations
+scripts/workflows/                 repository workflow archive and deletion tooling
 scripts/diagnostics/               doctor, config-usage, and settings-drift reports
 scripts/tests/                     profile, continuity, and worktree suites
 scripts/git-hooks/                 pre-commit and Markdown link validation
+archives/workflows/                tracked reusable workflow archives
 docs/                              setup, workflow, customization, and ADR guides
 ```
 
@@ -699,6 +703,7 @@ docs/                              setup, workflow, customization, and ADR guide
 | Add an AI instruction, skill, agent, prompt, MCP server, or plugin | [docs/customization-support.md](./docs/customization-support.md) |
 | Find out which client surface reads a given customization | [the support table](./docs/customization-support.md#what-the-support-table-answers) |
 | Run an isolated task or provision ignored local files in a worktree | [docs/worktree-provisioning.md](./docs/worktree-provisioning.md) |
+| Archive, restore, or delete a reusable workflow | [docs/workflow-archives.md](./docs/workflow-archives.md) |
 | Understand why the repository uses this structure | [docs/decisions/README.md](./docs/decisions/README.md) |
 | Understand why a rule exists before removing it | [docs/rule-rationale.md](./docs/rule-rationale.md) |
 | Let a coding assistant work safely in this repository | [AGENTS.md](./AGENTS.md) |
@@ -706,7 +711,8 @@ docs/                              setup, workflow, customization, and ADR guide
 Every structural choice here has a written reason. The decision records cover why procedures and
 decisions live apart, why shared content uses thin wrappers, why Claude settings are merged by key
 rather than replaced, why the working tree stays at `~/dotfiles`, why a Codex-targeted skill is
-gated by host rather than by directory, and why the whole tree is normalized to LF. Each record
+gated by host rather than by directory, why workflow archives use bounded discovery and explicit
+inventories outside active source and discovery paths, and why the whole tree is normalized to LF. Each record
 names the change that should trigger reconsideration, so a later session can tell a deliberate
 constraint from accidental legacy.
 

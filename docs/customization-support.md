@@ -33,6 +33,7 @@ The columns group surfaces only when they read the same personal configuration:
 | Instructions for this repository | root `CLAUDE.md` imports root `AGENTS.md` | root `AGENTS.md` | root `AGENTS.md` | root `AGENTS.md`, enabled by `chat.useAgentsMdFile` |
 | Path-scoped instructions | `~/.claude/rules/` | not supported by Codex | `~/.copilot/instructions/*.instructions.md` | the same personal files, selected by `applyTo` |
 | Portable shared skills | linked from `~/.agents/skills` | native `~/.agents/skills` discovery | native `~/.agents/skills` discovery | native `~/.agents/skills` discovery |
+| Workflow archive, restore, and delete skills | linked from `~/.agents/skills` | native `~/.agents/skills` discovery | native `~/.agents/skills` discovery | native `~/.agents/skills` discovery |
 | Client-only skills | `~/.claude/skills/<name>` | host-gated under `~/.agents/skills/<name>`; Copilot discovers the metadata but cannot invoke it automatically | `~/.copilot/skills/<name>` | `~/.copilot/skills/<name>` |
 | Agent definitions | custom subagents under `~/.claude/agents/` | custom agents under `~/.codex/agents/` | custom agents under `~/.copilot/agents/` | the same personal Copilot agents |
 | Prompts or commands | `~/.claude/commands/` | standalone custom prompts are deprecated; use a skill | no dedicated Copilot CLI command; compatible Claude commands may also be discovered | prompt files in the VS Code user profile |
@@ -159,6 +160,21 @@ directory. Represent a reusable Claude workflow as a skill instead:
 - Claude-only: `home/dot_claude/skills/<name>/SKILL.md`.
 - Portable across Claude, Codex, and Copilot: `home/dot_agents/skills/<name>/SKILL.md` plus
   its Claude symlink wrapper.
+
+### Archive, restore, or delete a reusable workflow
+
+Workflow archive, restore, and delete skills are repository tooling, not another client
+customization directory. They accept a workflow name or description, perform bounded discovery,
+and show the exact source/dependency/target boundary before mutation. The shared engine under
+`scripts/workflows/` archives or removes only the confirmed canonical source files. Archives live
+under `archives/workflows/`, outside `home/` and active skill discovery; generated targets,
+secrets, application state, and `.project-continuity/` stay outside the archive.
+
+Archive queues generated-target deletion through `home/.chezmoiremove` after creating the archive;
+delete queues the same cleanup without creating an archive. Neither operation deletes live targets
+directly. Archive-copy deletion is separately confirmed. Read the
+[workflow archive guide](./workflow-archives.md) for the definition fields, discovery boundary,
+archive/delete behavior, restore safety rules, and focused test suite.
 
 ## Add an instruction
 

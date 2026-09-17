@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "name": "worktree-task-workflow",
+  "description": "Create and carry one implementation task through an isolated worktree, verification, manual testing, publishing, and branch-preserving cleanup.",
+  "dependencies": [
+    "Git worktree support",
+    "chezmoi for rendering client-specific references",
+    "Claude Code or Codex worktree support"
+  ],
+  "profileAssumptions": [
+    "Rendered reference files use the current ai_context and ai_continuity selectors; restore never changes those selectors."
+  ],
+  "sharedFiles": [],
+  "targets": [
+    ".agents/skills/worktree-task-workflow",
+    ".claude/skills/worktree-task-workflow"
+  ],
+  "files": [
+    "home/dot_agents/skills/worktree-task-workflow/.codex-only",
+    "home/dot_agents/skills/worktree-task-workflow/SKILL.md",
+    "home/dot_agents/skills/worktree-task-workflow/agents/openai.yaml",
+    "home/dot_agents/skills/worktree-task-workflow/references/invocation.md.tmpl",
+    "home/dot_agents/skills/worktree-task-workflow/references/lifecycle.md.tmpl",
+    "home/dot_agents/skills/worktree-task-workflow/references/publish.md.tmpl",
+    "home/dot_claude/skills/worktree-task-workflow/SKILL.md",
+    "home/dot_claude/skills/worktree-task-workflow/references/invocation.md.tmpl",
+    "home/dot_claude/skills/worktree-task-workflow/references/lifecycle.md.tmpl",
+    "home/dot_claude/skills/worktree-task-workflow/references/publish.md.tmpl",
+    "home/.chezmoitemplates/skills/worktree-task-workflow/invocation.md",
+    "home/.chezmoitemplates/skills/worktree-task-workflow/lifecycle.md",
+    "home/.chezmoitemplates/skills/worktree-task-workflow/publish.md",
+    "docs/worktree-provisioning.md"
+  ]
+}

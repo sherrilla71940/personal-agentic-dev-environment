@@ -1,0 +1,6 @@
+interface:
+  display_name: "Workflow Delete"
+  short_description: "Delete a workflow without archiving"
+  default_prompt: "Use $workflow-delete to discover and delete a reusable workflow without archiving it."
+policy:
+  allow_implicit_invocation: false

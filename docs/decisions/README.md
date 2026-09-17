@@ -41,6 +41,9 @@ agent session.
 | [0015](./0015-organize-repository-tooling-by-purpose.md) | Superseded by 0016 | Organize repository tooling by purpose and expose one diagnostic entry point |
 | [0016](./0016-rename-the-project-facing-tooling-command.md) | Accepted | Rename the project-facing diagnostic command to `dev-env` while retaining chezmoi and local-path compatibility |
 | [0017](./0017-review-completed-parked-continuity-state.md) | Accepted | Review parked continuity state for completion and require confirmation before closure |
+| [0018](./0018-track-explicit-workflow-archives.md) | Superseded by 0020 | Track explicit workflow archives outside active source and discovery paths |
+| [0019](./0019-discover-and-retire-workflows-safely.md) | Superseded by 0020 | Discover workflow boundaries by outcome and retire sources with explicit target cleanup |
+| [0020](./0020-archive-or-delete-workflow-lifecycle.md) | Accepted | Make archive a recoverable copy plus source deletion, with an explicit no-archive delete path |
 
 ## Template
 

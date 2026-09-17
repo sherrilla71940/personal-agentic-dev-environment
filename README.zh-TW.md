@@ -494,11 +494,11 @@ worktree；Codex 會建立或進入 detached worktree，再從選定的基底分
 | VS Code | Windows 與 macOS 的使用者設定、keybindings、MCP 設定、擴充功能清單，以及支援的 Copilot 自訂內容。 |
 | Shell 與 Git | Bash、Zsh、profile 啟動設定、延遲載入的 `nvm`、Git 身分與別名，以及 `git wt-add`／`git wt-copy` worktree 命令。 |
 | Windows Terminal | 持久的字型與輸入行為，加上完整的 actions 與 keybindings 陣列；自動產生的機器專屬設定檔仍由應用程式管理。 |
-| 儲存庫工具 | Bootstrap 腳本、Claude MCP 安裝程式、MCP 與擴充功能清單、診斷工具、跨平台輔助程式、回歸測試，以及架構決策紀錄。 |
+| 儲存庫工具 | Bootstrap 腳本、Claude MCP 安裝程式、MCP、擴充功能與 workflow manifest、診斷工具、跨平台輔助程式、workflow archive 與 deletion 工具、回歸測試，以及架構決策紀錄。 |
 
 可攜式技能庫涵蓋無障礙檢視、瀏覽器協作、Word／PowerPoint／Excel 與 PDF 處理、commit 慣例與 commit
-撰寫、自然的繁體中文、prompt 最佳化、技術寫作、專案連續性、worktree manifest，以及 worktree 任務
-工作流程。如果某個工作流程依賴特定用戶端的機制，就會有對應的用戶端專屬技能放在旁邊。Copilot 另外
+撰寫、自然的繁體中文、prompt 最佳化、技術寫作、專案連續性、worktree manifest、worktree 任務工作流程，
+以及 `workflow-archive`／`workflow-restore`／`workflow-delete`。如果某個工作流程依賴特定用戶端的機制，就會有對應的用戶端專屬技能放在旁邊。Copilot 另外
 有儲存庫架構、前端效能與資安檢視三個 agent。
 
 以上只是代表性清單。新的應用程式、dotfiles、整合與 AI 用戶端轉接層，都沿用同一套「來源產生為原生
@@ -592,6 +592,7 @@ pre-commit hook 會把 staged 的來源產生到暫存目錄——絕不寫進�
 | 共用的 worktree 契約或安全界線 | 兩套 worktree 佈建測試都要跑。 |
 | 專案連續性的生命週期或復原契約 | `bash scripts/tests/test-project-continuity-hook.sh` |
 | AI profile 選擇器、組合方式、語言預設值或連續性開關 | `bash scripts/tests/test-ai-configuration-profiles.sh` |
+| workflow archive／restore／delete 契約 | `bash scripts/tests/test-workflow-archive.sh` |
 
 連指示本身也有測試。`scripts/tests/continuity-fixtures/` 收了成對的 prompt 與預期行為，針對的是
 連續性最容易處理錯的情境——狀態還在的時候突然冒出一個無關問題、實質換了另一個任務、使用者明確
@@ -618,10 +619,12 @@ home/                              chezmoi 來源狀態
 
 scripts/bootstrap/                 手動執行的新電腦設定
 scripts/install/                   Claude MCP 安裝程式
-scripts/manifests/                 MCP 與 VS Code 擴充功能宣告
+scripts/manifests/                 MCP、VS Code 擴充功能與 workflow 宣告
+scripts/workflows/                 儲存庫 workflow archive 與 deletion 工具
 scripts/diagnostics/               doctor、設定使用狀況與設定落差報告
 scripts/tests/                     profile、連續性與 worktree 測試
 scripts/git-hooks/                 pre-commit 與 Markdown 連結驗證
+archives/workflows/                受 Git 追蹤的可重複使用 workflow archive
 docs/                              設定、工作流程、自訂與 ADR 指南
 ```
 
@@ -633,13 +636,15 @@ docs/                              設定、工作流程、自訂與 ADR 指南
 | 新增 AI 指示、技能、agent、prompt、MCP 伺服器或 plugin | [docs/customization-support.md](./docs/customization-support.md) |
 | 查某一項自訂內容是哪個用戶端介面會讀到 | [支援對照表](./docs/customization-support.md#what-the-support-table-answers) |
 | 執行隔離任務，或在 worktree 中佈建被忽略的本機檔案 | [docs/worktree-provisioning.md](./docs/worktree-provisioning.md) |
+| Archive、restore 或 delete 可重複使用的 workflow | [docs/workflow-archives.md](./docs/workflow-archives.md) |
 | 了解儲存庫為什麼採用這種結構 | [docs/decisions/README.md](./docs/decisions/README.md) |
 | 在移除某條規則前先了解它為什麼存在 | [docs/rule-rationale.md](./docs/rule-rationale.md) |
 | 讓編碼助理安全地在這個儲存庫裡工作 | [AGENTS.md](./AGENTS.md) |
 
 這裡每一個結構上的選擇都寫下了理由。決策紀錄說明了為什麼操作程序與決策分開存放、為什麼共用內容
 採用薄型包裝器、為什麼 Claude 設定是按 key 合併而不是整份取代、為什麼工作樹固定在 `~/dotfiles`、
-為什麼 Codex 專屬技能用主機閘門而不是用目錄隔離，以及為什麼整個工作樹統一成 LF。每份紀錄都寫明了
+為什麼 Codex 專屬技能用主機閘門而不是用目錄隔離、為什麼 workflow preservation 先做有界探索，再把明確 inventory 放在
+作用中的來源與探索路徑之外，以及為什麼整個工作樹統一成 LF。每份紀錄都寫明了
 什麼樣的變化該重新考慮這個決定，讓之後接手的人分得出哪些是刻意的限制、哪些只是歷史遺留。
 
 探索路徑、frontmatter key、hook payload 與 worktree 行為都會隨上游版本改變。變更用戶端專屬的路徑或
