@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Profile"
+  short_description: "Select or extend AI profiles safely"
+  default_prompt: "Use $ai-profile to show or safely change this machine's AI profile."
