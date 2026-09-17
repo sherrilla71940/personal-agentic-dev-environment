@@ -7,9 +7,14 @@
        does not fight the app for ownership - but each entry needs one `/hooks` approval per
        machine, and editing an entry invalidates its approval.
 
+       Native harness mode renders the lightweight notification entry but no continuity
+       lifecycle entries. Managed mode adds those lifecycle entries according to the profile.
        Claude's equivalent wiring lives in home/.chezmoitemplates/claude/settings-durable.json. */ -}}
 
 {{- $isWindows := eq .chezmoi.os "windows" -}}
+{{- $profile := includeTemplate "ai-profile.yaml" . | fromYaml -}}
+{{- $isManaged := eq $profile.ai_harness "managed" -}}
+{{- $continuityEnabled := and $isManaged (eq $profile.ai_continuity "on") -}}
 {{- $pwsh := "powershell.exe -NoProfile -ExecutionPolicy Bypass -File" -}}
 {{- $gitBash := printf "%s/AppData/Local/Programs/Git/bin/bash.exe" .chezmoi.homeDir | replace "/" "\\" -}}
 
@@ -23,6 +28,13 @@
 {{- end -}}
 {
   "hooks": {
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": {{ $notifyCommand | toJson }}, "timeout": 20 }
+        ]
+      }
+    ]{{ if $continuityEnabled }},
     "SessionStart": [
       {
         "matcher": "startup|resume|clear|compact",
@@ -37,13 +49,7 @@
           { "type": "command", "command": {{ $continuityCommand | toJson }}, "timeout": 5 }
         ]
       }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          { "type": "command", "command": {{ $notifyCommand | toJson }}, "timeout": 20 }
-        ]
-      }
     ]
+    {{- end }}
   }
 }

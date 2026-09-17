@@ -1,7 +1,11 @@
 # ADR-0021: Add a native workflow profile mode
 
-- Status: Accepted
+- Status: Superseded by ADR-0022
 - Date: 2026-09-17
+
+> This decision records the first, narrower native-mode implementation. ADR-0022 replaces its
+> public selector name with `ai_harness` and broadens native mode to disable the automatic harness
+> hooks while preserving the statusline and shared capabilities.
 
 ## Context
 

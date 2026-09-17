@@ -3,9 +3,9 @@
 - Status: Accepted
 - Date: 2026-09-14
 
-This decision remains in force as the v1 baseline for the two selectors it introduced. ADR-0021
-extends that schema with an independent workflow-mode choice; references below to exactly two
-selectors or four combinations describe this record's original scope, not the current schema.
+This decision remains in force as the v1 baseline for the two selectors it introduced. ADR-0022
+extends that schema with a harness-mode choice; references below to exactly two selectors or four
+combinations describe this record's original scope, not the current schema.
 
 ## Context
 
@@ -28,8 +28,11 @@ Keep one canonical source tree and compose three layers at render time:
 shared baseline + personal OR company context + continuity when enabled
 ```
 
-Use these two machine-local selectors in the chezmoi configuration file's `[data]` section:
-ADR-0021 adds `ai_workflow` as a third independent selector.
+This ADR originally defined two machine-local selectors in the chezmoi configuration file's
+`[data]` section. ADR-0021 added a third selector, and ADR-0022 supersedes that selector's name
+and defines the `ai_harness` boundary between the complete managed harness and the low-opinionated
+native layer. The original two-selector decision remains documented below for its context and
+continuity rationale.
 
 | Selector | Supported values | Missing-key default |
 | --- | --- | --- |
@@ -60,14 +63,16 @@ commit-message setting. Technical identifiers, filenames, branch names, commit t
 configuration comments, and continuity state remain in English. Application/project comments
 follow the selected context unless repository or project instructions override it.
 
-Continuity remains independent of context. When it is `on`, Claude Code and Codex receive the
-existing continuity instructions and the shared lifecycle helper reports as before. When it is
-`off`, the always-loaded instructions are omitted and that helper renders as a deliberate no-op: it
-drains the event payload, prints nothing, and writes nothing, so neither a tracked state file nor
-`.git/info/exclude` changes. The `project-continuity` skill stays installed so an explicit user
-request can still invoke it, and the existing session-export decisions remain part of that skill.
+Continuity remains independent of context. In this ADR's original two-selector scope, `on` loaded
+the existing continuity instructions and `off` omitted them while the shared lifecycle helper
+became a deliberate no-op. The current `ai_harness` selector adds a second boundary: native mode
+suppresses the guidance and automatic hooks without changing the stored continuity preference; see
+ADR-0022. The `project-continuity` skill stays installed so an explicit user request can still
+invoke it, and the existing session-export decisions remain part of that skill.
 
-Hook wiring is identical in both states, and the guard alters no app-owned configuration.
+The current harness boundary changes which repository-owned lifecycle hooks are registered: native
+mode retains lightweight notifications but omits continuity and worktree lifecycle hooks. The
+modify template alters no unrelated app-owned configuration.
 
 Worktree workflow and worktree manifest capabilities remain independently available in both
 contexts. The worktree workflow may use project continuity when continuity is enabled, but neither
@@ -146,9 +151,9 @@ the test on a structural error that balanced delimiters alone would not catch.
 - Claude, Codex, and VS Code wrappers pass the root template data explicitly.
 - `home/dot_local/share/maintain-project-continuity.sh.tmpl` carries the continuity-off no-op guard.
 - `scripts/tests/test-ai-configuration-profiles.sh` renders all combinations defined by the current
-  schema, defaults, and invalid values without changing live targets. It asserts that the worktree
-  launch check survives every continuity/workflow mode, and runs the rendered helper against a
-  throwaway repository to prove that automatic lifecycle reporting is quiet when disabled.
+  schema, defaults, and invalid values without changing live targets. It asserts harness-specific
+  hook registration and runs the rendered helper against a throwaway repository to prove that
+  automatic lifecycle reporting is quiet when disabled.
 - Run `bash scripts/tests/test-ai-configuration-profiles.sh` from Git Bash or macOS Bash, then run the
   repository pre-commit hook for staged-source rendering and cross-client structural checks.
 

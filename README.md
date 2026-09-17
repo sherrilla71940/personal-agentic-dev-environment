@@ -84,7 +84,7 @@ flowchart LR
     end
 
     subgraph render["Composition and delivery"]
-        instructionAdapters["Inline shared core<br/>Select profile + workflow mode + continuity"]
+        instructionAdapters["Inline shared core<br/>Select context + harness + continuity"]
         ruleAdapters["Add scope metadata<br/>Claude: paths / Copilot: applyTo"]
         skillDelivery["Render skills<br/>Links + host gates"]
         osAdapters["Render OS-specific<br/>VS Code targets"]
@@ -181,28 +181,40 @@ maps every customization to the source path that owns it, and to the surfaces th
 
 ## Machine-local profiles and continuity
 
-Three independent values in chezmoi's machine-local configuration select the rendered AI profile.
-None of them is ever committed:
+Two independent inputs and one managed-mode option in chezmoi's machine-local configuration select
+the rendered AI profile. None of them is ever committed:
 
 ```toml
 [data]
 ai_context = "company"        # personal or company
 ai_continuity = "on"          # on or off
-ai_workflow = "managed"        # managed or native
+ai_harness = "managed"         # managed or native
 ```
 
 | Selector | Controls | Default and boundary |
 | --- | --- | --- |
 | `ai_context` | The personal or company context layer, its artifact-language default, and the default comment language for application and project repositories. | Missing means `personal`; any other value fails rendering. |
-| `ai_continuity` | Whether continuity guidance is loaded. | Missing means `on`; any other value fails rendering. The continuity skill stays invokable when off. |
-| `ai_workflow` | Whether automatic continuity lifecycle reporting is enabled or continuity is manual. | Missing means `managed`; any other value fails rendering. Explicit workflow skills remain invokable in both modes. |
+| `ai_continuity` | Managed-mode option: whether continuity guidance and lifecycle reporting are enabled. | Missing means `on`; any other value fails rendering. Native mode suppresses the effective behavior but preserves the value. |
+| `ai_harness` | Whether the complete managed harness or the low-opinionated native layer is selected. | Missing means `managed`; any other value fails rendering. `ai_workflow` is accepted only as a legacy alias. |
 
 The composition is:
 
 ```text
-shared baseline + personal OR company context + continuity guidance when enabled
-automatic lifecycle reporting when continuity is enabled and workflow mode is managed
+shared baseline + personal OR company context
+managed harness behavior when `ai_harness = "managed"`
+continuity guidance and lifecycle reporting when managed + `ai_continuity = "on"`
 ```
+
+`ai_continuity` stores the continuity preference, but continuity guidance and lifecycle reporting
+are effective only when it is `on` and `ai_harness = "managed"`. Managed mode also registers
+notifications and Claude's automatic worktree-launch check. Native mode keeps shared instructions,
+reusable skills, the statusline, lightweight notifications, delivery wrappers, and private-file
+protections, but does not load continuity guidance or register continuity/worktree lifecycle hooks.
+The stored continuity preference is unchanged, so returning to managed mode can re-enable it.
+General shell, Git, VS Code, and Windows Terminal settings remain outside this selector, and
+workflow skills remain available as explicit opt-ins in either mode. State-changing workflow skills
+never start implicitly; managed lifecycle hooks report events without starting a worktree or
+changing source state.
 
 A selector change affects newly rendered configuration and newly started sessions; a running
 session keeps its startup context. Repository and direct user instructions still take precedence,
@@ -221,9 +233,8 @@ Continuity belongs to one physical working tree, and each tree holds at most one
 - `.project-continuity/state.md` records the objective, phase, next action, blockers, assumptions,
   and verification state — where the work stopped and why, not project documentation.
 - Claude Code and Codex get lifecycle reporting that finds existing state and flags branch or
-  `HEAD` drift in managed workflow mode. Native workflow mode keeps the continuity guidance
-  available when enabled, but makes it manual; Copilot can follow the same protocol without an
-  automatic hook.
+  `HEAD` drift in managed mode when continuity is enabled. Copilot can follow the same protocol
+  without an automatic hook. Native mode keeps the continuity skill available for explicit use.
 - Git remains authoritative. Continuity is context and last-known state, never proof that
   something was finished.
 - The state is Git-ignored for privacy and convenience. It is a local handoff file, not an
@@ -289,11 +300,12 @@ For example, after a Codex session reaches its token limit, open a new Codex ses
 worktree and type `continue from project continuity`. Codex reads `.project-continuity/state.md`
 and resumes from the recorded next action.
 
-Turning `ai_continuity` off removes the always-loaded guidance and renders the shared lifecycle
-helper as a no-op. `ai_workflow = "native"` also makes the helper a no-op while retaining the
-manual guidance when continuity is enabled. The hook entries stay registered, so the independent
-Claude worktree launch check keeps working and Codex needs no new hook-trust decision after a
-toggle. Explicit worktree and continuity skills remain available in every combination.
+Turning `ai_continuity` off removes the always-loaded guidance and continuity hook, while managed
+notifications and Claude's worktree-launch check remain. `ai_harness = "native"` removes
+continuity/worktree lifecycle hooks and continuity guidance, while retaining the statusline,
+lightweight notifications, shared instructions, reusable skills, wrappers, and protections.
+Switching harness modes can require a new Codex `/hooks` approval because hook trust includes each
+entry's content hash. Explicit worktree and continuity skills remain available in every combination.
 
 ### Parallel tasks without losing state
 

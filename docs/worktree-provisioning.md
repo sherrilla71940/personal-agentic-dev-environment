@@ -84,9 +84,13 @@ unfinished task — which is the right answer when the two tasks need separate u
 changes, and unnecessary when they do not. For a second task in the same directory, the
 `project-continuity` skill parks the first under `.project-continuity/parked/` instead.
 
-The machine-local AI profile does not toggle worktree capabilities. Both personal and company
-contexts keep the canonical `worktree-task-workflow` and `worktree-manifest` skills available;
-continuity is an independent `ai_continuity` choice that the workflow may use when enabled.
+The machine-local AI profile does not remove worktree capabilities. Both `managed` and `native`
+AI harnesses keep the canonical `worktree-task-workflow` and `worktree-manifest` skills available
+for explicit invocation. Both skills are state-changing workflows, so neither client starts them
+implicitly. Managed mode may connect the task workflow to automatic continuity and
+Claude's launch guard; native mode leaves those skills manual and does not register the automatic
+launch guard. `ai_continuity` remains a separate preference for managed mode. General Git and
+worktree provisioning commands are unaffected by the harness selection.
 
 The wrapper options are:
 

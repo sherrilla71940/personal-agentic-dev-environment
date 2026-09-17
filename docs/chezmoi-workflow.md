@@ -40,25 +40,34 @@ state. Run `chezmoi edit-config` and set these values under `[data]` when needed
 [data]
 ai_context = "company"        # personal or company; default: personal
 ai_continuity = "on"           # on or off; default: on
-ai_workflow = "managed"        # managed or native; default: managed
+ai_harness = "managed"         # managed or native; default: managed
 ```
 
-The three selectors produce eight supported combinations. Missing `ai_context` uses `personal`,
-missing `ai_continuity` uses `on`, and missing `ai_workflow` uses `managed`. Any other value fails
-clearly during rendering. Personal context resolves the applicable artifact-language default to
-English (`en`); company resolves it to Traditional Chinese (`zh-TW`, represented as `zhtw` where an
-existing interface uses that value). Explicit user or repository instructions and explicit
-language arguments take precedence.
+`ai_context` and `ai_harness` are independent choices; `ai_continuity` is an option within managed
+mode. The raw selector inputs have eight supported combinations, but the two native combinations
+have the same effective continuity behavior because native suppresses continuity. Missing
+`ai_context` uses `personal`, missing `ai_continuity` uses `on`, and missing `ai_harness` uses
+`managed`. For backward compatibility, `ai_workflow` is accepted as a legacy alias only when
+`ai_harness` is absent; new configuration should use `ai_harness`. Any other value fails clearly
+during rendering. Personal context resolves the applicable artifact-language default to English
+(`en`); company resolves it to Traditional Chinese (`zh-TW`, represented as `zhtw` where an
+existing interface uses that value). Explicit user or repository instructions and explicit language
+arguments take precedence.
 
-The selectors compose one baseline with either the personal or company context and, independently,
-continuity guidance when continuity is on. `ai_workflow = "managed"` enables the automatic
-continuity lifecycle helper; `ai_workflow = "native"` keeps the shared guidance and explicit
-skills available but makes continuity manual and leaves the helper a no-op. The worktree task and
-worktree manifest skills remain explicit opt-ins in either mode. The selectors affect newly
-rendered configuration and newly started sessions; an already-running session keeps its startup
-context. The values are local to the machine and are not committed or synchronized by this
-repository. When working in this repository, root `AGENTS.md` overrides the machine context and
-requires the effective context to be `personal`.
+The selectors compose one baseline with either the personal or company context. `ai_continuity`
+stores the managed-mode continuity preference; its guidance and automatic lifecycle reporting are
+effective only when it is `on` and `ai_harness = "managed"`. Managed mode also registers
+notifications and the Claude worktree-launch hook. Native mode keeps shared instructions, reusable
+skills, the statusline, lightweight notifications, delivery wrappers, and private-file protections,
+but does not load continuity guidance or register continuity/worktree lifecycle hooks. The stored
+continuity preference is unchanged, so returning to managed mode can re-enable it. General shell,
+Git, VS Code, and Windows Terminal settings are outside this selector. Workflow skills remain
+available as explicit opt-ins in either mode. State-changing workflow skills never start implicitly;
+managed lifecycle hooks report events without starting a worktree or changing source state. The selectors affect newly rendered configuration
+and newly started sessions; an already-running session keeps its startup context. The values are
+local to the machine and are not committed or synchronized by this repository. When working in
+this repository, root `AGENTS.md` overrides the machine context and requires the effective context
+to be `personal`.
 
 After editing the config, use `chezmoi diff` to preview the selected render. Review it before
 `chezmoi apply`, then restart the affected client sessions. A dedicated profile CLI is deferred;

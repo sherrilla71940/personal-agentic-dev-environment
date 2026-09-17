@@ -6,9 +6,13 @@
 {{- if hasKey . "ai_continuity" -}}
 {{-   $aiContinuity = index . "ai_continuity" -}}
 {{- end -}}
-{{- $aiWorkflow := "managed" -}}
-{{- if hasKey . "ai_workflow" -}}
-{{-   $aiWorkflow = index . "ai_workflow" -}}
+{{- $aiHarness := "managed" -}}
+{{- if and (hasKey . "ai_harness") (hasKey . "ai_workflow") -}}
+{{-   fail "ai_harness and legacy ai_workflow cannot both be set" -}}
+{{- else if hasKey . "ai_harness" -}}
+{{-   $aiHarness = index . "ai_harness" -}}
+{{- else if hasKey . "ai_workflow" -}}
+{{-   $aiHarness = index . "ai_workflow" -}}
 {{- end -}}
 {{- if not (or (eq $aiContext "personal") (eq $aiContext "company")) -}}
 {{-   fail (printf "invalid ai_context %q: expected personal or company" $aiContext) -}}
@@ -16,10 +20,15 @@
 {{- if not (or (eq $aiContinuity "on") (eq $aiContinuity "off")) -}}
 {{-   fail (printf "invalid ai_continuity %q: expected on or off" $aiContinuity) -}}
 {{- end -}}
-{{- if not (or (eq $aiWorkflow "managed") (eq $aiWorkflow "native")) -}}
-{{-   fail (printf "invalid ai_workflow %q: expected managed or native" $aiWorkflow) -}}
+{{- if not (or (eq $aiHarness "managed") (eq $aiHarness "native")) -}}
+{{-   fail (printf "invalid ai_harness %q: expected managed or native" $aiHarness) -}}
 {{- end -}}
 ai_context: {{ $aiContext | quote }}
 ai_continuity: {{ $aiContinuity | quote }}
-ai_workflow: {{ $aiWorkflow | quote }}
+ai_harness: {{ $aiHarness | quote }}
+continuity_guidance: {{ if and (eq $aiContinuity "on") (eq $aiHarness "managed") }}"on"{{ else }}"off"{{ end }}
+continuity_automation: {{ if and (eq $aiContinuity "on") (eq $aiHarness "managed") }}"on"{{ else }}"off"{{ end }}
+notifications: "on"
+worktree_guard: {{ if eq $aiHarness "managed" }}"on"{{ else }}"off"{{ end }}
+statusline: "on"
 artifact_language: {{ if eq $aiContext "company" }}"zhtw"{{ else }}"en"{{ end }}

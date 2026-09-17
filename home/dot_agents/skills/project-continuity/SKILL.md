@@ -1,6 +1,7 @@
 ---
 name: project-continuity
 description: Maintain private, working-tree-local work-session continuity across Claude Code, Codex and GitHub Copilot. Use when the current working tree already has continuity state, when the user asks to start, resume, checkpoint, hand off or clean up continuity, or when substantive work would be expensive to reconstruct if the current session ended abruptly. Do not initialize it for trivial or self-contained work.
+disable-model-invocation: true
 ---
 
 # Project Continuity

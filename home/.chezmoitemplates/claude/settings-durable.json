@@ -1,6 +1,6 @@
 {{- /* Durable, repository-owned Claude Code settings.
 
-       This file is data, not logic. It is deep-merged over the live
+       This file is mostly data with small profile gates. It is deep-merged over the live
        ~/.claude/settings.json by home/dot_claude/modify_settings.json, and the
        repository wins on any key named here. Every key absent from this file
        belongs to Claude Code or to you, and survives untouched.
@@ -10,6 +10,9 @@
        and backslash escaping stay correct. */ -}}
 
 {{- $isWindows := eq .chezmoi.os "windows" -}}
+{{- $profile := includeTemplate "ai-profile.yaml" . | fromYaml -}}
+{{- $isManaged := eq $profile.ai_harness "managed" -}}
+{{- $continuityEnabled := and $isManaged (eq $profile.ai_continuity "on") -}}
 {{- $pwsh := "powershell.exe -NoProfile -ExecutionPolicy Bypass -File" -}}
 
 {{- $gitBash := printf "%s/AppData/Local/Programs/Git/bin/bash.exe" .chezmoi.homeDir | replace "/" "\\" -}}
@@ -43,10 +46,12 @@
        At launch, SessionStart shares that start-up cost on Windows and additionally
        runs `claude agents --json` to spot another session in this working directory,
        measured at about a second. After clear or compaction it skips that listing and
-       only refreshes the continuity reminder when continuity is enabled and the workflow
-       mode is managed; native mode renders that lifecycle helper as a no-op. Its timeout
-       matches Notification because the work is cheap but the interpreter is not. A timeout
-       here loses the warning silently, so it is set well clear of the measured worst case.
+       only refreshes the continuity reminder when continuity is enabled and the harness
+       mode is managed; native mode does not register those lifecycle hooks. Native mode
+       still registers the lightweight Notification hook because it is useful feedback
+       without imposing continuity or worktree orchestration. Its timeout matches
+       SessionStart because the work is cheap but the interpreter is not. A timeout here
+       loses the warning silently, so it is set well clear of the measured worst case.
 
        The continuity hook uses Bash even on Windows. Claude Code already requires Git Bash
        there, and avoiding PowerShell startup matters because Stop runs after every response;
@@ -62,23 +67,24 @@
           { "type": "command", "command": {{ $notificationCommand | toJson }}, "timeout": 20 }
         ]
       }
-    ],
+    ]{{ if $isManaged }},
     "SessionStart": [
       {
         "matcher": "startup|resume|clear|compact|fork",
         "hooks": [
-          { "type": "command", "command": {{ $sessionStartCommand | toJson }}, "timeout": 20 },
-          { "type": "command", "command": {{ $continuityLifecycleCommand | toJson }}, "timeout": 10 }
+          { "type": "command", "command": {{ $sessionStartCommand | toJson }}, "timeout": 20 }{{ if $continuityEnabled }},
+          { "type": "command", "command": {{ $continuityLifecycleCommand | toJson }}, "timeout": 10 }{{ end }}
         ]
       }
-    ],
+    ]{{ if $continuityEnabled }},
     "Stop": [
       {
         "hooks": [
           { "type": "command", "command": {{ $continuityLifecycleCommand | toJson }}, "timeout": 5 }
         ]
       }
-    ]
+    ]{{ end }}
+    {{ end }}
   },
 
   {{/* This key has to stay here. The repository manages both statusline scripts, so

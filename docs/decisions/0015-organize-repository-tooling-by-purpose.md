@@ -34,7 +34,7 @@ Expose the first repository command as `bash scripts/dotfiles doctor`. Its imple
 under `scripts/diagnostics/` and reports, without applying changes:
 
 - chezmoi source identity and the repository checkout it resolves to;
-- the resolved `ai_context`, `ai_continuity`, `ai_workflow`, and `artifact_language` values;
+- the resolved `ai_context`, `ai_continuity`, `ai_harness`, and `artifact_language` values;
 - unapplied `chezmoi status` output;
 - the managed Claude shared-skill symlink set;
 - chezmoi, Git, Node.js, and Python versions.

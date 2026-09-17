@@ -53,14 +53,23 @@ the same duplication for rules with `chat.instructionsFilesLocations`, and VS Co
 
 ## AI profile dimensions
 
-Claude Code, Codex, and the managed VS Code Copilot commit-message instruction use three independent
-machine-local chezmoi data values: `ai_context` (`personal` or `company`), `ai_continuity` (`on` or
-`off`), and `ai_workflow` (`managed` or `native`). Missing values default to `personal`, `on`, and
-`managed`; unsupported values fail during rendering. The rendered configuration is the shared
-baseline plus one context layer and, when enabled, the continuity guidance. Managed workflow mode
-also enables automatic continuity lifecycle reporting when continuity is enabled; native mode keeps
-the guidance and explicit skills available but makes continuity manual and the lifecycle hook a
-no-op.
+The repository exposes two independent machine-local inputs plus one managed-mode option:
+`ai_context` (`personal` or `company`), `ai_harness` (`managed` or `native`), and
+`ai_continuity` (`on` or `off`). Claude Code and Codex use all three inputs for their instruction
+and hook outputs. The managed VS Code Copilot commit-message instruction uses the context-derived
+artifact language. Missing values default to `personal`, `managed`, and `on`; unsupported values
+fail during rendering. `ai_workflow` remains a legacy alias for `ai_harness` when the new key is
+absent. The rendered configuration is the shared baseline plus one context layer. Continuity
+guidance and automatic lifecycle reporting are effective only when `ai_continuity=on` and
+`ai_harness=managed`.
+
+Managed mode is the complete opinionated harness: it registers continuity reporting, notifications,
+and Claude's automatic worktree-launch check when applicable. Native mode is the low-opinionated
+layer: it keeps shared instructions, reusable skills, the statusline, lightweight notifications,
+delivery wrappers, and private-file protections, but does not load continuity guidance or register
+continuity/worktree lifecycle hooks. Workflow skills remain discoverable and explicitly invokable
+in native mode. General shell, Git, VS Code, and Windows Terminal settings are not controlled by
+`ai_harness`.
 
 This repository is an explicit exception: its root `AGENTS.md` is a repository
 instruction that overrides the machine default and requires the effective context to be
@@ -73,18 +82,21 @@ instructions take precedence. User-level configuration and customization source 
 in both contexts; application/project comment language follows the active context unless the
 repository or project says otherwise. Continuity state remains English.
 
-Turning continuity off removes the always-loaded continuity instructions and turns the shared
-lifecycle hook into a no-op: it prints nothing and changes neither continuity state nor
-`.git/info/exclude`. Native workflow mode also makes that hook a no-op while retaining the manual
-guidance when continuity is on. The hook stays wired in all states, so the independent worktree
-launch check keeps working and Codex does not have to re-approve its hook entries after a toggle.
-The `project-continuity` skill stays installed, so an explicit continuity request can still invoke
-it.
+Turning continuity off removes the always-loaded continuity instructions and unregisters the
+continuity lifecycle hook, but managed notifications and the Claude worktree-launch check remain.
+Native mode unregisters the continuity and worktree lifecycle hooks but retains lightweight
+notifications. The `project-continuity` skill stays installed, so an explicit continuity request
+can still invoke it; returning to managed mode with continuity on restores the automatic behavior.
+Because Codex records trust for each hook entry by path and content hash, switching harness modes
+may require a new `/hooks` approval. Native mode is lower-opinionated, not notification-free.
+State-changing workflow skills—including project continuity, worktree provisioning, archive, restore,
+and delete—are explicit-only in every client and harness mode. Managed hooks may report lifecycle
+events, but they never start a worktree or change source state.
 Worktree workflow and worktree manifest remain independently available as explicit skills in all
 selector combinations and do not toggle continuity. Broad Copilot integration—skill discovery,
 repository instructions, and agent plugins—is unchanged and deferred. See [ADR-0014](./decisions/0014-machine-local-ai-configuration-profiles.md)
-for the design boundaries. See [ADR-0021](./decisions/0021-add-native-workflow-profile-mode.md)
-for the native workflow-mode decision.
+for the design boundaries. See [ADR-0022](./decisions/0022-define-native-and-managed-ai-harness-modes.md)
+for the native-versus-managed harness decision.
 
 ### Surfaces outside this table
 
@@ -311,11 +323,13 @@ Create the skill with all of these gates:
    discovering the skill.
 3. Set `disable-model-invocation: true` in `SKILL.md`. Copilot still discovers the skill in
    `~/.agents/skills`, but does not invoke it automatically.
-4. Add `agents/openai.yaml` with Codex implicit invocation enabled:
+4. Add `agents/openai.yaml` with an explicit Codex invocation policy. Use `false` for a
+   state-changing or side-effectful skill, and use `true` only when implicit Codex invocation is
+   safe and deliberate:
 
    ```yaml
    policy:
-     allow_implicit_invocation: true
+     allow_implicit_invocation: false
    ```
 
 5. Start the skill body with a host guard that tells GitHub Copilot to stop and states whether
@@ -328,6 +342,11 @@ frontmatter schema, so it rejects client-specific fields used in this repository
 `disable-model-invocation`, `argument-hint`, and `user-invocable`. Do not remove a required field
 or install PyYAML only to make that validator pass. The repository hook renders the staged source
 and checks the `.codex-only` host gates.
+
+For a portable skill that changes repository state, add the same explicit-only boundary to its
+`SKILL.md` with `disable-model-invocation: true` and to its Codex metadata with
+`allow_implicit_invocation: false`. Keep this policy separate from `ai_harness`: managed mode may
+register lifecycle hooks, but it does not make source-changing workflows implicit.
 
 When another host adapter shares workflow guidance, keep detailed references as thin templates
 that include one existing shared body. Do not copy that body into each skill.

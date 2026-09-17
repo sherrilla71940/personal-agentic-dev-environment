@@ -204,7 +204,8 @@ other machines. Do not commit machine-specific values or credentials.
 
 ## Select the machine-local AI profile
 
-After initialization, choose the three independent profile selectors with `chezmoi edit-config`.
+After initialization, choose the two independent profile inputs and the managed-mode continuity
+option with `chezmoi edit-config`.
 The values, defaults, validation behavior, language mapping, and repository-level override are
 documented in [the machine-local selector guide](./chezmoi-workflow.md#machine-local-ai-profile-selectors).
 
@@ -347,7 +348,7 @@ That hook is Claude-only, because it shells out to `claude agents --json` and sp
 `EnterWorktree`. Project-continuity reporting used to live in it too and no longer does; it is
 described next.
 
-When `ai_continuity` is `on` and `ai_workflow` is `managed`, the script rendered from
+When `ai_continuity` is `on` and `ai_harness` is `managed`, the script rendered from
 `home/dot_local/share/maintain-project-continuity.sh.tmpl` adds the
 deterministic reporting that the skill cannot do for itself. On `SessionStart` it reports whether
 continuity exists and, when it does, names the objective it tracks, so the decision about whether
@@ -363,13 +364,14 @@ ancestor but more than one commit behind means a checkpoint opportunity passed w
 being rewritten; one commit behind is work in flight and stays silent, because a notice after
 every commit is one readers learn to ignore. The script never reads or copies the transcript.
 
-With `ai_continuity = "off"` or `ai_workflow = "native"`, the hook entries stay wired but the
-script renders as a deliberate no-op: it drains the event payload, prints nothing, and creates,
-updates, reconciles, and excludes nothing. In native mode, continuity guidance remains available
-when `ai_continuity` is on, but use of it is manual. Leaving the wiring alone is what keeps the
-independent worktree launch check in Claude's `SessionStart` array active, and it keeps Codex's
-per-entry hook trust valid across a toggle, since that trust is keyed by each entry's path and
-content hash. The `project-continuity` skill remains installed for explicit continuity requests.
+With `ai_continuity = "off"`, the continuity guidance and continuity lifecycle hook are absent, but
+managed notifications and Claude's worktree-launch check remain. With `ai_harness = "native"`,
+continuity guidance and continuity/worktree lifecycle hooks are absent; the statusline, lightweight
+notifications, shared instructions, reusable skills, wrappers, and private-file protections remain.
+The stored continuity preference is not changed, so returning to managed mode with continuity on
+restores the automatic behavior. The `project-continuity` skill remains installed for explicit
+continuity requests. Codex records trust by hook path and content hash, so switching harness modes
+can require a new `/hooks` approval.
 
 It lives in `~/.local/share` rather than under `~/.claude` because **both Claude Code and Codex
 run it**. They share hook event names, stdin fields (`cwd`, `hook_event_name`, `session_id`,
@@ -383,13 +385,14 @@ Anything naming one client's machinery stays in that client's own hook, which is
 
 Neither `PreCompact` nor `PostCompact` is wired in either client: neither can inject context into
 the model, so a backstop built on them could only write state, never ask for it to be reconciled.
-The ordinary `SessionStart` report covers the post-compaction case instead. On Windows the hook
+In managed mode, the ordinary `SessionStart` report covers the post-compaction case instead. On Windows the hook
 uses Git Bash to avoid paying PowerShell startup cost after every response.
 
 Claude Code, Codex and Copilot can all resume the resulting `.project-continuity/state.md` when
-started in the same physical working tree. Claude and Codex additionally get the hook reporting
-above; Copilot has no hook system, so its entry path is the global instructions and shared skill
-alone.
+started in the same physical working tree. In managed mode with continuity enabled, Claude and
+Codex additionally get the hook reporting above; native mode leaves that protocol available only
+through explicit instructions and skills. Copilot has no hook system, so its entry path is the
+global instructions and shared skill alone.
 
 ## Working tree at `~/dotfiles`
 

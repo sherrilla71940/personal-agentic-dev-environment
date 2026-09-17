@@ -55,7 +55,7 @@ $workflow-restore archives/workflows/worktree-task-workflow/v1
    automatically; those are separate user-approved actions.
 
 An archive can record the profile assumptions and dependencies it had when created. Restoration
-must report them without changing the machine's `ai_context`, `ai_continuity`, or `ai_workflow`
+must report them without changing the machine's `ai_context`, `ai_continuity`, or `ai_harness`
 values. Use `ai-profile` separately when a user wants to select an existing profile.
 
 Read [the workflow archive guide](../../../../docs/workflow-archives.md) for the manifest contract,

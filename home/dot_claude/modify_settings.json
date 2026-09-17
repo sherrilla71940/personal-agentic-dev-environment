@@ -10,10 +10,59 @@
        under the same parent key.
 
        fromJson fails on malformed input rather than replacing it, which keeps a
-       hand-broken settings.json recoverable instead of silently overwritten. */ -}}
+       hand-broken settings.json recoverable instead of silently overwritten.
+
+       Repository-owned hook commands are removed from the live hook lists and re-added from
+       the durable profile template. Other hook groups remain application-owned: when the
+       durable template owns an event, those groups are appended to its repository-owned
+       groups; when it does not, the live event is left untouched. This lets native mode keep
+       lightweight notifications without duplicating or discarding a user's custom hooks. */ -}}
 {{- $live := dict -}}
 {{- if ne (.chezmoi.stdin | trim) "" -}}
 {{-   $live = fromJson .chezmoi.stdin -}}
 {{- end -}}
+{{- $repositoryHookEvents := list "Notification" "SessionStart" "Stop" -}}
+{{- if hasKey $live "hooks" -}}
+{{-   $liveHooks := index $live "hooks" -}}
+{{-   range $event := $repositoryHookEvents -}}
+{{-     if hasKey $liveHooks $event -}}
+{{-       $filteredGroups := list -}}
+{{-       range $group := index $liveHooks $event -}}
+{{-         $filteredHooks := list -}}
+{{-         if hasKey $group "hooks" -}}
+{{-           range $hook := index $group "hooks" -}}
+{{-             $remove := false -}}
+{{-             if hasKey $hook "command" -}}
+{{-               $command := toString (index $hook "command") -}}
+{{-               if or (contains "maintain-project-continuity.sh" $command) (contains "show-agent-notification" $command) (contains "check-worktree-launch" $command) -}}{{- $remove = true -}}{{- end -}}
+{{-             end -}}
+{{-             if not $remove -}}{{- $filteredHooks = append $filteredHooks $hook -}}{{- end -}}
+{{-           end -}}
+{{-           if gt (len $filteredHooks) 0 -}}
+{{-           $_ := set $group "hooks" $filteredHooks -}}
+{{-           $filteredGroups = append $filteredGroups $group -}}
+{{-           end -}}
+{{-         else -}}
+{{-           $filteredGroups = append $filteredGroups $group -}}
+{{-         end -}}
+{{-       end -}}
+{{-       if gt (len $filteredGroups) 0 -}}{{- $_ := set $liveHooks $event $filteredGroups -}}{{- else -}}{{- $_ := unset $liveHooks $event -}}{{- end -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
 {{- $durable := includeTemplate "claude/settings-durable.json" . | fromJson -}}
+{{- if and (hasKey $durable "hooks") (hasKey $live "hooks") -}}
+{{-   $durableHooks := index $durable "hooks" -}}
+{{-   $liveHooks := index $live "hooks" -}}
+{{-   range $event := $repositoryHookEvents -}}
+{{-     if and (hasKey $durableHooks $event) (hasKey $liveHooks $event) -}}
+{{-       $combinedGroups := index $durableHooks $event -}}
+{{-       range $group := index $liveHooks $event -}}
+{{-         $combinedGroups = append $combinedGroups $group -}}
+{{-       end -}}
+{{-       $_ := set $durableHooks $event $combinedGroups -}}
+{{-       $_ := unset $liveHooks $event -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
 {{ merge $durable $live | toPrettyJson }}

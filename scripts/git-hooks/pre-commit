@@ -135,7 +135,9 @@ fi
 
 # 3. Every portable skill must render as an individual Claude symlink. A source-only
 #    .codex-only marker instead requires host gates that keep Claude and Copilot from
-#    automatically loading a Codex-targeted skill.
+#    automatically loading a Codex-targeted skill. Codex's invocation policy is explicit in the
+#    metadata: side-effectful skills use false, while a deliberately safe on-demand skill may use
+#    true.
 for src in "$staged"/home/dot_agents/skills/*; do
   [[ -d "$src" ]] || continue
   name="$(basename "$src")"
@@ -152,9 +154,9 @@ for src in "$staged"/home/dot_agents/skills/*; do
     openai_metadata="$src/agents/openai.yaml"
     [[ -f "$openai_metadata" ]] ||
       fail "Codex-targeted skill '$name' is missing agents/openai.yaml."
-    grep -Eq '^[[:space:]]*allow_implicit_invocation:[[:space:]]*true[[:space:]]*$' \
+    grep -Eq '^[[:space:]]*allow_implicit_invocation:[[:space:]]*(true|false)[[:space:]]*$' \
       "$openai_metadata" ||
-      fail "Codex-targeted skill '$name' must enable Codex implicit invocation."
+      fail "Codex-targeted skill '$name' must declare Codex implicit invocation policy."
     continue
   fi
 

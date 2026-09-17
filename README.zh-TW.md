@@ -167,27 +167,36 @@ flowchart LR
 
 ## 本機 profile 與連續性
 
-Chezmoi 的本機設定中有三個彼此獨立的值，用來選擇產生出來的 AI profile，這些值都不會被 commit：
+Chezmoi 的本機設定中有兩個彼此獨立的輸入，以及一個 managed 模式選項，用來選擇產生出來的 AI profile；
+這些值都不會被 commit：
 
 ```toml
 [data]
 ai_context = "company"        # personal 或 company
 ai_continuity = "on"          # on 或 off
-ai_workflow = "managed"       # managed 或 native
+ai_harness = "managed"        # managed 或 native
 ```
 
 | 選擇器 | 控制什麼 | 預設值與界線 |
 | --- | --- | --- |
 | `ai_context` | personal 或 company 情境層、它的產出語言預設值，以及應用程式與專案儲存庫的預設註解語言。 | 未設定時等同 `personal`；其他值會讓產生失敗。 |
-| `ai_continuity` | 是否載入連續性指引。 | 未設定時等同 `on`；其他值會讓產生失敗。關閉後連續性技能仍可手動叫用。 |
-| `ai_workflow` | `managed` 啟用自動連續性生命週期回報；`native` 保留指引與可明確叫用的技能，但改為手動處理。 | 未設定時等同 `managed`；其他值會讓產生失敗。兩種模式都保留明確叫用 workflow 技能的能力。 |
+| `ai_continuity` | 在 managed 模式中是否載入連續性指引並啟用生命週期回報。 | 未設定時等同 `on`；其他值會讓產生失敗。native 模式會保留這個值，但不會套用它。 |
+| `ai_harness` | `managed` 啟用完整的自動化 harness；`native` 只保留低介入的共用 AI 層。 | 未設定時等同 `managed`；其他值會讓產生失敗。`ai_workflow` 只作為舊設定的相容別名。 |
 
 組合方式是：
 
 ```text
-共用基準 + personal 或 company 情境 + 啟用時加上連續性指引
-連續性開啟且 workflow 模式為 managed 時加上自動生命週期回報
+共用基準 + personal 或 company 情境
+ai_harness = managed 時啟用 managed harness 行為
+managed 且 ai_continuity = on 時載入連續性指引並啟用生命週期回報
 ```
+
+`ai_continuity` 儲存是否偏好連續性；只有在它是 `on` 且 `ai_harness = "managed"` 時，才會實際載入連續性指引並啟用
+自動生命週期回報。`managed` 也會註冊通知與 Claude 的 worktree 啟動檢查。`native` 保留共用指引、可重複使用的技能、
+statusline、輕量通知、傳遞用包裝器與私有檔案保護，但不載入連續性指引，也不註冊連續性或 worktree 生命週期 hook。切回
+`managed` 時，原本儲存的連續性偏好仍可重新生效。Shell、Git、VS Code 與 Windows Terminal 設定不受這個選擇器控制；workflow
+技能在兩種模式中都仍可明確叫用。會改變狀態的 workflow 技能不會自動啟動；managed 的生命週期 hook 只會回報事件，
+不會自動建立 worktree 或修改來源狀態。
 
 改動選擇器只影響之後產生的設定與之後啟動的工作階段；正在執行中的工作階段仍維持啟動時的情境。
 儲存庫指示與使用者直接下的指示仍然優先，而且這個儲存庫的根目錄 `AGENTS.md` 刻意規定：在這裡工作
@@ -203,8 +212,8 @@ dotfiles，也不會翻譯這份 README。明確傳入 `en` 或 `zhtw` 可以覆
 
 - `.project-continuity/state.md` 記錄目標、階段、下一步、阻礙、假設與驗證狀態——它記的是工作停在
   哪裡、為什麼停，不是專案文件。
-- workflow 模式為 managed 時，Claude Code 與 Codex 會回報現有狀態，並指出分支或 `HEAD` 的落差。native
-  模式在連續性開啟時仍保留指引，但改由手動處理；Copilot 可以遵循同一套協定，只是沒有自動 hook。
+- `managed` 且連續性開啟時，Claude Code 與 Codex 會回報現有狀態，並指出分支或 `HEAD` 的落差。`native`
+  模式仍保留連續性技能供明確叫用；Copilot 可以遵循同一套協定，只是沒有自動 hook。
 - Git 仍然是依據。連續性提供的是脈絡與最後已知狀態，不能用來證明某件事已經完成。
 - 狀態檔由 Git 忽略，兼顧隱私與方便。它是本機交接檔，不是加密保險庫，所以這套流程明文禁止把憑證
   放進去。
@@ -266,10 +275,10 @@ worktree task workflow 負責提供隔離的實體目錄；專案連續性則把
 例如，Codex 工作階段到達 token 上限而結束後，請在同一個 worktree 開啟新的 Codex 工作階段，輸入
 `continue from project continuity`。Codex 會讀取 `.project-continuity/state.md`，從記錄的下一步繼續。
 
-把 `ai_continuity` 關掉後，永遠載入的連續性指引會移除，共用的生命週期輔助程式則變成空操作。`ai_workflow = "native"`
-也會讓這個輔助程式變成空操作，但在連續性開啟時保留手動指引。Hook 項目仍然保留註冊，所以獨立的 Claude
-worktree 啟動檢查照常運作，Codex 也不需要在切換後重新信任 hook。明確叫用的 worktree 與連續性技能在所有組合中
-都保留。
+把 `ai_continuity` 關掉後，永遠載入的連續性指引與連續性 hook 會移除，但 managed 模式的通知與 Claude worktree 啟動檢查
+仍然保留。`ai_harness = "native"` 會移除連續性與 worktree 生命週期 hook 及連續性指引，但保留 statusline、輕量通知、共用
+指引、可重複使用的技能、包裝器與保護機制。切換 harness 模式可能需要 Codex 重新接受 `/hooks`，因為 hook 信任也包含每個
+項目的內容雜湊。明確叫用的 worktree 與連續性技能在所有組合中都保留。
 
 ### 平行處理多個任務又不會弄丟狀態
 

@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-25
-- Amended: 2026-08-31
+- Amended: 2026-09-17
 
 ## Context
 
@@ -38,13 +38,15 @@ A Codex-targeted skill carries all five:
 2. No `home/dot_claude/skills/symlink_<name>.tmpl`, so Claude Code never discovers it.
 3. `disable-model-invocation: true` in `SKILL.md`, so Copilot discovers it but does not choose
    it.
-4. `agents/openai.yaml` with `allow_implicit_invocation: true`, so Codex still may.
+4. `agents/openai.yaml` with an explicit `allow_implicit_invocation` policy. Use `false` for a
+   state-changing or side-effectful skill, and use `true` only when implicit Codex invocation is
+   safe and deliberate.
 5. A host guard at the top of the body telling GitHub Copilot to stop. It states whether
    equivalent native instructions are already active or the workflow is unsupported there. This
    covers an explicit Copilot invocation, which gate 3 does not prevent.
 
-Gates 3 and 4 pull in opposite directions on purpose: one denies the unintended host, while the
-other permits Codex.
+Gates 3 and 4 independently declare how each host may invoke the skill. They do not imply that a
+Codex-targeted skill should always be implicitly invokable.
 
 The pre-commit hook enforces the set, so a skill cannot be marked `.codex-only` and then lose a
 gate silently.
@@ -75,6 +77,11 @@ under `home/dot_claude/skills/`.
 Their invocation, implementation, manual-test and publishing rules come from shared template
 bodies; their worktree entry and cleanup mechanics remain host-specific.
 
+`worktree-task-workflow` is state-changing, so its Codex policy is explicit-only. The portable
+`project-continuity` and `worktree-manifest` skills use the same explicit-only policy because they
+can create or change working-tree state. Managed lifecycle hooks remain independent: they can
+report continuity automatically without implicitly starting any of these workflows.
+
 `project-continuity` was the earlier near miss, carrying a Copilot guard while being symlinked to
 Claude. That guard was removed once Copilot CLI was verified to load
 `~/.copilot/instructions/**/*.instructions.md` and to read and write the continuity state, so the
@@ -89,8 +96,8 @@ being seen.
   make a plain directory sufficient.
 - Codex gains path-scoped instructions, which would remove the reason for the skill entirely.
 - A per-tool skill root appears in any of the three clients.
-- `disable-model-invocation` or `allow_implicit_invocation` changes meaning, since gates 3 and
-  4 depend on them behaving differently from each other.
+- `disable-model-invocation` or `allow_implicit_invocation` changes meaning, since the explicit
+  invocation safety boundary depends on both hosts honoring those policies.
 
 ## Related files and verification
 

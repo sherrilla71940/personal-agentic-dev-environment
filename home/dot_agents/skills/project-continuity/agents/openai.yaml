@@ -1,3 +1,5 @@
 interface:
   display_name: "Project Continuity"
   short_description: "Private continuity for Claude Code, Codex, and Copilot"
+policy:
+  allow_implicit_invocation: false

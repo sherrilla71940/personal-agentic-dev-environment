@@ -9,9 +9,9 @@
 # client's own hook instead.
 set -euo pipefail
 {{ $profile := includeTemplate "ai-profile.yaml" . | fromYaml -}}
-{{ if or (eq $profile.ai_continuity "off") (eq $profile.ai_workflow "native") }}
-# The machine-local AI profile disables automatic continuity reporting when ai_continuity is off
-# or ai_workflow is native, so this hook is a deliberate no-op: it prints nothing and writes
+{{ if ne $profile.continuity_automation "on" }}
+# The machine-local AI profile disables automatic continuity reporting unless continuity is on and
+# the AI harness is managed, so this hook is a deliberate no-op: it prints nothing and writes
 # nothing, which keeps both clients quiet and leaves state and .git/info/exclude untouched.
 # Draining stdin first stops the client seeing a broken pipe while it writes the event payload. The
 # project-continuity skill stays installed, so an explicit request to start, resume, checkpoint,

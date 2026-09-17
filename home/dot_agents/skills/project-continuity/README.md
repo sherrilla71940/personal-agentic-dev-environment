@@ -11,11 +11,11 @@ why an approach was rejected, what a backend did that nobody expected, which beh
 what is blocking, and what to do next. That is also why it has no `Completed` section — there is
 no point caching what the authoritative store can already tell you.
 
-The machine-local `ai_continuity` selector controls whether continuity guidance is loaded, not
-this skill's availability. Automatic startup/stop reporting and state handling require
-`ai_continuity = "on"` together with `ai_workflow = "managed"`; `ai_continuity = "off"` or
-`ai_workflow = "native"` suppresses them. An explicit request to start, resume, checkpoint, hand
-off, or clean up continuity can still invoke the skill.
+The machine-local `ai_continuity` selector controls whether continuity is preferred, not this
+skill's availability. Automatic startup/stop reporting and state handling require
+`ai_continuity = "on"` together with `ai_harness = "managed"`; native harness mode suppresses
+them without changing the stored continuity preference. An explicit request to start, resume,
+checkpoint, hand off, or clean up continuity can still invoke the skill in every harness mode.
 
 It exists for one move: a client hits its usage limit mid-task, and another client picks the work
 up in the same directory rather than being re-briefed from scratch.

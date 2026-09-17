@@ -7,35 +7,40 @@ argument-hint: "[show|select|extend] [selector=value ...]"
 # AI profile
 
 Manage the repository's AI profile without editing generated client files or duplicating profile
-trees. The profile resolver and its documentation define the current machine-local selectors. The
-current schema exposes three independent selectors:
+trees. The profile resolver and its documentation define the current machine-local inputs. The
+current schema exposes two independent inputs and one managed-mode option:
 
 ```text
 ai_context    = personal | company
-ai_continuity = on | off
-ai_workflow   = managed | native
+ai_harness    = managed | native
+ai_continuity = on | off   # managed-mode option
 ```
 
 The rendered result is:
 
 ```text
-shared baseline + selected context + continuity guidance when enabled
-automatic lifecycle reporting when continuity is enabled and workflow is managed
+shared baseline + selected context
+managed harness behavior when ai_harness=managed
+continuity guidance and lifecycle reporting when managed + ai_continuity=on
 ```
 
 In the current schema, `personal` is the default context and uses English for applicable artifact
 text. `company` uses Traditional Chinese for Taiwan (`zhtw` where an interface uses that value).
-`on` is the default continuity state. `managed` is the default workflow mode and enables the
-automatic continuity lifecycle helper. `native` keeps the shared guidance and explicit skills but
-makes continuity manual and the helper a no-op. Invalid values must fail rendering rather than
-produce a partial profile. If the resolver changes, treat its keys, allowed values, defaults, and
-derived fields as authoritative and update this summary with the schema change.
+`on` is the default continuity preference. `managed` is the default harness and enables the
+opinionated automation layer. `native` keeps shared instructions, reusable skills, the statusline,
+required delivery wrappers, private-file protections, and lightweight notification feedback, but
+does not render continuity guidance or register continuity and automatic worktree safety hooks.
+Workflow skills remain available for explicit invocation. General shell, Git, VS Code, and Windows
+Terminal configuration is outside the harness selector. Invalid values must fail rendering rather
+than produce a partial profile. If the resolver changes, treat its keys, allowed values, defaults,
+and derived fields as authoritative and update this summary with the schema change.
 
 ## Route the request
 
-- **Show:** Report the effective selectors and derived values from `chezmoi data`. Do not infer a
-  selector from the current client or conversation language. If the current schema is unclear,
-  read the resolver and its documentation before reporting it.
+- **Show:** Report the raw machine-local values from `chezmoi data`, then report defaults and
+  derived values from the resolver with `chezmoi execute-template --file <source>/.chezmoitemplates/ai-profile.yaml`.
+  Do not infer a selector from the current client or conversation language. If the current schema
+  is unclear, read the resolver and its documentation before reporting it.
 - **Select:** Change the existing machine-local selector values. This does not modify repository
   source files or commit anything.
 - **Extend:** Add or change a context layer, selector dimension, or composition rule in the
@@ -58,7 +63,11 @@ A **profile** is the complete resolved configuration produced by the current sel
 Use these terms to distinguish selection from schema changes:
 
 - **Profile selection:** Choose values already accepted by the current resolver, such as
-  `ai_context=company`, `ai_continuity=on`, and `ai_workflow=managed`.
+  `ai_context=company`, `ai_harness=managed`, and `ai_continuity=on`.
+- **Harness mode:** Choose `managed` for the complete automation layer or `native` for the
+  lower-opinionated layer. Native mode suppresses continuity regardless of the stored preference.
+- **Managed-mode option:** Choose `ai_continuity=on|off` when managed mode should include or omit
+  continuity guidance and lifecycle reporting. The stored value is preserved while native is active.
 - **Profile schema:** The selector keys, allowed values, defaults, derived fields, and composition
   rules that define how profiles render.
 - **Preset:** A named bundle of selector values. The current implementation does not support
@@ -73,7 +82,8 @@ In Claude Code, invoke the skill with a slash command:
 
 ```text
 /ai-profile show
-/ai-profile select ai_context=company ai_continuity=on ai_workflow=managed
+/ai-profile select ai_context=company ai_continuity=on ai_harness=managed
+/ai-profile select ai_harness=native
 /ai-profile extend: add a review context layer
 /ai-profile extend: add a review-mode selector
 ```
@@ -82,7 +92,8 @@ In Codex CLI or the IDE extension, mention the skill with `$`:
 
 ```text
 $ai-profile show
-$ai-profile select ai_context=company ai_continuity=on ai_workflow=native
+$ai-profile select ai_context=company ai_continuity=on ai_harness=native
+$ai-profile select ai_harness=managed ai_continuity=off
 $ai-profile extend: add a review context layer
 $ai-profile extend: add a review-mode selector
 ```
@@ -93,7 +104,8 @@ use its skill picker when available or use natural language:
 
 ```text
 Show me the current AI profile.
-Switch this machine to company context, keep continuity enabled, and use native workflow mode.
+Switch this machine to company context and use the native harness.
+Switch this machine to the managed harness with continuity enabled.
 Add a review context layer.
 Add a review-mode selector to the profile schema.
 ```
@@ -102,7 +114,8 @@ The first two examples in each client-specific block inspect or select an existi
 last two request repository extension work. The natural-language examples express the same
 distinction. Automatic skill selection may load this skill for matching requests, but loading it
 does not change configuration; selection and extension still require the confirmations described
-below.
+below. State-changing workflow skills remain explicit-only in every harness mode; managed lifecycle
+hooks do not implicitly start them.
 
 ## Shared safety rules
 
@@ -111,9 +124,10 @@ below.
    not display strings, because Windows links and junctions can disguise the path.
 2. Never edit `.claude/`, `.codex/`, `.copilot/`, VS Code profile files, or other generated home
    targets directly. Edit the source under `home/` and render it.
-3. Keep selector dimensions independent unless the documented architecture explicitly changes. Do
-   not create copied profile trees or make one selector a side effect of another. Use the resolver
-   as the source of truth for the current selector names and values.
+3. Keep `ai_context` and `ai_harness` independent. Treat `ai_continuity` as a managed-mode option:
+   native mode suppresses its effective behavior but does not rewrite the stored value. Do not
+   create copied profile trees or make one selector mutate another. Use the resolver as the source
+   of truth for the current selector names and values.
 4. Show the proposed selector or source change before mutation. Ask for confirmation immediately
    before changing machine-local configuration or repository profile sources, and ask separately
    before `chezmoi apply` because apply can replace live configuration.
@@ -126,8 +140,9 @@ below.
 
 Use the supported chezmoi workflow:
 
-1. Run `chezmoi data` and record every effective selector and derived value exposed by the current
-   resolver.
+1. Run `chezmoi data` for the machine-local input, then render the resolver template to confirm
+   defaults and derived behavior. `chezmoi data` alone does not evaluate this repository's
+   resolver template, so do not report missing raw keys as missing effective selectors.
 2. Show the requested values and their consequences. Explain that the values are machine-local,
    are not committed, and do not synchronize through this repository.
 3. After confirmation, use `chezmoi edit-config` to set the values under `[data]`:
@@ -138,18 +153,21 @@ Use the supported chezmoi workflow:
    [data]
    ai_context = "personal"        # personal or company
    ai_continuity = "on"            # on or off
-   ai_workflow = "managed"         # managed or native
+   ai_harness = "managed"          # managed or native
    ```
 
    Do not copy this example blindly if the resolver has changed. Preserve unrelated machine-local
    configuration. Do not guess a config path or write it with an ad hoc parser;
    `chezmoi edit-config` is the portable entry point.
-4. Run `chezmoi data` again and confirm the requested values. Then run `chezmoi diff` and summarize
-   only the expected rendered changes.
+4. Run `chezmoi data` and the resolver render again to confirm the requested values and derived
+   behavior. Then run `chezmoi diff` and summarize only the expected rendered changes.
 5. Ask for confirmation before applying. Run `chezmoi apply` only after the source identity and
    diff checks pass, then run `chezmoi status` and report any remaining drift.
 6. Tell the user to restart Claude Code, Codex, and VS Code sessions that should receive the new
-   profile. The worktree and worktree-manifest skills remain available in every combination.
+   profile. Native mode keeps the statusline, shared instructions, wrappers, protections, and
+   explicit workflow skills, and lightweight notifications; it suppresses continuity guidance and
+   continuity/worktree lifecycle hooks. General shell, Git, VS Code, and Windows Terminal settings
+   are unaffected by this selector.
 
 If the user requests a value the current resolver rejects, stop and report the allowed values from
 that resolver. Do not repair an unrelated configuration problem as part of profile selection.
@@ -161,14 +179,18 @@ Read the relevant sections before editing:
 - [Machine-local AI profile selectors in the chezmoi workflow](../../../../docs/chezmoi-workflow.md)
 - [AI profile dimensions in the customization guide](../../../../docs/customization-support.md)
 - [ADR-0014](../../../../docs/decisions/0014-machine-local-ai-configuration-profiles.md)
-- [ADR-0021](../../../../docs/decisions/0021-add-native-workflow-profile-mode.md)
+- [ADR-0022](../../../../docs/decisions/0022-define-native-and-managed-ai-harness-modes.md)
 
 Then:
 
 1. Identify whether the request changes an existing value or layer, adds a new context layer,
-   adds a new independent selector, or changes how layers compose. For example, `ai_workflow`
-   selects automatic managed orchestration or manual native behavior; it does not change
-   `ai_continuity`. A new named bundle is a schema decision, not a routine selector edit.
+   adds a new independent selector, or changes how layers compose. The current composition is
+   hierarchical: `ai_harness` selects the complete managed harness or the lower-opinionated native
+   harness, while `ai_continuity` is a managed-mode option. Native mode suppresses continuity
+   without changing the stored preference, and managed mode uses that preference. A new named
+   bundle is a schema decision, not a routine selector edit. The legacy `ai_workflow` key is
+   accepted only for backward compatibility when `ai_harness` is absent; do not add it to new
+   configuration.
 2. Keep reusable content in shared templates and use thin client wrappers. Do not copy the same
    profile body into Claude, Codex, Copilot, or VS Code outputs.
 3. Update the resolver, profile layers, wrappers, and user-facing documentation together when

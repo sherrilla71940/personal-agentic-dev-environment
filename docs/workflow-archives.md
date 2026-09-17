@@ -194,7 +194,7 @@ python scripts/workflows/workflow-archive.py restore \
 ```
 
 Restore writes only missing canonical repository source files. It does not change machine-local
-`ai_context`, `ai_continuity`, or `ai_workflow`, install dependencies, recreate generated client
+`ai_context`, `ai_continuity`, or `ai_harness`, install dependencies, recreate generated client
 targets, commit, or run `chezmoi apply`. After restoration, review `git diff`, run `git diff
 --check`, run the repository pre-commit hook when applicable, and use the ordinary chezmoi
 preview/apply workflow separately.

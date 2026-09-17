@@ -2,6 +2,7 @@
 name: worktree-manifest
 description: "Author or extend a repository's .worktreeinclude, the tracked manifest that lets git wt-add, Claude Code and Codex copy approved ignored files into a new worktree. Use when provisioning reports 'manifest not found in source worktree', when a fresh worktree cannot run the app because a local config file is missing, when a repository moves configuration into ignored files so that every worktree created afterwards will need them - externalized secrets, configSource or include targets, a new .env or *.local.* file - or when the user asks which ignored files a worktree should carry."
 argument-hint: "[repo path] optional; defaults to the current repository"
+disable-model-invocation: true
 ---
 
 # Worktree manifest

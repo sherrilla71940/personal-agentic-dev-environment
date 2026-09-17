@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Render and check the eight machine-local AI profile combinations without touching live targets.
+# Render and check the eight accepted machine-local AI profile combinations without touching live
+# targets. Native continuity on/off has the same effective lifecycle behavior because continuity is
+# a managed-mode option, but both inputs remain accepted and the stored preference is preserved.
 #
 # No JSONC parser is installed on the host, so the VS Code checks carry a small string-aware one:
 # comments and trailing commas are removed outside string literals and the result is parsed as
@@ -157,7 +159,7 @@ PY
 # the whole point of continuity off: the client must see no output, the tracked state file must not
 # change, and .git/info/exclude must not gain the private-state entry the enabled helper adds.
 assert_hook_behavior() {
-  local continuity="$1" workflow="$2" hook="$3"
+  local continuity="$1" harness="$2" hook="$3"
   local fixture state exclude payload output
   local state_before exclude_before state_after exclude_after
 
@@ -188,20 +190,20 @@ assert_hook_behavior() {
   [[ "$state_before" == "$state_after" ]] ||
     fail "continuity $continuity: hook rewrote continuity state"
 
-  if [[ "$continuity" == off || "$workflow" == native ]]; then
-    [[ -z "$output" ]] || fail "continuity hook was not quiet ($continuity/$workflow)"
+  if [[ "$continuity" == off || "$harness" == native ]]; then
+    [[ -z "$output" ]] || fail "continuity hook was not quiet ($continuity/$harness)"
     [[ "$exclude_before" == "$exclude_after" ]] ||
-      fail "continuity hook changed .git/info/exclude ($continuity/$workflow)"
+      fail "continuity hook changed .git/info/exclude ($continuity/$harness)"
   else
     [[ -n "$output" ]] || fail 'managed continuity on: hook reported nothing for tracked state'
   fi
 }
 
 render_profile() {
-  local context="$1" continuity="$2" workflow="$3" destination="$4"
-  local override="$work_directory/$context-$continuity-$workflow.yaml"
-  printf 'ai_context: %s\nai_continuity: %s\nai_workflow: %s\n' \
-    "$context" "$continuity" "$workflow" > "$override"
+  local context="$1" continuity="$2" harness="$3" destination="$4"
+  local override="$work_directory/$context-$continuity-$harness.yaml"
+  printf 'ai_context: %s\nai_continuity: %s\nai_harness: %s\n' \
+    "$context" "$continuity" "$harness" > "$override"
   mkdir -p "$destination"
   "$chezmoi_bin" apply \
     --config="$config_file" \
@@ -214,7 +216,7 @@ render_profile() {
 }
 
 check_profile() {
-  local context="$1" continuity="$2" workflow="$3" destination="$4"
+  local context="$1" continuity="$2" harness="$3" destination="$4"
   local claude="$destination/.claude/CLAUDE.md"
   local codex="$destination/.codex/AGENTS.md"
   local copilot="$destination/.copilot/instructions/core.instructions.md"
@@ -278,53 +280,64 @@ check_profile() {
   assert_contains "$invocation" 'explicit `en` or `zhtw` value for `lang` overrides'
   assert_jsonc_structure "$settings" 4
   assert_json "$destination/.claude/settings.json" "$destination/.codex/hooks.json"
+  assert_contains "$destination/.claude/settings.json" 'statusLine'
+  assert_contains "$destination/.agents/skills/project-continuity/SKILL.md" 'disable-model-invocation: true'
+  assert_contains "$destination/.agents/skills/worktree-manifest/SKILL.md" 'disable-model-invocation: true'
+  assert_contains "$destination/.agents/skills/worktree-task-workflow/agents/openai.yaml" 'allow_implicit_invocation: false'
+  assert_contains "$destination/.agents/skills/project-continuity/agents/openai.yaml" 'allow_implicit_invocation: false'
+  assert_contains "$destination/.agents/skills/worktree-manifest/agents/openai.yaml" 'allow_implicit_invocation: false'
 
-  # The worktree launch check is independent of continuity and must survive both states. Gating the
-  # whole SessionStart array once removed it alongside the continuity hook, which silently disabled
-  # the warning that another session already occupies a working tree.
-  assert_contains "$destination/.claude/settings.json" 'check-worktree-launch'
+  if [[ "$harness" == managed ]]; then
+    assert_contains "$destination/.claude/settings.json" 'show-agent-notification'
+    assert_contains "$destination/.claude/settings.json" 'check-worktree-launch'
+    assert_contains "$destination/.codex/hooks.json" 'show-agent-notification'
+    if [[ "$continuity" == on ]]; then
+      assert_contains "$destination/.claude/settings.json" 'maintain-project-continuity.sh'
+      assert_contains "$destination/.codex/hooks.json" 'maintain-project-continuity.sh'
+    else
+      assert_not_contains "$destination/.claude/settings.json" 'maintain-project-continuity.sh'
+      assert_not_contains "$destination/.codex/hooks.json" 'maintain-project-continuity.sh'
+    fi
+  else
+    assert_contains "$destination/.claude/settings.json" 'show-agent-notification'
+    assert_not_contains "$destination/.claude/settings.json" 'check-worktree-launch'
+    assert_not_contains "$destination/.claude/settings.json" 'maintain-project-continuity.sh'
+    assert_contains "$destination/.codex/hooks.json" 'show-agent-notification'
+    assert_not_contains "$destination/.codex/hooks.json" 'maintain-project-continuity.sh'
+  fi
 
-  # Continuity is disabled inside the helper rather than by unwiring hooks, so the wiring is
-  # byte-identical in both states. That keeps Codex's per-entry hook trust, which is keyed by path
-  # and content hash, valid across a toggle.
-  assert_contains "$destination/.claude/settings.json" 'maintain-project-continuity.sh'
-  assert_contains "$destination/.codex/hooks.json" 'maintain-project-continuity.sh'
-
-  if [[ "$continuity" == on ]]; then
+  if [[ "$continuity" == on && "$harness" == managed ]]; then
     assert_contains "$claude" '## Project continuity'
     assert_contains "$codex" '## Project continuity'
     assert_contains "$copilot" '## Project continuity'
-    if [[ "$workflow" == managed ]]; then
-      assert_not_contains "$lifecycle_hook" 'deliberate no-op'
-      assert_not_contains "$claude" 'Continuity is manual in native workflow mode.'
-    else
-      assert_contains "$lifecycle_hook" 'deliberate no-op'
-      assert_contains "$claude" 'Continuity is manual in native workflow mode.'
-      assert_not_contains "$claude" 'If the file is absent and losing the conversation'
-    fi
   else
     assert_not_contains "$claude" '## Project continuity'
     assert_not_contains "$codex" '## Project continuity'
     assert_not_contains "$copilot" '## Project continuity'
     assert_contains "$lifecycle_hook" 'deliberate no-op'
   fi
-  assert_hook_behavior "$continuity" "$workflow" "$lifecycle_hook"
+  if [[ "$harness" == native || "$continuity" == off ]]; then
+    assert_contains "$lifecycle_hook" 'deliberate no-op'
+  else
+    assert_not_contains "$lifecycle_hook" 'deliberate no-op'
+  fi
+  assert_hook_behavior "$continuity" "$harness" "$lifecycle_hook"
 
   local source_count rendered_count
   source_count="$(find "$repository_root/home/dot_agents/skills" -type f ! -name '.*' | wc -l | tr -d ' ')"
   rendered_count="$(find "$destination/.agents/skills" -type f | wc -l | tr -d ' ')"
   [[ "$source_count" == "$rendered_count" ]] ||
-    fail "skill file count changed: source=$source_count rendered=$rendered_count ($context/$continuity)"
+    fail "skill file count changed: source=$source_count rendered=$rendered_count ($context/$continuity/$harness)"
 }
 
 for context in personal company; do
   for continuity in on off; do
-    for workflow in managed native; do
-      destination="$work_directory/render-$context-$continuity-$workflow"
-      render_profile "$context" "$continuity" "$workflow" "$destination"
-      check_profile "$context" "$continuity" "$workflow" "$destination"
-      printf 'profile tests: %s + continuity %s + workflow %s OK\n' \
-        "$context" "$continuity" "$workflow"
+    for harness in managed native; do
+      destination="$work_directory/render-$context-$continuity-$harness"
+      render_profile "$context" "$continuity" "$harness" "$destination"
+      check_profile "$context" "$continuity" "$harness" "$destination"
+      printf 'profile tests: %s + continuity %s + harness %s OK\n' \
+        "$context" "$continuity" "$harness"
     done
   done
 done
@@ -351,7 +364,7 @@ printf 'profile tests: missing-key defaults OK\n'
 
 # The documented work-machine workflow sets ai_context only and leaves the other selectors at their
 # defaults. Cover that shape explicitly: the combination loop always writes all three keys, so it
-# cannot show that unset continuity and workflow values resolve to on and managed.
+# cannot show that unset continuity and harness values resolve to on and managed.
 company_only="$work_directory/company-only.yaml"
 printf 'ai_context: company\n' > "$company_only"
 company_only_destination="$work_directory/render-company-only"
@@ -367,8 +380,39 @@ mkdir -p "$company_only_destination"
 assert_contains "$company_only_destination/.claude/CLAUDE.md" 'The active context is `company`.'
 assert_contains "$company_only_destination/.agents/skills/git-commit-action/SKILL.md" '| **Language** | `en` · `zhtw`      | `zhtw`'
 assert_contains "$company_only_destination/.claude/CLAUDE.md" '## Project continuity'
-assert_not_contains "$company_only_destination/.claude/CLAUDE.md" 'Continuity is manual in native workflow mode.'
 printf 'profile tests: explicit company with default continuity OK\n'
+
+# A native render must remove only repository-owned hook commands from an existing Claude settings
+# file. Application-owned or user-added hooks and unrelated keys survive the modify template.
+hook_merge_destination="$work_directory/render-hook-merge"
+mkdir -p "$hook_merge_destination/.claude"
+printf '%s\n' '{
+  "customSetting": "preserve",
+  "hooks": {
+    "Notification": [{"hooks": [
+      {"type": "command", "command": "bash $HOME/.local/share/show-agent-notification-macos.sh"},
+      {"type": "command", "command": "bash $HOME/custom-notification.sh"}
+    ]}],
+    "SessionStart": [{"hooks": [
+      {"type": "command", "command": "bash $HOME/.claude/hooks/check-worktree-launch.sh"},
+      {"type": "command", "command": "bash $HOME/.local/share/maintain-project-continuity.sh"},
+      {"type": "command", "command": "bash $HOME/custom-session-start.sh"}
+    ]}]
+  }
+}' > "$hook_merge_destination/.claude/settings.json"
+native_override="$work_directory/native-merge.yaml"
+printf 'ai_context: personal\nai_continuity: on\nai_harness: native\n' > "$native_override"
+"$chezmoi_bin" apply --config="$config_file" --source="$repository_root" \
+  --destination="$hook_merge_destination" --exclude=scripts \
+  --override-data-file="$native_override" --no-tty --force >/dev/null
+assert_json "$hook_merge_destination/.claude/settings.json"
+assert_contains "$hook_merge_destination/.claude/settings.json" '"customSetting": "preserve"'
+assert_contains "$hook_merge_destination/.claude/settings.json" 'custom-notification.sh'
+assert_contains "$hook_merge_destination/.claude/settings.json" 'custom-session-start.sh'
+assert_contains "$hook_merge_destination/.claude/settings.json" 'show-agent-notification'
+assert_not_contains "$hook_merge_destination/.claude/settings.json" 'check-worktree-launch'
+assert_not_contains "$hook_merge_destination/.claude/settings.json" 'maintain-project-continuity.sh'
+printf 'profile tests: native hook merge preserves unrelated settings OK\n'
 
 invalid_context="$work_directory/invalid-context.yaml"
 printf 'ai_context: unsupported\nai_continuity: on\n' > "$invalid_context"
@@ -385,12 +429,29 @@ if "$chezmoi_bin" apply --config="$config_file" --source="$repository_root" \
     --override-data-file="$invalid_continuity" --no-tty --force >/dev/null 2>&1; then
   fail 'unsupported ai_continuity rendered successfully'
 fi
-invalid_workflow="$work_directory/invalid-workflow.yaml"
-printf 'ai_context: personal\nai_continuity: on\nai_workflow: unsupported\n' > "$invalid_workflow"
+invalid_harness="$work_directory/invalid-harness.yaml"
+printf 'ai_context: personal\nai_continuity: on\nai_harness: unsupported\n' > "$invalid_harness"
 if "$chezmoi_bin" apply --config="$config_file" --source="$repository_root" \
-    --destination="$work_directory/invalid-workflow" --exclude=scripts \
-    --override-data-file="$invalid_workflow" --no-tty --force >/dev/null 2>&1; then
-  fail 'unsupported ai_workflow rendered successfully'
+    --destination="$work_directory/invalid-harness" --exclude=scripts \
+    --override-data-file="$invalid_harness" --no-tty --force >/dev/null 2>&1; then
+  fail 'unsupported ai_harness rendered successfully'
+fi
+legacy_harness="$work_directory/legacy-harness.yaml"
+printf 'ai_context: personal\nai_continuity: on\nai_workflow: native\n' > "$legacy_harness"
+legacy_destination="$work_directory/render-legacy-harness"
+mkdir -p "$legacy_destination"
+"$chezmoi_bin" apply --config="$config_file" --source="$repository_root" \
+  --destination="$legacy_destination" --exclude=scripts \
+  --override-data-file="$legacy_harness" --no-tty --force >/dev/null
+assert_contains "$legacy_destination/.claude/CLAUDE.md" 'Edit source-of-truth files'
+assert_not_contains "$legacy_destination/.claude/CLAUDE.md" '## Project continuity'
+printf 'profile tests: legacy ai_workflow compatibility OK\n'
+conflicting_harness="$work_directory/conflicting-harness.yaml"
+printf 'ai_harness: native\nai_workflow: managed\n' > "$conflicting_harness"
+if "$chezmoi_bin" apply --config="$config_file" --source="$repository_root" \
+    --destination="$work_directory/conflicting-harness" --exclude=scripts \
+    --override-data-file="$conflicting_harness" --no-tty --force >/dev/null 2>&1; then
+  fail 'conflicting ai_harness and ai_workflow rendered successfully'
 fi
 printf 'profile tests: invalid selector rejection OK\n'
 
@@ -406,7 +467,7 @@ assert_absent() {
 check_os_branch() {
   local os_name="$1" destination="$work_directory/render-os-$1"
   local override="$work_directory/os-$1.yaml"
-  printf 'ai_context: personal\nai_continuity: "on"\nai_workflow: managed\nchezmoi:\n  os: %s\n' "$os_name" > "$override"
+  printf 'ai_context: personal\nai_continuity: "on"\nai_harness: managed\nchezmoi:\n  os: %s\n' "$os_name" > "$override"
   mkdir -p "$destination"
   "$chezmoi_bin" apply \
     --config="$config_file" \

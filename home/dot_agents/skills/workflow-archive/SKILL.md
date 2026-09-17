@@ -118,7 +118,7 @@ Never archive:
 
 Record shared or machine-local prerequisites as metadata instead of copying unrelated state. The
 archive records profile assumptions for readers, but it never changes `ai_context`,
-`ai_continuity`, or `ai_workflow`.
+`ai_continuity`, or `ai_harness`.
 
 Read [the workflow archive guide](../../../../docs/workflow-archives.md) for the manifest contract,
 archive layout, exclusions, and restore boundary. Use `workflow-restore` for restoration; do not
