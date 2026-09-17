@@ -47,6 +47,11 @@ Unless supplied, derive:
 - `branch` as `{type}/{slug}/{suffix}`;
 - the worktree path as `<repo-root>/.claude/worktrees/<slug>`.
 
+Runtime isolation is optional. When the task includes an application and the invocation selects
+`runtime=auto`, use the tracked `.worktree-runtime.json` descriptor and the rendered
+`~/.local/share/worktree-runtime.py` helper. Otherwise leave runtime startup to the project or
+user and report that no per-worktree port guarantee was provided.
+
 That path is deliberate, not a copy of a terminal habit. `EnterWorktree` moves the session
 without an approval prompt only inside the repository's `.claude/worktrees/`, and no permission
 rule suppresses the prompt elsewhere. A sibling `.worktrees/` directory would therefore add one

@@ -62,12 +62,20 @@ The accepted keys are:
 | `group` | `batch` or `single` | `batch` |
 | `agent-test` | `true` or `false` | `true` |
 | `cleanup` | {{ .cleanupValues }} | `{{ .cleanupDefault }}` |
+| `runtime` | `auto` or `off` | `off` |
+| `port` | explicit port `1024`-`65535`; only with `runtime=auto` | none |
 
 An explicit `en` or `zhtw` value for `lang` overrides the active context default.
 
 `infer-task` and `agent-test` accept exactly `true` and `false`, case-insensitively. Reject empty
 values and alternate boolean spellings. `test=` is deliberately not a key: manual testing is
 never optional, while `agent-test` controls only the agent's optional verification.
+
+`runtime=auto` opts into the consuming repository's tracked `.worktree-runtime.json` descriptor
+and the user-level runtime helper. It is appropriate only when the task includes an application
+whose development server supports the descriptor's port injection method. `runtime=off` leaves
+runtime startup to the project or user. A `port=` override is rejected unless runtime isolation is
+enabled; an occupied explicit port is an error rather than a silent substitution.
 
 ## 3. Fill positional slots
 
@@ -151,6 +159,7 @@ branch     feat/cctv-pipe-inspection-record/frontend   (type and slug inferred)
 worktree   {{ .worktreeExample }}
 commit     commit | batch | zhtw
 agent-test true        cleanup  {{ .cleanupDefault }}
+runtime    off        port     none
 ```
 
 For rejection, show unresolved fields, the exact problem, and a corrected invocation when clear.

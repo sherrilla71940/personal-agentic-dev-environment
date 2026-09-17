@@ -332,6 +332,14 @@ entry point for every task. A small, self-contained edit that does not need para
 stay in the current valid worktree; choose this workflow when isolation, cross-session handoff,
 controlled verification, or publishing matters.
 
+Worktree isolation covers source and Git state, not running services or their ports. For an
+application task that needs concurrent runtime testing, invoke the workflow with `runtime=auto`
+when the consuming repository provides a tracked `.worktree-runtime.json` descriptor. The helper
+persists a preferred port per physical worktree, leases it during the server process, and reports
+fixed-port or otherwise unsupported runtime dependencies. This preserves the design boundary:
+strong runtime guarantees when the workflow is explicitly chosen, without forcing every task or
+every project into a rigid harness.
+
 `worktree-task-workflow` turns a substantial coding task into a repeatable isolated lifecycle: it
 validates the starting branch, creates a dedicated worktree and task branch, preserves task context
 across AI sessions, runs automated verification, requests a manual test, and publishes the change
@@ -682,6 +690,7 @@ Durable suites run by hand when their protected behavior changes:
 | Project-continuity lifecycle or recovery contract | `bash scripts/tests/test-project-continuity-hook.sh` |
 | AI profile selectors, composition, language defaults, or continuity toggle | `bash scripts/tests/test-ai-configuration-profiles.sh` |
 | Workflow archive, restore, and deletion contract | `bash scripts/tests/test-workflow-archive.sh` |
+| Worktree runtime descriptor, allocation, and port lease | `python scripts/tests/test-worktree-runtime.py -v` |
 
 Instructions get tested too. `scripts/tests/continuity-fixtures/` holds paired prompts and
 expected behavior for the cases continuity handling gets wrong — an unrelated question arriving
@@ -706,14 +715,14 @@ home/                              chezmoi source state
   dot_bashrc · dot_zshrc.tmpl      shell startup files
   dot_gitconfig.tmpl               Git identity, aliases, and global excludes link
   dot_config/git/ignore            personal AI and continuity excludes
-  dot_local/share/                 worktree provisioning and notification helpers
+  dot_local/share/                 worktree provisioning, runtime, and notification helpers
 
 scripts/bootstrap/                 manual new-machine setup
 scripts/install/                   Claude MCP installers
 scripts/manifests/                 MCP, VS Code extension, and workflow declarations
 scripts/workflows/                 repository workflow archive and deletion tooling
 scripts/diagnostics/               doctor, config-usage, and settings-drift reports
-scripts/tests/                     profile, continuity, and worktree suites
+scripts/tests/                     profile, continuity, worktree, and runtime suites
 scripts/git-hooks/                 pre-commit and Markdown link validation
 archives/workflows/                tracked reusable workflow archives
 docs/                              setup, workflow, customization, and ADR guides
@@ -727,6 +736,7 @@ docs/                              setup, workflow, customization, and ADR guide
 | Add an AI instruction, skill, agent, prompt, MCP server, or plugin | [docs/customization-support.md](./docs/customization-support.md) |
 | Find out which client surface reads a given customization | [the support table](./docs/customization-support.md#what-the-support-table-answers) |
 | Run an isolated task or provision ignored local files in a worktree | [docs/worktree-provisioning.md](./docs/worktree-provisioning.md) |
+| Run parallel app instances in separate worktrees | [docs/worktree-runtime.md](./docs/worktree-runtime.md) |
 | Archive, restore, or delete a reusable workflow | [docs/workflow-archives.md](./docs/workflow-archives.md) |
 | Understand why the repository uses this structure | [docs/decisions/README.md](./docs/decisions/README.md) |
 | Understand why a rule exists before removing it | [docs/rule-rationale.md](./docs/rule-rationale.md) |

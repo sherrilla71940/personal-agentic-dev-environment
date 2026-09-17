@@ -97,6 +97,13 @@ mandatory entry point for every task: a small, self-contained edit that does not
 isolation may remain in the current valid worktree. Choose it when isolation, cross-session handoff,
 controlled verification, or publishing matters.
 
+Worktree isolation covers source and Git state, not running services or their ports. For concurrent
+application testing, see the [per-worktree runtime guide](./worktree-runtime.md) and invoke the task
+workflow with `runtime=auto` only when the consuming project provides its authoritative tracked
+`.worktree-runtime.json`. Without that descriptor, source isolation remains valid but concurrent
+runtime testing is not guaranteed. This preserves strong guarantees when the workflow is explicitly
+chosen without making every task or project use a rigid runtime harness.
+
 The wrapper options are:
 
 | Option | Effect |

@@ -5,10 +5,12 @@
   "dependencies": [
     "Git worktree support",
     "chezmoi for rendering client-specific references",
-    "Claude Code or Codex worktree support"
+    "Claude Code or Codex worktree support",
+    "Python 3 for optional runtime isolation"
   ],
   "profileAssumptions": [
-    "Rendered reference files use the current ai_context, ai_continuity, and ai_harness selectors; restore never changes those selectors."
+    "Rendered reference files use the current ai_context, ai_continuity, and ai_harness selectors; restore never changes those selectors.",
+    "Runtime isolation is an explicit task option and uses a consuming project's authoritative .worktree-runtime.json when present."
   ],
   "sharedFiles": [],
   "targets": [
@@ -29,6 +31,9 @@
     "home/.chezmoitemplates/skills/worktree-task-workflow/invocation.md",
     "home/.chezmoitemplates/skills/worktree-task-workflow/lifecycle.md",
     "home/.chezmoitemplates/skills/worktree-task-workflow/publish.md",
-    "docs/worktree-provisioning.md"
+    "home/dot_local/share/worktree-runtime.py",
+    "docs/worktree-provisioning.md",
+    "docs/worktree-runtime.md",
+    "scripts/tests/test-worktree-runtime.py"
   ]
 }

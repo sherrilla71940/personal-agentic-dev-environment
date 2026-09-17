@@ -298,6 +298,11 @@ worktree。CWD 用來辨識儲存庫、檢查 worktree 註冊資訊，以及從�
 這套流程是明確叫用的選項，適用於實質或需要隔離的工作，不是每項任務都必須經過的入口。簡單、單一且不需要平行隔離的修改，
 可以留在目前有效的 worktree；只有在需要隔離、跨工作階段交接、受控驗證或發佈時，才選用這套流程。
 
+Worktree 隔離涵蓋來源與 Git 狀態，但不會隔離執行中的服務或其連接埠。需要平行測試應用程式時，請在使用中的儲存庫提供追蹤中的
+`.worktree-runtime.json` 描述檔後，以 `runtime=auto` 明確叫用這套流程。這個 helper 會為每個實體 worktree 保留偏好的連接埠，
+在伺服器執行期間取得 lease，並回報固定連接埠或其他無法支援隔離的執行環境相依項目。這保留了我們約定的設計邊界：只有在明確選用
+流程時才提供強而有力的執行環境保證，不會強迫每項任務或每個專案都套用僵化的 harness。
+
 `worktree-task-workflow` 會把一項實質的開發任務轉成可重複的隔離流程：先驗證起始分支，建立專用 worktree 與任務分支，讓任務脈絡
 能跨 AI 工作階段保留，執行自動化驗證，請求使用者進行人工測試，再把變更發佈到正確的基底分支。這能降低分支或基底選錯、脈絡遺失、
 漏做驗證、request 目標不一致，以及同時處理多個任務或 AI 用戶端時的手動設定負擔。
@@ -610,6 +615,7 @@ pre-commit hook 會把 staged 的來源產生到暫存目錄——絕不寫進�
 | 專案連續性的生命週期或復原契約 | `bash scripts/tests/test-project-continuity-hook.sh` |
 | AI profile 選擇器、組合方式、語言預設值或連續性開關 | `bash scripts/tests/test-ai-configuration-profiles.sh` |
 | workflow archive／restore／delete 契約 | `bash scripts/tests/test-workflow-archive.sh` |
+| Worktree runtime descriptor、配置與連接埠 lease | `python scripts/tests/test-worktree-runtime.py -v` |
 
 連指示本身也有測試。`scripts/tests/continuity-fixtures/` 收了成對的 prompt 與預期行為，針對的是
 連續性最容易處理錯的情境——狀態還在的時候突然冒出一個無關問題、實質換了另一個任務、使用者明確
@@ -632,14 +638,14 @@ home/                              chezmoi 來源狀態
   dot_bashrc · dot_zshrc.tmpl      Shell 啟動檔
   dot_gitconfig.tmpl               Git 身分、別名與全域排除檔連結
   dot_config/git/ignore            個人 AI 與連續性排除規則
-  dot_local/share/                 worktree 佈建與通知輔助程式
+  dot_local/share/                 worktree 佈建、runtime 與通知輔助程式
 
 scripts/bootstrap/                 手動執行的新電腦設定
 scripts/install/                   Claude MCP 安裝程式
 scripts/manifests/                 MCP、VS Code 擴充功能與 workflow 宣告
 scripts/workflows/                 儲存庫 workflow archive 與 deletion 工具
 scripts/diagnostics/               doctor、設定使用狀況與設定落差報告
-scripts/tests/                     profile、連續性與 worktree 測試
+scripts/tests/                     profile、連續性、worktree 與 runtime 測試
 scripts/git-hooks/                 pre-commit 與 Markdown 連結驗證
 archives/workflows/                受 Git 追蹤的可重複使用 workflow archive
 docs/                              設定、工作流程、自訂與 ADR 指南

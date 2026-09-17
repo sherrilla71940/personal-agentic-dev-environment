@@ -482,12 +482,14 @@ check_os_branch() {
   if [[ "$os_name" == darwin ]]; then
     settings="$destination/Library/Application Support/Code/User/settings.json"
     assert_absent "$destination/AppData" "darwin render produced a Windows AppData tree"
+    assert_file "$destination/.local/share/worktree-runtime.py"
     assert_file "$destination/.local/share/git-worktree-provision.sh"
     assert_absent "$destination/.local/share/git-worktree-provision.ps1" \
       "darwin render kept the PowerShell worktree helper"
   else
     settings="$destination/AppData/Roaming/Code/User/settings.json"
     assert_absent "$destination/Library" "windows render produced a macOS Library tree"
+    assert_file "$destination/.local/share/worktree-runtime.py"
     assert_file "$destination/.local/share/git-worktree-provision.ps1"
     assert_absent "$destination/.local/share/git-worktree-provision.sh" \
       "windows render kept the POSIX worktree helper"

@@ -37,6 +37,11 @@ $worktree-task-workflow <base-branch> "<task>" [materials...] [options...]
 $worktree-task-workflow <base-branch> --infer-task <materials...> [options...]
 ```
 
+For an application task that needs concurrent runtime testing, add `runtime=auto` and use the
+project's tracked `.worktree-runtime.json` descriptor. An explicit `port=<number>` may override
+the descriptor's preferred allocation. Leave runtime at its default `off` for tasks that do not
+need an application server; this workflow is not a mandatory runtime harness.
+
 `base` is required and means the user-provided existing branch on `origin`. The workflow creates
 the task branch from `origin/<base>` in a new worktree, and the eventual pull or merge request
 targets that same base branch. Task identity requires exactly one non-empty explicit task or

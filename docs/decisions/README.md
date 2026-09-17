@@ -46,6 +46,7 @@ agent session.
 | [0020](./0020-archive-or-delete-workflow-lifecycle.md) | Accepted | Make archive a recoverable copy plus source deletion, with an explicit no-archive delete path |
 | [0021](./0021-add-native-workflow-profile-mode.md) | Superseded by 0022 | First, narrower native mode; retained as historical context |
 | [0022](./0022-define-native-and-managed-ai-harness-modes.md) | Accepted | Define `ai_harness` native and managed boundaries, including retained notifications and conditional lifecycle hooks |
+| [0023](./0023-optional-per-worktree-runtime-isolation.md) | Accepted | Add explicit, descriptor-driven per-worktree HTTP port isolation without coupling it to AI profiles |
 
 ## Template
 

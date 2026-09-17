@@ -78,6 +78,27 @@ project rather than per worktree, so another worktree of the same repository may
 port and be serving a different build under the URL being tested. Establish which directory the
 running server was started from before trusting what it returns.
 
+When the invocation selects `runtime=auto`, use the consuming repository's tracked
+`.worktree-runtime.json` descriptor and the rendered user-level helper:
+
+```text
+python "$HOME/.local/share/worktree-runtime.py" inspect
+python "$HOME/.local/share/worktree-runtime.py" start [--port <explicit-port>]
+```
+
+The helper keeps the preferred port assignment outside the worktree, keyed to the physical
+worktree, acquires an inter-process lease before starting the server, retries bounded collisions,
+and verifies both the health URL and the listening process. Keep it running in a dedicated terminal
+for the manual test. If the descriptor is absent, report that runtime isolation is unconfigured;
+source and Git isolation remain valid, but concurrent runtime testing is not guaranteed. If the
+descriptor cannot inject a port, report parallel runtime execution as unsupported rather than
+silently testing another worktree's server. `runtime=off` uses the project's ordinary startup
+procedure and must state that no per-worktree port guarantee was provided.
+
+The descriptor may classify databases, caches, queues, Docker services, and external services as
+`per-worktree`, `shared-safe`, or `unsupported`. V1 reports those classifications but does not
+clone databases, create namespaces, manage containers, or copy runtime state.
+
 `agent-test=true` requests proportionate checks that can catch defects in this change: typecheck,
 lint, focused tests, a meaningful build, and a targeted browser or runtime pass for visual work
 when available. `agent-test=false` skips optional verification, but still requires cheap minimum
