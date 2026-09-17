@@ -1,6 +1,6 @@
 ---
 name: workflow-archive
-description: "Discover, confirm, archive, and retire a reusable workflow as one recoverable operation; do not archive generated or private state."
+description: "Discover, confirm, archive, and remove the active sources of a reusable workflow as one recoverable operation; do not archive generated or private state."
 argument-hint: "[workflow name or description] [archive-id?] [reason?]"
 disable-model-invocation: true
 ---
@@ -17,21 +17,21 @@ separate `chezmoi apply` after the user reviews the rendered diff. Use `workflow
 active sources should be removed without creating an archive.
 
 Archiving is explicit-only and user-invokable in each supported client. The examples are prompts,
-not shell commands. The user may name a workflow or describe what should be preserved; the user
+not shell commands. The user may name a workflow or describe what should be archived; the user
 does not need to know its manifest path:
 
 Claude Code:
 
 ```text
-/workflow-archive preserve the current worktree task workflow before retirement
-/workflow-archive project continuity implementation
+/workflow-archive archive the current worktree task workflow and remove its active sources
+/workflow-archive archive the project-continuity implementation only; exclude runtime state
 ```
 
 Codex CLI or IDE extension:
 
 ```text
-$workflow-archive preserve the current worktree task workflow before retirement
-$workflow-archive project continuity implementation
+$workflow-archive archive the current worktree task workflow and remove its active sources
+$workflow-archive archive the project-continuity implementation only; exclude runtime state
 ```
 
 ## Discovery and confirmation
@@ -63,7 +63,7 @@ $workflow-archive project continuity implementation
    operation. If the user did not provide an archive ID, inspect existing IDs and propose a new
    lowercase kebab-case ID; never overwrite an existing archive.
 
-## Archive and retire the active sources
+## Archive and remove the active sources
 
 After the inventory confirmation, run the repository engine with the reviewed definition. The
 first run is a dry run:
@@ -117,13 +117,13 @@ Never archive:
 - an inferred recursive file closure.
 
 Record shared or machine-local prerequisites as metadata instead of copying unrelated state. The
-archive records profile assumptions for readers, but it never changes `ai_context` or
-`ai_continuity`.
+archive records profile assumptions for readers, but it never changes `ai_context`,
+`ai_continuity`, or `ai_workflow`.
 
 Read [the workflow archive guide](../../../../docs/workflow-archives.md) for the manifest contract,
 archive layout, exclusions, and restore boundary. Use `workflow-restore` for restoration; do not
-add restore behavior to this skill. Use `workflow-delete` for permanent source deletion without
-creating an archive.
+add restore behavior to this skill. Use `workflow-delete` for source deletion without creating an
+archive.
 
 ## Delete an archive copy
 

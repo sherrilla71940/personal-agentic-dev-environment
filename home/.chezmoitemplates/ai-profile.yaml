@@ -6,12 +6,20 @@
 {{- if hasKey . "ai_continuity" -}}
 {{-   $aiContinuity = index . "ai_continuity" -}}
 {{- end -}}
+{{- $aiWorkflow := "managed" -}}
+{{- if hasKey . "ai_workflow" -}}
+{{-   $aiWorkflow = index . "ai_workflow" -}}
+{{- end -}}
 {{- if not (or (eq $aiContext "personal") (eq $aiContext "company")) -}}
 {{-   fail (printf "invalid ai_context %q: expected personal or company" $aiContext) -}}
 {{- end -}}
 {{- if not (or (eq $aiContinuity "on") (eq $aiContinuity "off")) -}}
 {{-   fail (printf "invalid ai_continuity %q: expected on or off" $aiContinuity) -}}
 {{- end -}}
+{{- if not (or (eq $aiWorkflow "managed") (eq $aiWorkflow "native")) -}}
+{{-   fail (printf "invalid ai_workflow %q: expected managed or native" $aiWorkflow) -}}
+{{- end -}}
 ai_context: {{ $aiContext | quote }}
 ai_continuity: {{ $aiContinuity | quote }}
+ai_workflow: {{ $aiWorkflow | quote }}
 artifact_language: {{ if eq $aiContext "company" }}"zhtw"{{ else }}"en"{{ end }}

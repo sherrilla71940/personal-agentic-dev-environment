@@ -204,7 +204,7 @@ other machines. Do not commit machine-specific values or credentials.
 
 ## Select the machine-local AI profile
 
-After initialization, choose the two independent profile dimensions with `chezmoi edit-config`.
+After initialization, choose the three independent profile selectors with `chezmoi edit-config`.
 The values, defaults, validation behavior, language mapping, and repository-level override are
 documented in [the machine-local selector guide](./chezmoi-workflow.md#machine-local-ai-profile-selectors).
 
@@ -347,7 +347,7 @@ That hook is Claude-only, because it shells out to `claude agents --json` and sp
 `EnterWorktree`. Project-continuity reporting used to live in it too and no longer does; it is
 described next.
 
-When `ai_continuity` is `on`, the script rendered from
+When `ai_continuity` is `on` and `ai_workflow` is `managed`, the script rendered from
 `home/dot_local/share/maintain-project-continuity.sh.tmpl` adds the
 deterministic reporting that the skill cannot do for itself. On `SessionStart` it reports whether
 continuity exists and, when it does, names the objective it tracks, so the decision about whether
@@ -363,12 +363,13 @@ ancestor but more than one commit behind means a checkpoint opportunity passed w
 being rewritten; one commit behind is work in flight and stays silent, because a notice after
 every commit is one readers learn to ignore. The script never reads or copies the transcript.
 
-With `ai_continuity = "off"`, the hook entries stay wired but the script renders as a deliberate
-no-op: it drains the event payload, prints nothing, and creates, updates, reconciles, and excludes
-nothing. Leaving the wiring alone is what keeps the independent worktree launch check in Claude's
-`SessionStart` array active, and it keeps Codex's per-entry hook trust valid across a toggle, since
-that trust is keyed by each entry's path and content hash. The `project-continuity` skill remains
-installed for explicit continuity requests.
+With `ai_continuity = "off"` or `ai_workflow = "native"`, the hook entries stay wired but the
+script renders as a deliberate no-op: it drains the event payload, prints nothing, and creates,
+updates, reconciles, and excludes nothing. In native mode, continuity guidance remains available
+when `ai_continuity` is on, but use of it is manual. Leaving the wiring alone is what keeps the
+independent worktree launch check in Claude's `SessionStart` array active, and it keeps Codex's
+per-entry hook trust valid across a toggle, since that trust is keyed by each entry's path and
+content hash. The `project-continuity` skill remains installed for explicit continuity requests.
 
 It lives in `~/.local/share` rather than under `~/.claude` because **both Claude Code and Codex
 run it**. They share hook event names, stdin fields (`cwd`, `hook_event_name`, `session_id`,

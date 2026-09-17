@@ -1,6 +1,6 @@
 ---
 name: workflow-delete
-description: "Discover and permanently delete a reusable workflow without creating an archive; schedule only confirmed generated-target cleanup."
+description: "Discover and delete the active sources of a reusable workflow without creating an archive; schedule only confirmed generated-target cleanup."
 argument-hint: "[workflow name or description]"
 disable-model-invocation: true
 ---
@@ -62,8 +62,8 @@ python scripts/workflows/workflow-archive.py delete \
 ```
 
 The engine must show the owned files to delete, shared files to keep, catalog treatment, generated
-targets to queue, the fact that no archive is created, existing archives, and continuity
-preservation. Stop and ask for a second, immediate confirmation before repeating with `--apply`:
+targets to queue, the fact that no archive is created, existing archives, and continuity state to
+keep. Stop and ask for a second, immediate confirmation before repeating with `--apply`:
 
 ```bash
 python scripts/workflows/workflow-archive.py delete \

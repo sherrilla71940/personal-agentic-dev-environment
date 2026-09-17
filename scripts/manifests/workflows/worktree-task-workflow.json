@@ -8,7 +8,7 @@
     "Claude Code or Codex worktree support"
   ],
   "profileAssumptions": [
-    "Rendered reference files use the current ai_context and ai_continuity selectors; restore never changes those selectors."
+    "Rendered reference files use the current ai_context, ai_continuity, and ai_workflow selectors; restore never changes those selectors."
   ],
   "sharedFiles": [],
   "targets": [

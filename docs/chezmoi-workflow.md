@@ -40,25 +40,29 @@ state. Run `chezmoi edit-config` and set these values under `[data]` when needed
 [data]
 ai_context = "company"        # personal or company; default: personal
 ai_continuity = "on"           # on or off; default: on
+ai_workflow = "managed"        # managed or native; default: managed
 ```
 
-The four supported combinations are personal + continuity on, personal + continuity off, company +
-continuity on, and company + continuity off. Missing `ai_context` uses `personal`; missing
-`ai_continuity` uses `on`. Any other value fails clearly during rendering. Personal context resolves
-the applicable artifact-language default to English (`en`); company resolves it to Traditional
-Chinese (`zh-TW`, represented as `zhtw` where an existing interface uses that value). Explicit
-user or repository instructions and explicit language arguments take precedence.
+The three selectors produce eight supported combinations. Missing `ai_context` uses `personal`,
+missing `ai_continuity` uses `on`, and missing `ai_workflow` uses `managed`. Any other value fails
+clearly during rendering. Personal context resolves the applicable artifact-language default to
+English (`en`); company resolves it to Traditional Chinese (`zh-TW`, represented as `zhtw` where an
+existing interface uses that value). Explicit user or repository instructions and explicit
+language arguments take precedence.
 
 The selectors compose one baseline with either the personal or company context and, independently,
-continuity instructions and hooks when continuity is on. They affect newly rendered configuration
-and newly started sessions; an already-running session keeps its startup context. The values are
-local to the machine and are not committed or synchronized by this repository. When working in
-this repository, root `AGENTS.md` overrides the machine context and requires the effective
-context to be `personal`.
+continuity guidance when continuity is on. `ai_workflow = "managed"` enables the automatic
+continuity lifecycle helper; `ai_workflow = "native"` keeps the shared guidance and explicit
+skills available but makes continuity manual and leaves the helper a no-op. The worktree task and
+worktree manifest skills remain explicit opt-ins in either mode. The selectors affect newly
+rendered configuration and newly started sessions; an already-running session keeps its startup
+context. The values are local to the machine and are not committed or synchronized by this
+repository. When working in this repository, root `AGENTS.md` overrides the machine context and
+requires the effective context to be `personal`.
 
 After editing the config, use `chezmoi diff` to preview the selected render. Review it before
 `chezmoi apply`, then restart the affected client sessions. A dedicated profile CLI is deferred;
-the worktree skills remain installed and independently invokable in every profile.
+the worktree skills remain installed and independently invokable in every selector combination.
 
 ## Archive, restore, or delete reusable workflows
 

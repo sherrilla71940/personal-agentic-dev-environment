@@ -3,6 +3,10 @@
 - Status: Accepted
 - Date: 2026-09-14
 
+This decision remains in force as the v1 baseline for the two selectors it introduced. ADR-0021
+extends that schema with an independent workflow-mode choice; references below to exactly two
+selectors or four combinations describe this record's original scope, not the current schema.
+
 ## Context
 
 The developer environment repository serves personal and company machines from one cross-platform chezmoi
@@ -24,7 +28,8 @@ Keep one canonical source tree and compose three layers at render time:
 shared baseline + personal OR company context + continuity when enabled
 ```
 
-Use exactly these machine-local selectors in the chezmoi configuration file's `[data]` section:
+Use these two machine-local selectors in the chezmoi configuration file's `[data]` section:
+ADR-0021 adds `ai_workflow` as a third independent selector.
 
 | Selector | Supported values | Missing-key default |
 | --- | --- | --- |
@@ -118,10 +123,11 @@ the context default.
 
 ## Consequences
 
-Newly rendered configuration is deterministic for all four combinations. Changing a selector does
-not modify tracked source files and does not automatically apply the result. Users must preview
-with `chezmoi diff`, apply only after reviewing the preview, and restart Claude Code, Codex, or
-VS Code so a new session reads the rendered configuration.
+Within this decision's original scope, newly rendered configuration was deterministic for all four
+combinations. The current schema, extended by ADR-0021, is deterministic for all eight combinations.
+Changing a selector does not modify tracked source files and does not automatically apply the result.
+Users must preview with `chezmoi diff`, apply only after reviewing the preview, and restart Claude
+Code, Codex, or VS Code so a new session reads the rendered configuration.
 
 Already-running sessions retain the startup context they already loaded. The selectors are
 machine-wide, so users who need concurrent personal and company sessions must use separate machines
@@ -139,10 +145,10 @@ the test on a structural error that balanced delimiters alone would not catch.
 - `home/.chezmoitemplates/core.md`, `profiles/`, and `continuity.md` compose the instruction layers.
 - Claude, Codex, and VS Code wrappers pass the root template data explicitly.
 - `home/dot_local/share/maintain-project-continuity.sh.tmpl` carries the continuity-off no-op guard.
-- `scripts/tests/test-ai-configuration-profiles.sh` renders all four combinations, defaults, and invalid
-  values without changing live targets. It asserts that the worktree launch check survives both
-  continuity states, and runs the rendered helper against a throwaway repository to prove that
-  continuity off prints nothing and changes neither the state file nor `.git/info/exclude`.
+- `scripts/tests/test-ai-configuration-profiles.sh` renders all combinations defined by the current
+  schema, defaults, and invalid values without changing live targets. It asserts that the worktree
+  launch check survives every continuity/workflow mode, and runs the rendered helper against a
+  throwaway repository to prove that automatic lifecycle reporting is quiet when disabled.
 - Run `bash scripts/tests/test-ai-configuration-profiles.sh` from Git Bash or macOS Bash, then run the
   repository pre-commit hook for staged-source rendering and cross-client structural checks.
 

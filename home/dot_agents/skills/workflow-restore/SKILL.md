@@ -55,9 +55,9 @@ $workflow-restore archives/workflows/worktree-task-workflow/v1
    automatically; those are separate user-approved actions.
 
 An archive can record the profile assumptions and dependencies it had when created. Restoration
-must report them without changing the machine's `ai_context` or `ai_continuity` values. Use
-`ai-profile` separately when a user wants to select an existing profile.
+must report them without changing the machine's `ai_context`, `ai_continuity`, or `ai_workflow`
+values. Use `ai-profile` separately when a user wants to select an existing profile.
 
 Read [the workflow archive guide](../../../../docs/workflow-archives.md) for the manifest contract,
 archive layout, exclusions, and post-restore validation. Use `workflow-archive` to create a new
-archive-and-retire copy; do not add archive behavior to this skill.
+archive and remove its active sources; do not add archive behavior to this skill.

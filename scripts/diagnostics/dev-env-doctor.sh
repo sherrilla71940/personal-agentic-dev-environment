@@ -54,10 +54,11 @@ if [[ -n "${source_path:-}" && -f "$source_path/.chezmoitemplates/ai-profile.yam
   profile_output="$(chezmoi execute-template --file "$source_path/.chezmoitemplates/ai-profile.yaml" 2>&1 || true)"
   profile_context="$(printf '%s\n' "$profile_output" | tr -d '\r' | sed -n 's/^ai_context: "\(.*\)"$/\1/p')"
   profile_continuity="$(printf '%s\n' "$profile_output" | tr -d '\r' | sed -n 's/^ai_continuity: "\(.*\)"$/\1/p')"
+  profile_workflow="$(printf '%s\n' "$profile_output" | tr -d '\r' | sed -n 's/^ai_workflow: "\(.*\)"$/\1/p')"
   profile_language="$(printf '%s\n' "$profile_output" | tr -d '\r' | sed -n 's/^artifact_language: "\(.*\)"$/\1/p')"
-  if [[ -n "$profile_context" && -n "$profile_continuity" && -n "$profile_language" ]]; then
-    printf 'machine selectors: ai_context=%s, ai_continuity=%s, artifact_language=%s\n' \
-      "$profile_context" "$profile_continuity" "$profile_language"
+  if [[ -n "$profile_context" && -n "$profile_continuity" && -n "$profile_workflow" && -n "$profile_language" ]]; then
+    printf 'machine selectors: ai_context=%s, ai_continuity=%s, ai_workflow=%s, artifact_language=%s\n' \
+      "$profile_context" "$profile_continuity" "$profile_workflow" "$profile_language"
     pass 'machine-local profile values render successfully'
   else
     fail "machine-local profile could not be rendered: $profile_output"

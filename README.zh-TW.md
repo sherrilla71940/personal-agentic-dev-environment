@@ -73,7 +73,7 @@ flowchart LR
     end
 
     subgraph render["組合與交付"]
-        instructionAdapters["直接嵌入共用核心<br/>選擇 profile 與連續性"]
+        instructionAdapters["直接嵌入共用核心<br/>選擇 profile、workflow 模式與連續性"]
         ruleAdapters["加入套用範圍 metadata<br/>Claude：paths／Copilot：applyTo"]
         skillDelivery["產生技能<br/>連結與主機閘門"]
         osAdapters["產生作業系統專用<br/>VS Code 目標"]
@@ -167,23 +167,26 @@ flowchart LR
 
 ## 本機 profile 與連續性
 
-Chezmoi 的本機設定中有兩個彼此獨立的值，用來選擇產生出來的 AI profile，兩者都不會被 commit：
+Chezmoi 的本機設定中有三個彼此獨立的值，用來選擇產生出來的 AI profile，這些值都不會被 commit：
 
 ```toml
 [data]
 ai_context = "company"        # personal 或 company
 ai_continuity = "on"          # on 或 off
+ai_workflow = "managed"       # managed 或 native
 ```
 
 | 選擇器 | 控制什麼 | 預設值與界線 |
 | --- | --- | --- |
 | `ai_context` | personal 或 company 情境層、它的產出語言預設值，以及應用程式與專案儲存庫的預設註解語言。 | 未設定時等同 `personal`；其他值會讓產生失敗。 |
-| `ai_continuity` | 連續性指示與自動生命週期回報是否啟用。 | 未設定時等同 `on`；其他值會讓產生失敗。關閉後連續性技能仍可手動叫用。 |
+| `ai_continuity` | 是否載入連續性指引。 | 未設定時等同 `on`；其他值會讓產生失敗。關閉後連續性技能仍可手動叫用。 |
+| `ai_workflow` | `managed` 啟用自動連續性生命週期回報；`native` 保留指引與可明確叫用的技能，但改為手動處理。 | 未設定時等同 `managed`；其他值會讓產生失敗。兩種模式都保留明確叫用 workflow 技能的能力。 |
 
 組合方式是：
 
 ```text
-共用基準 + personal 或 company 情境 + 啟用時加上連續性
+共用基準 + personal 或 company 情境 + 啟用時加上連續性指引
+連續性開啟且 workflow 模式為 managed 時加上自動生命週期回報
 ```
 
 改動選擇器只影響之後產生的設定與之後啟動的工作階段；正在執行中的工作階段仍維持啟動時的情境。
@@ -200,8 +203,8 @@ dotfiles，也不會翻譯這份 README。明確傳入 `en` 或 `zhtw` 可以覆
 
 - `.project-continuity/state.md` 記錄目標、階段、下一步、阻礙、假設與驗證狀態——它記的是工作停在
   哪裡、為什麼停，不是專案文件。
-- Claude Code 與 Codex 有生命週期回報，會找出現有狀態並指出分支或 `HEAD` 的落差。Copilot 可以遵循
-  同一套協定，只是沒有自動 hook。
+- workflow 模式為 managed 時，Claude Code 與 Codex 會回報現有狀態，並指出分支或 `HEAD` 的落差。native
+  模式在連續性開啟時仍保留指引，但改由手動處理；Copilot 可以遵循同一套協定，只是沒有自動 hook。
 - Git 仍然是依據。連續性提供的是脈絡與最後已知狀態，不能用來證明某件事已經完成。
 - 狀態檔由 Git 忽略，兼顧隱私與方便。它是本機交接檔，不是加密保險庫，所以這套流程明文禁止把憑證
   放進去。
@@ -263,8 +266,10 @@ worktree task workflow 負責提供隔離的實體目錄；專案連續性則把
 例如，Codex 工作階段到達 token 上限而結束後，請在同一個 worktree 開啟新的 Codex 工作階段，輸入
 `continue from project continuity`。Codex 會讀取 `.project-continuity/state.md`，從記錄的下一步繼續。
 
-把 `ai_continuity` 關掉後，永遠載入的連續性指引會移除，共用的生命週期輔助程式則變成空操作。Hook
-項目仍然保留註冊，所以獨立的 Claude worktree 啟動檢查照常運作，Codex 也不需要在切換後重新信任 hook。
+把 `ai_continuity` 關掉後，永遠載入的連續性指引會移除，共用的生命週期輔助程式則變成空操作。`ai_workflow = "native"`
+也會讓這個輔助程式變成空操作，但在連續性開啟時保留手動指引。Hook 項目仍然保留註冊，所以獨立的 Claude
+worktree 啟動檢查照常運作，Codex 也不需要在切換後重新信任 hook。明確叫用的 worktree 與連續性技能在所有組合中
+都保留。
 
 ### 平行處理多個任務又不會弄丟狀態
 

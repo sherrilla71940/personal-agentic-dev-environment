@@ -48,9 +48,9 @@ must never mistake stored source copies for active configuration.
 
 ## Consequences
 
-Users can say “archive this workflow” and receive both preservation and source retirement in the
-expected order. Users can say “delete this workflow” when no new recovery copy is wanted. Both
-operations still require exact-boundary review, and neither silently removes live targets.
+Users can say “archive this workflow” and receive a source copy followed by active-source removal
+in the expected order. Users can say “delete this workflow” when no new recovery copy is wanted.
+Both operations still require exact-boundary review, and neither silently removes live targets.
 
 An archive operation can leave an archive copy if a later source-deletion step fails; the engine
 reports that partial result so it can be reviewed rather than silently retrying. Existing archives

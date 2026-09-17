@@ -8,24 +8,28 @@ argument-hint: "[show|select|extend] [selector=value ...]"
 
 Manage the repository's AI profile without editing generated client files or duplicating profile
 trees. The profile resolver and its documentation define the current machine-local selectors. The
-current schema exposes two independent selectors:
+current schema exposes three independent selectors:
 
 ```text
 ai_context    = personal | company
 ai_continuity = on | off
+ai_workflow   = managed | native
 ```
 
 The rendered result is:
 
 ```text
-shared baseline + selected context + continuity when enabled
+shared baseline + selected context + continuity guidance when enabled
+automatic lifecycle reporting when continuity is enabled and workflow is managed
 ```
 
 In the current schema, `personal` is the default context and uses English for applicable artifact
 text. `company` uses Traditional Chinese for Taiwan (`zhtw` where an interface uses that value).
-`on` is the default continuity state. Invalid values must fail rendering rather than produce a
-partial profile. If the resolver changes, treat its keys, allowed values, defaults, and derived
-fields as authoritative and update this summary with the schema change.
+`on` is the default continuity state. `managed` is the default workflow mode and enables the
+automatic continuity lifecycle helper. `native` keeps the shared guidance and explicit skills but
+makes continuity manual and the helper a no-op. Invalid values must fail rendering rather than
+produce a partial profile. If the resolver changes, treat its keys, allowed values, defaults, and
+derived fields as authoritative and update this summary with the schema change.
 
 ## Route the request
 
@@ -54,7 +58,7 @@ A **profile** is the complete resolved configuration produced by the current sel
 Use these terms to distinguish selection from schema changes:
 
 - **Profile selection:** Choose values already accepted by the current resolver, such as
-  `ai_context=company` with `ai_continuity=on`.
+  `ai_context=company`, `ai_continuity=on`, and `ai_workflow=managed`.
 - **Profile schema:** The selector keys, allowed values, defaults, derived fields, and composition
   rules that define how profiles render.
 - **Preset:** A named bundle of selector values. The current implementation does not support
@@ -69,7 +73,7 @@ In Claude Code, invoke the skill with a slash command:
 
 ```text
 /ai-profile show
-/ai-profile select ai_context=company ai_continuity=on
+/ai-profile select ai_context=company ai_continuity=on ai_workflow=managed
 /ai-profile extend: add a review context layer
 /ai-profile extend: add a review-mode selector
 ```
@@ -78,7 +82,7 @@ In Codex CLI or the IDE extension, mention the skill with `$`:
 
 ```text
 $ai-profile show
-$ai-profile select ai_context=company ai_continuity=on
+$ai-profile select ai_context=company ai_continuity=on ai_workflow=native
 $ai-profile extend: add a review context layer
 $ai-profile extend: add a review-mode selector
 ```
@@ -89,7 +93,7 @@ use its skill picker when available or use natural language:
 
 ```text
 Show me the current AI profile.
-Switch this machine to company context and keep continuity enabled.
+Switch this machine to company context, keep continuity enabled, and use native workflow mode.
 Add a review context layer.
 Add a review-mode selector to the profile schema.
 ```
@@ -134,6 +138,7 @@ Use the supported chezmoi workflow:
    [data]
    ai_context = "personal"        # personal or company
    ai_continuity = "on"            # on or off
+   ai_workflow = "managed"         # managed or native
    ```
 
    Do not copy this example blindly if the resolver has changed. Preserve unrelated machine-local
@@ -156,12 +161,14 @@ Read the relevant sections before editing:
 - [Machine-local AI profile selectors in the chezmoi workflow](../../../../docs/chezmoi-workflow.md)
 - [AI profile dimensions in the customization guide](../../../../docs/customization-support.md)
 - [ADR-0014](../../../../docs/decisions/0014-machine-local-ai-configuration-profiles.md)
+- [ADR-0021](../../../../docs/decisions/0021-add-native-workflow-profile-mode.md)
 
 Then:
 
 1. Identify whether the request changes an existing value or layer, adds a new context layer,
-   adds a new independent selector, or changes how layers compose. A new named bundle is a schema
-   decision, not a routine selector edit.
+   adds a new independent selector, or changes how layers compose. For example, `ai_workflow`
+   selects automatic managed orchestration or manual native behavior; it does not change
+   `ai_continuity`. A new named bundle is a schema decision, not a routine selector edit.
 2. Keep reusable content in shared templates and use thin client wrappers. Do not copy the same
    profile body into Claude, Codex, Copilot, or VS Code outputs.
 3. Update the resolver, profile layers, wrappers, and user-facing documentation together when

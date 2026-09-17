@@ -13,8 +13,8 @@ The user-facing lifecycle is intentionally simple:
 | `workflow-restore` | Restore missing source files from one archive | Yes |
 | `delete-archive` | Delete one archive copy | No, although Git history may still contain the source |
 
-The archive operation automatically includes the preservation step. Users do not call a separate
-preservation command.
+The archive operation includes the source-copy step and active-source deletion. Users do not call
+a separate preparatory command.
 
 The boundaries are separate:
 
@@ -31,8 +31,8 @@ You do not need to remember every related skill, adapter, document, or instructi
 archive or delete skill a workflow name or description:
 
 ```text
-/workflow-archive preserve the old worktree task workflow before retirement
-/workflow-delete permanently remove the old worktree task workflow
+/workflow-archive archive the old worktree task workflow and remove its active sources
+/workflow-delete delete the old worktree task workflow without creating an archive
 /workflow-restore archives/workflows/worktree-task-workflow/v1
 ```
 
@@ -152,8 +152,8 @@ but never stages, commits, pushes, renders, or applies live configuration.
 
 ## Delete a workflow without archiving
 
-Use `workflow-delete` when permanent source deletion is intended and no new recovery copy is
-wanted. The first command is a dry run:
+Use `workflow-delete` when active-source deletion is intended and no new recovery copy is wanted.
+The first command is a dry run:
 
 ```bash
 python scripts/workflows/workflow-archive.py delete \
@@ -194,10 +194,10 @@ python scripts/workflows/workflow-archive.py restore \
 ```
 
 Restore writes only missing canonical repository source files. It does not change machine-local
-`ai_context` or `ai_continuity`, install dependencies, recreate generated client targets, commit,
-or run `chezmoi apply`. After restoration, review `git diff`, run `git diff --check`, run the
-repository pre-commit hook when applicable, and use the ordinary chezmoi preview/apply workflow
-separately.
+`ai_context`, `ai_continuity`, or `ai_workflow`, install dependencies, recreate generated client
+targets, commit, or run `chezmoi apply`. After restoration, review `git diff`, run `git diff
+--check`, run the repository pre-commit hook when applicable, and use the ordinary chezmoi
+preview/apply workflow separately.
 
 ## Delete an archived copy
 

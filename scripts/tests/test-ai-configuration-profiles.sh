@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Render and check the four machine-local AI profile combinations without touching live targets.
+# Render and check the eight machine-local AI profile combinations without touching live targets.
 #
 # No JSONC parser is installed on the host, so the VS Code checks carry a small string-aware one:
 # comments and trailing commas are removed outside string literals and the result is parsed as
@@ -157,7 +157,7 @@ PY
 # the whole point of continuity off: the client must see no output, the tracked state file must not
 # change, and .git/info/exclude must not gain the private-state entry the enabled helper adds.
 assert_hook_behavior() {
-  local continuity="$1" hook="$2"
+  local continuity="$1" workflow="$2" hook="$3"
   local fixture state exclude payload output
   local state_before exclude_before state_after exclude_after
 
@@ -188,19 +188,20 @@ assert_hook_behavior() {
   [[ "$state_before" == "$state_after" ]] ||
     fail "continuity $continuity: hook rewrote continuity state"
 
-  if [[ "$continuity" == off ]]; then
-    [[ -z "$output" ]] || fail 'continuity off: hook produced output'
+  if [[ "$continuity" == off || "$workflow" == native ]]; then
+    [[ -z "$output" ]] || fail "continuity hook was not quiet ($continuity/$workflow)"
     [[ "$exclude_before" == "$exclude_after" ]] ||
-      fail 'continuity off: hook changed .git/info/exclude'
+      fail "continuity hook changed .git/info/exclude ($continuity/$workflow)"
   else
-    [[ -n "$output" ]] || fail 'continuity on: hook reported nothing for tracked state'
+    [[ -n "$output" ]] || fail 'managed continuity on: hook reported nothing for tracked state'
   fi
 }
 
 render_profile() {
-  local context="$1" continuity="$2" destination="$3"
-  local override="$work_directory/$context-$continuity.yaml"
-  printf 'ai_context: %s\nai_continuity: %s\n' "$context" "$continuity" > "$override"
+  local context="$1" continuity="$2" workflow="$3" destination="$4"
+  local override="$work_directory/$context-$continuity-$workflow.yaml"
+  printf 'ai_context: %s\nai_continuity: %s\nai_workflow: %s\n' \
+    "$context" "$continuity" "$workflow" > "$override"
   mkdir -p "$destination"
   "$chezmoi_bin" apply \
     --config="$config_file" \
@@ -213,7 +214,7 @@ render_profile() {
 }
 
 check_profile() {
-  local context="$1" continuity="$2" destination="$3"
+  local context="$1" continuity="$2" workflow="$3" destination="$4"
   local claude="$destination/.claude/CLAUDE.md"
   local codex="$destination/.codex/AGENTS.md"
   local copilot="$destination/.copilot/instructions/core.instructions.md"
@@ -293,14 +294,21 @@ check_profile() {
     assert_contains "$claude" '## Project continuity'
     assert_contains "$codex" '## Project continuity'
     assert_contains "$copilot" '## Project continuity'
-    assert_not_contains "$lifecycle_hook" 'deliberate no-op'
+    if [[ "$workflow" == managed ]]; then
+      assert_not_contains "$lifecycle_hook" 'deliberate no-op'
+      assert_not_contains "$claude" 'Continuity is manual in native workflow mode.'
+    else
+      assert_contains "$lifecycle_hook" 'deliberate no-op'
+      assert_contains "$claude" 'Continuity is manual in native workflow mode.'
+      assert_not_contains "$claude" 'If the file is absent and losing the conversation'
+    fi
   else
     assert_not_contains "$claude" '## Project continuity'
     assert_not_contains "$codex" '## Project continuity'
     assert_not_contains "$copilot" '## Project continuity'
     assert_contains "$lifecycle_hook" 'deliberate no-op'
   fi
-  assert_hook_behavior "$continuity" "$lifecycle_hook"
+  assert_hook_behavior "$continuity" "$workflow" "$lifecycle_hook"
 
   local source_count rendered_count
   source_count="$(find "$repository_root/home/dot_agents/skills" -type f ! -name '.*' | wc -l | tr -d ' ')"
@@ -311,10 +319,13 @@ check_profile() {
 
 for context in personal company; do
   for continuity in on off; do
-    destination="$work_directory/render-$context-$continuity"
-    render_profile "$context" "$continuity" "$destination"
-    check_profile "$context" "$continuity" "$destination"
-    printf 'profile tests: %s + continuity %s OK\n' "$context" "$continuity"
+    for workflow in managed native; do
+      destination="$work_directory/render-$context-$continuity-$workflow"
+      render_profile "$context" "$continuity" "$workflow" "$destination"
+      check_profile "$context" "$continuity" "$workflow" "$destination"
+      printf 'profile tests: %s + continuity %s + workflow %s OK\n' \
+        "$context" "$continuity" "$workflow"
+    done
   done
 done
 
@@ -338,9 +349,9 @@ assert_contains "$repository_root/AGENTS.md" '`personal` context while work is p
 assert_contains "$default_destination/.claude/CLAUDE.md" '## Project continuity'
 printf 'profile tests: missing-key defaults OK\n'
 
-# The documented work-machine workflow sets ai_context only and leaves continuity to its default.
-# Cover that shape explicitly: the four-combination loop always writes both keys, so it cannot show
-# that an unset ai_continuity still resolves to on alongside an explicit company context.
+# The documented work-machine workflow sets ai_context only and leaves the other selectors at their
+# defaults. Cover that shape explicitly: the combination loop always writes all three keys, so it
+# cannot show that unset continuity and workflow values resolve to on and managed.
 company_only="$work_directory/company-only.yaml"
 printf 'ai_context: company\n' > "$company_only"
 company_only_destination="$work_directory/render-company-only"
@@ -356,6 +367,7 @@ mkdir -p "$company_only_destination"
 assert_contains "$company_only_destination/.claude/CLAUDE.md" 'The active context is `company`.'
 assert_contains "$company_only_destination/.agents/skills/git-commit-action/SKILL.md" '| **Language** | `en` · `zhtw`      | `zhtw`'
 assert_contains "$company_only_destination/.claude/CLAUDE.md" '## Project continuity'
+assert_not_contains "$company_only_destination/.claude/CLAUDE.md" 'Continuity is manual in native workflow mode.'
 printf 'profile tests: explicit company with default continuity OK\n'
 
 invalid_context="$work_directory/invalid-context.yaml"
@@ -373,6 +385,13 @@ if "$chezmoi_bin" apply --config="$config_file" --source="$repository_root" \
     --override-data-file="$invalid_continuity" --no-tty --force >/dev/null 2>&1; then
   fail 'unsupported ai_continuity rendered successfully'
 fi
+invalid_workflow="$work_directory/invalid-workflow.yaml"
+printf 'ai_context: personal\nai_continuity: on\nai_workflow: unsupported\n' > "$invalid_workflow"
+if "$chezmoi_bin" apply --config="$config_file" --source="$repository_root" \
+    --destination="$work_directory/invalid-workflow" --exclude=scripts \
+    --override-data-file="$invalid_workflow" --no-tty --force >/dev/null 2>&1; then
+  fail 'unsupported ai_workflow rendered successfully'
+fi
 printf 'profile tests: invalid selector rejection OK\n'
 
 # Render the other operating system's branch. .chezmoiignore drops the wrong VS Code tree and the
@@ -387,7 +406,7 @@ assert_absent() {
 check_os_branch() {
   local os_name="$1" destination="$work_directory/render-os-$1"
   local override="$work_directory/os-$1.yaml"
-  printf 'ai_context: personal\nai_continuity: "on"\nchezmoi:\n  os: %s\n' "$os_name" > "$override"
+  printf 'ai_context: personal\nai_continuity: "on"\nai_workflow: managed\nchezmoi:\n  os: %s\n' "$os_name" > "$override"
   mkdir -p "$destination"
   "$chezmoi_bin" apply \
     --config="$config_file" \

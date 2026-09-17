@@ -43,9 +43,10 @@
        At launch, SessionStart shares that start-up cost on Windows and additionally
        runs `claude agents --json` to spot another session in this working directory,
        measured at about a second. After clear or compaction it skips that listing and
-       only refreshes the continuity reminder. Its timeout matches Notification because
-       the work is cheap but the interpreter is not. A timeout here loses the warning
-       silently, so it is set well clear of the measured worst case.
+       only refreshes the continuity reminder when continuity is enabled and the workflow
+       mode is managed; native mode renders that lifecycle helper as a no-op. Its timeout
+       matches Notification because the work is cheap but the interpreter is not. A timeout
+       here loses the warning silently, so it is set well clear of the measured worst case.
 
        The continuity hook uses Bash even on Windows. Claude Code already requires Git Bash
        there, and avoiding PowerShell startup matters because Stop runs after every response;
