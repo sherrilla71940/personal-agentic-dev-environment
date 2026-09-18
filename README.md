@@ -270,6 +270,10 @@ Continuity belongs to one physical working tree, and each tree holds at most one
   without an automatic hook. Native mode keeps the continuity skill available for explicit use.
 - Git remains authoritative. Continuity is context and last-known state, never proof that
   something was finished.
+- When implementation differs from an approved artifact, classify it as an accepted scope
+  difference, a deferred dependency, or an unresolved decision. The latter two require a durable
+  PM/BE handoff or issue record; `state.md` keeps only the pointer, and implementation-complete is
+  not fully closed until the difference is classified, owned, and linked.
 - The state is Git-ignored for privacy and convenience. It is a local handoff file, not an
   encrypted store, which is why the workflow forbids putting credentials in it.
 - Unfinished state is parked in `.project-continuity/parked/` before a different task starts, so
