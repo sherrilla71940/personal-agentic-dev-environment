@@ -151,6 +151,39 @@ flowchart LR
     style targets fill:none,stroke:transparent
 ```
 
+### Native-first workflow delegation
+
+The workflow coordinates a contract; it does not replace client-native capabilities. When a
+native client feature reliably satisfies the required invariant, the adapter should use it. The
+repository-owned fallback covers only what native behavior cannot express or verify.
+
+| Concern | Preferred native mechanism | Repository-owned contract that remains |
+| --- | --- | --- |
+| Create and manage a worktree | Claude `--worktree` or `EnterWorktree`; Codex desktop Worktree and Handoff | The workflow's isolation checks and client-specific fallback paths. |
+| Choose the starting branch | Codex desktop branch selection; Claude's supported `baseRef` or PR/MR input | Validate an arbitrary `origin/<base>` and use it consistently as the task and request base. |
+| Create and publish the task branch | Native branch, commit, push, and GitHub pull-request controls when they satisfy the task | Derive the task branch, preserve the selected base, and prevent branch or request-target drift. |
+| Resume a session | Claude resume and worktree binding; Codex chat/worktree Handoff | Portable `.project-continuity/state.md` and Git reconciliation across clients. |
+| Provision ignored files and setup | `.worktreeinclude` and Codex desktop local-environment setup where available | The reviewed allowlist plus terminal, VS Code, CLI, and cross-client fallbacks. |
+| Run verification | Claude `/run`, `/verify`, hooks, or Codex actions and hooks | The repository's focused checks, runtime evidence, and user manual-test gate. |
+| Isolate runtime resources | Project-defined runtime setup | The optional descriptor and per-worktree HTTP port allocation; databases and other services remain project-specific. |
+| Preserve or remove a workflow | Native session/workflow storage for native client artifacts | The explicit source-bundle archive, restore, and delete lifecycle. |
+| Clean up | Native client lifecycle controls where they own the worktree | Branch-preserving cleanup and the rule that live targets require a separate reviewed `chezmoi apply`. |
+
+This policy is per client surface. Claude can create and resume worktrees natively, but its
+configured `baseRef` does not express every named existing branch, so the workflow uses Git when
+the exact base contract requires it. Codex desktop now provides native worktree, setup, branch,
+and publishing controls; the workflow still supports Codex CLI and the IDE extension and verifies
+that the selected worktree matches the requested base. Native setup and verification can simplify
+an adapter, but they do not allocate per-worktree ports or provide portable cross-client state.
+
+If a client later provides a native feature that satisfies one of these invariants reliably, remove
+or bypass the corresponding custom mechanism instead of maintaining two competing implementations.
+
+See the current [Claude Code worktree](https://code.claude.com/docs/en/worktrees),
+[Claude Code workflow](https://code.claude.com/docs/en/workflows), [Codex worktree](https://learn.chatgpt.com/docs/environments/git-worktrees),
+and [Codex local-environment](https://learn.chatgpt.com/docs/environments/local-environment) documentation
+for the vendor-specific behavior behind this policy.
+
 Three details explain most of the structure:
 
 - **Shared instructions are inlined, not imported.** Each client's native instruction file receives the

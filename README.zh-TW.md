@@ -140,6 +140,37 @@ flowchart LR
     style targets fill:none,stroke:transparent
 ```
 
+### 以原生功能優先的 workflow 委派
+
+這套 workflow 負責協調契約，不會取代用戶端本身的功能。只要用戶端的原生功能能可靠地
+滿足必要的不變條件，adapter 就應優先使用它。儲存庫自有的 fallback 只補上原生行為無法
+表達或驗證的部分。
+
+| 議題 | 優先使用的原生機制 | 本儲存庫仍負責的契約 |
+| --- | --- | --- |
+| 建立與管理 worktree | Claude `--worktree` 或 `EnterWorktree`；Codex desktop 的 Worktree 與 Handoff | workflow 的隔離檢查，以及各用戶端需要的 fallback。 |
+| 選擇起始分支 | Codex desktop 的分支選擇；Claude 支援的 `baseRef` 或 PR／MR 輸入 | 驗證任意 `origin/<base>`，並一致地把它當成任務與 request 的基底。 |
+| 建立並發佈任務分支 | 原生分支、commit、push 與 GitHub pull request 控制（只要符合任務需求） | 推導任務分支、保留選定的基底，避免分支或 request 目標漂移。 |
+| 恢復工作階段 | Claude 的 resume 與 worktree 綁定；Codex 的對話／worktree Handoff | 可攜式的 `.project-continuity/state.md`，以及跨用戶端的 Git 核對。 |
+| 佈建忽略檔案與環境 | `.worktreeinclude`，以及 Codex desktop 可用的 local-environment setup | 經過審查的 allowlist，以及 terminal、VS Code、CLI 與跨用戶端 fallback。 |
+| 執行驗證 | Claude `/run`、`/verify`、hooks，或 Codex actions 與 hooks | 儲存庫的重點檢查、runtime 證據，以及使用者手動測試關卡。 |
+| 隔離 runtime 資源 | 專案自行定義的 runtime 設定 | 選用的 descriptor 與每個 worktree 的 HTTP 連接埠配置；資料庫及其他服務仍由專案負責。 |
+| 保留或移除 workflow | 用戶端原生 artifact 的 session／workflow 儲存功能 | 明確的來源 bundle archive、restore 與 delete 生命週期。 |
+| 清理 | 由用戶端管理 worktree 時，使用其原生生命週期控制 | 保留分支的清理規則，以及 live target 必須另外審查後才能 `chezmoi apply`。 |
+
+這項政策會依用戶端介面分別套用。Claude 可以原生建立與恢復 worktree，但它的 `baseRef`
+設定無法表達所有指定名稱的既有分支；需要精確基底契約時，workflow 會改用 Git。Codex
+desktop 現在提供原生的 worktree、setup、分支與發佈控制；workflow 仍支援 Codex CLI 與
+IDE extension，並會驗證選定的 worktree 是否符合要求的基底。原生 setup 與驗證可以簡化
+adapter，但不會配置每個 worktree 專用的連接埠，也不會提供可跨用戶端使用的狀態。
+
+如果用戶端日後提供可靠滿足其中一項不變條件的原生功能，請移除或繞過對應的自訂機制，
+不要同時維護兩套互相競爭的實作。
+
+這項政策所依據的用戶端行為，請參考目前的 [Claude Code worktree 文件](https://code.claude.com/docs/en/worktrees)、
+[Claude Code workflow 文件](https://code.claude.com/docs/en/workflows)、[Codex worktree 文件](https://learn.chatgpt.com/docs/environments/git-worktrees)，
+以及 [Codex local-environment 文件](https://learn.chatgpt.com/docs/environments/local-environment)。
+
 三個細節就能解釋大部分的結構：
 
 - **共用指示會直接嵌入，不是 import。** 每個用戶端的原生指示檔都收到同一份本文。Codex 只收到永遠

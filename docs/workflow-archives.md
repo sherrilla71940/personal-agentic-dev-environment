@@ -4,6 +4,14 @@ Workflow archives preserve a deliberate bundle of repository source files after 
 removed or moved between environments. An archive is not a backup of the home directory and is
 not a copy of a client session.
 
+Native client artifacts are a separate category. [Claude Code can save reusable JavaScript
+workflows](https://code.claude.com/docs/en/workflows), and both Claude Code and Codex can retain
+client-local session or skill state. This archive feature does not automatically capture those
+artifacts. It archives only the explicit, reviewed canonical source files in its definition, so a
+native client workflow is in scope only when its managed source file is deliberately included in
+that inventory. Session history, transcripts, `.project-continuity/`, generated targets, and
+machine-local configuration remain outside the archive boundary.
+
 The user-facing lifecycle is intentionally simple:
 
 | Operation | Result | Recoverable through this feature? |
@@ -59,6 +67,11 @@ The skill creates an explicit definition for the engine after the inventory is c
 definition under `scripts/manifests/workflows/<name>.json` is an optional catalog/authoring file;
 it may be an untracked one-off candidate and does not need to be committed before archiving or
 deletion. The generated archive manifest is the durable, self-describing inventory.
+
+The current catalog contains the repository's `worktree-task-workflow` definition as an example of
+a reusable source bundle. It is not a registry of every skill or every native client workflow. For
+another workflow, the skill performs bounded discovery, shows the proposed inventory, and can use
+a reviewed one-off definition. It must not infer a recursive dependency closure.
 
 ## V1 archive layout
 

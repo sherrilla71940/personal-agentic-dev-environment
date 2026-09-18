@@ -5,6 +5,33 @@ files there, but it does not copy ignored local files such as `CLAUDE.local.md`,
 or `connections.config`. The new directory can therefore lack the personal instructions or
 development configuration used by the original working tree.
 
+## Native-first delegation
+
+The task workflow owns the required contract, but it does not require one worktree mechanism on
+every client. Use a client's native capability when it satisfies the contract; use the repository
+fallback for the remaining gaps.
+
+- [Claude Code worktrees](https://code.claude.com/docs/en/worktrees) provides `--worktree`,
+  `EnterWorktree`, worktree cleanup, resume binding, and
+  `.worktreeinclude`. Its `worktree.baseRef` supports the default remote branch, local `HEAD`, and
+  pull or merge request inputs, but not every named existing branch. The workflow therefore uses
+  Git when it must start from an exact `origin/<base>`.
+- [Codex desktop worktrees](https://learn.chatgpt.com/docs/environments/git-worktrees) provides
+  Worktree and Handoff, starting-branch selection, Create branch here,
+  [local-environment](https://learn.chatgpt.com/docs/environments/local-environment) setup scripts,
+  actions, and built-in commit, push, and GitHub pull-request controls. The
+  workflow still validates the requested base and keeps its branch and request contract. The
+  CLI and IDE extension use the repository provisioning fallback because the desktop controls are
+  not available there.
+- Neither client's native setup or verification features allocate a per-worktree port or carry
+  portable state to another client. Use the runtime descriptor and project continuity layers for
+  those contracts.
+
+The workflow is explicit-only. Native-first means “use the native mechanism when it satisfies the
+invariant,” not “make every task use the workflow.” If a future client feature satisfies one of
+the workflow's invariants reliably, remove or bypass the corresponding fallback instead of
+maintaining two competing implementations.
+
 This repository manages a provisioning workflow that copies explicitly approved ignored
 files into a new or existing worktree. It does not commit, upload, or synchronize those
 files. The commands become available after the relevant chezmoi source changes are applied.
@@ -256,6 +283,11 @@ Codex-managed worktrees begin detached. After fetching, the skill creates the ta
 the requested `origin/<base>` inside that clean worktree, so the selected starting branch does not
 silently replace the workflow's explicit base. It keeps every operation in that directory and
 uses project continuity so another client can resume there.
+
+When Codex desktop's selected starting branch, local-environment setup, and native branch controls
+already satisfy the task's requirements, those controls are the preferred mechanism. The workflow
+still checks the resulting worktree and branch because native controls do not establish this
+repository's exact remote-base, cross-client handoff, runtime, or manual-test guarantees.
 
 The running skill never removes its active Codex worktree. After the branch is clean, pushed, and
 attached to an open request, the user can keep it for review or dispose of it through the app's
