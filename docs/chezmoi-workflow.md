@@ -185,6 +185,49 @@ Actions page of the settings UI is reverted on the next apply; add it to the dur
 instead. `profiles.list` stays with the application, because its GUIDs are generated per
 machine. See [ADR-0009](./decisions/0009-own-windows-terminal-actions-and-keybindings.md).
 
+### Normalize persistent target drift
+
+Treat normalization as a deliberate maintenance step, not as an automatic part of every apply.
+Use it when `chezmoi status` repeatedly reports a target that differs from the rendered source.
+
+1. Identify the source and read its ownership policy.
+2. Compare the rendered target and live target semantically. For JSON, sort object keys before
+   comparing them so formatting and object-key order do not create noise. Preserve array order in
+   the comparison because array order can affect behavior.
+3. If the difference is only formatting or object-key order, apply the reviewed target.
+4. If an array differs, apply it only when the source explicitly owns that complete array. For
+   example, this repository owns the complete Windows Terminal `actions` and `keybindings`
+   arrays, so a reviewed apply can restore their canonical order.
+5. If an application-owned key differs, stop and preserve the application value. Update the
+   source only when the user explicitly wants to promote that value into repository ownership.
+
+For a Bash-compatible shell, compare a JSON target with:
+
+```bash
+target="$HOME/.claude/settings.json"
+diff <(chezmoi cat "$target" | jq -S .) <(jq -S . "$target")
+```
+
+For PowerShell, compare the normalized lines with:
+
+```powershell
+$target = "$HOME/.claude/settings.json"
+$rendered = chezmoi cat $target | jq -S .
+$live = Get-Content -Raw $target | jq -S .
+Compare-Object $rendered $live
+```
+
+No output means the JSON values, including array order, agree. If the output contains only
+formatting or object-key ordering, a targeted apply is safe after review:
+
+```bash
+chezmoi apply --force "$target"
+```
+
+Do not normalize every settings file wholesale. A targeted apply can still replace an
+application-owned value when the source claims that key, and an unreviewed broad apply can touch
+unrelated drift. Re-run `chezmoi status` after the targeted apply and report any remaining drift.
+
 The repository owns `env`, `hooks`, `statusLine`, and `autoUpdatesChannel`. Claude Code and
 project settings own everything else, including `model`, `effortLevel`, `theme`, `verbose`,
 `tui`, `permissions`, `enabledPlugins`, and unknown future keys, so those survive
