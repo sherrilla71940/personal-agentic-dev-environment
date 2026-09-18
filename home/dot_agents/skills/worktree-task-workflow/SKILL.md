@@ -69,11 +69,14 @@ There are two Codex entry paths:
 - In the Codex desktop app, a Local chat should use the chat header's Handoff control to move to
   Worktree after the resolved echo. Select the requested `<base-branch>`. Codex creates the
   managed detached worktree, copies the repository's `.worktreeinclude` entries, and keeps the
-  chat associated with that worktree. Do not create a second terminal worktree for this path.
+  chat associated with that worktree. If `open-code=true` was requested, use Codex's native Open
+  control after Handoff; do not create a second terminal worktree for this path.
 - In the Codex CLI or IDE extension, the adapter can provision the worktree, but a shell command
   cannot move the current chat's workspace. It therefore creates a detached worktree, reports
   its exact path, and stops. Start Codex in that path and invoke the same resolved workflow again,
-  passing the resolved `branch=` value so branch naming cannot drift.
+  passing the resolved `branch=` value so branch naming cannot drift. If `open-code=true` was
+  requested, open that path in a new VS Code window as a convenience; this does not move the
+  existing Codex chat.
 
 Stop if repository instructions forbid worktrees. This developer environment repository does, identifiable by
 its root `.chezmoiroot`; offer to run that task in place instead.
@@ -107,18 +110,28 @@ If the current root is the primary checkout, use the entry path that matches the
 surface:
 
 - For a Codex desktop Local chat, use Handoff to Worktree and select `<base-branch>`. After Codex moves
-  the chat, resume this workflow in the associated worktree. Do not use a shell `cd` as a
-  substitute; it does not move the chat's workspace.
+  the chat, use its Open control if `open-code=true`, then resume this workflow in the associated
+  worktree. Do not use a shell `cd` as a substitute; it does not move the chat's workspace.
 - For Codex CLI or the IDE extension, create a detached worktree from the recorded remote base:
 
   ```bash
-  git wt-add -- --detach "<repo-parent>/<repo-name>.worktrees/<slug>" "origin/<base>"
+  # Add --open-code only when open-code=true was requested.
+  git wt-add --open-code -- --detach "<repo-parent>/<repo-name>.worktrees/<slug>" "origin/<base>"
   ```
+
+  Without the option, run the same command without `--open-code`.
+
+  Include `--open-code` only when the resolved invocation contains `open-code=true`. The wrapper
+  opens a separate VS Code window after creation; it never changes the current Codex chat's
+  workspace. If the wrapper cannot find VS Code, keep the worktree, report the exact path, and ask
+  the user to open it manually.
 
   The path is a sibling of the repository, so it does not add an ignored nested directory to the
   primary checkout. `git wt-add` also provisions the tracked `.worktreeinclude` allowlist. If the
   alias is unavailable, use `git worktree add --detach` with the same path and start point, and
-  state that ignored files were not provisioned.
+  state that ignored files were not provisioned. If `open-code=true` was requested on this fallback,
+  run `code --new-window "<exact-worktree-path>"` when the `code` command is available; otherwise
+  report that the user must open the path manually.
 
   Stop after creation. Report the exact path, the provisioning result, and the continuation
   command with the resolved `branch=`. The user must start Codex in that directory, or attach the

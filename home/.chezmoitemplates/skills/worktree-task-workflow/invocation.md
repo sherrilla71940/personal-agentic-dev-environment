@@ -34,6 +34,7 @@ In order, the first matching rule wins:
 | --- | --- |
 | `--infer-task` | flag, equivalent to `infer-task=true` |
 | `--no-agent-test` | flag, equivalent to `agent-test=false` |
+| `--open-code` | flag, equivalent to `open-code=true` |
 | any other `--...` token | error: unknown flag |
 | begins `http://` or `https://` | material |
 | `<key>=<value>` with a known key | option |
@@ -62,14 +63,20 @@ The accepted keys are:
 | `group` | `batch` or `single` | `batch` |
 | `agent-test` | `true` or `false` | `true` |
 | `cleanup` | {{ .cleanupValues }} | `{{ .cleanupDefault }}` |
+| `open-code` | `true` or `false` | `false` |
 | `runtime` | `auto` or `off` | `off` |
 | `port` | explicit port `1024`-`65535`; only with `runtime=auto` | none |
 
 An explicit `en` or `zhtw` value for `lang` overrides the active context default.
 
-`infer-task` and `agent-test` accept exactly `true` and `false`, case-insensitively. Reject empty
-values and alternate boolean spellings. `test=` is deliberately not a key: manual testing is
-never optional, while `agent-test` controls only the agent's optional verification.
+`infer-task`, `agent-test`, and `open-code` accept exactly `true` and `false`, case-insensitively.
+Reject empty values and alternate boolean spellings. `test=` is deliberately not a key: manual
+testing is never optional, while `agent-test` controls only the agent's optional verification.
+
+`open-code=true` is an explicit convenience for terminal-created worktrees. It asks the provisioning
+wrapper to open the exact worktree in a new VS Code window. It does not move the current chat,
+terminal, or existing editor window. Codex desktop uses its native Handoff and Open controls
+instead; an already-entered worktree is already the user's selected workspace.
 
 `runtime=auto` opts into the consuming repository's tracked `.worktree-runtime.json` descriptor
 and the user-level runtime helper. It is appropriate only when the task includes an application

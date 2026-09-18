@@ -77,8 +77,16 @@ Ensure `.claude/worktrees` is locally ignored through the repository's common `i
 create the branch and worktree with the managed wrapper:
 
 ```bash
-git wt-add -- -b <branch> "<repo-root>/.claude/worktrees/<slug>" "origin/<base>"
+# Add --open-code only when open-code=true was requested.
+git wt-add --open-code -- -b <branch> "<repo-root>/.claude/worktrees/<slug>" "origin/<base>"
 ```
+
+Without the option, run the same command without `--open-code`.
+
+Include `--open-code` only when the resolved invocation contains `open-code=true`. The wrapper
+opens the exact worktree in a separate VS Code window before the session enters it; it does not
+switch the user's existing editor window. If VS Code is unavailable, keep the created worktree,
+report the exact path, and let the user open it manually.
 
 If `git wt-add` is unavailable, use `git worktree add -b <branch> <path> origin/<base>` and state
 that `.worktreeinclude` files were not provisioned. Either way, report what provisioning actually

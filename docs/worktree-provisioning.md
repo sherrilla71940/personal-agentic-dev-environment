@@ -27,6 +27,11 @@ fallback for the remaining gaps.
   portable state to another client. Use the runtime descriptor and project continuity layers for
   those contracts.
 
+Opening a worktree in VS Code is a convenience, not a workspace transfer. Terminal provisioning
+can use `git wt-add --open-code` to open a separate VS Code window. Claude Code and Codex keep their
+own session or Handoff workspace rules, and the existing editor window remains on its current
+checkout unless the user changes it explicitly.
+
 The workflow is explicit-only. Native-first means “use the native mechanism when it satisfies the
 invariant,” not “make every task use the workflow.” If a future client feature satisfies one of
 the workflow's invariants reliably, remove or bypass the corresponding fallback instead of
