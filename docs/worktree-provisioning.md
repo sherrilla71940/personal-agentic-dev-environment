@@ -238,7 +238,18 @@ URLs and the base ref immediately before creating the worktree. A changed remote
 moved base ref stops the run and requires the plan to be resolved again. The worktree is created
 from the recorded commit ID rather than from the mutable remote-tracking ref. Remote credentials
 are never shown or written to continuity state. Before publishing, the workflow confirms that the
-same origin identities remain configured and that the named base branch still exists.
+same origin identities remain configured and that the named base branch still exists. It also fetches
+the current base and compares its commit with the recorded starting checkpoint. If the base advanced,
+the workflow pauses for an explicit merge-or-rebase choice before pushing or opening a request.
+
+The integration choice is deliberately not automatic. A clean task worktree is required, and the
+workflow does not stash, reset, or discard changes. A merge preserves already-published task history;
+a rebase is suitable for an unpublished branch, while a rebase of a published branch requires
+separate approval for `--force-with-lease`. If either operation conflicts, the worktree remains in
+its conflict state so the user or an agent can inspect and resolve it. The workflow records the
+conflicting paths and next Git operation in continuity, then reruns applicable checks and the manual
+test before publishing. It does not use `git pull` as a strategy selector or silently retarget the
+request when the base moves.
 
 The Claude adapter of `worktree-task-workflow` combines them, because neither alone gives an
 isolated session on a branch taken from an arbitrary remote base. Claude Code's own worktree

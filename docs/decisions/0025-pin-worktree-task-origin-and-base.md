@@ -22,7 +22,8 @@ later client can detect a changed remote before publishing. Publishing rechecks 
 identities and confirms that the named base branch still exists.
 
 The base branch name remains the request target. A later advance of that branch does not rewrite a
-task's recorded starting commit. Embedded credentials are never shown or written to continuity.
+task's recorded starting commit. Before publishing, the workflow integrates a later base commit
+according to ADR-0026. Embedded credentials are never shown or written to continuity.
 
 ## Alternatives considered
 

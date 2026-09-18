@@ -146,5 +146,11 @@ stop after the commit plan because there are no commits to push. Otherwise follo
 [publish.md](publish.md) and report the branch, every commit SHA and subject, the target base, and
 the request URL.
 
-Never merge, enable auto-merge, approve the request, force-push, or delete either the local or
-remote task branch. The branch must outlive the worktree for review and CI.
+The publish stage first checks whether the recorded base commit is still current. If the base
+advanced, it pauses for an explicit merge-or-rebase choice. A conflict remains in the task worktree
+for the user or an agent to resolve; after resolution, automated verification and the manual-test
+gate run again before any push or request creation.
+
+Never merge the pull or merge request, enable auto-merge, approve the request, force-push without
+the explicit integration approval, or delete either the local or remote task branch. The branch must
+outlive the worktree for review and CI.
