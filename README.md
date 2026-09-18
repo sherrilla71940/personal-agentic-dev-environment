@@ -491,9 +491,9 @@ The worktree step is adapter-specific:
 
 - The Claude adapter uses `git wt-add` to create the task branch and worktree together from
   `origin/<base>`, then enters that path with `EnterWorktree`.
-- Codex desktop uses Handoff to create a detached worktree and copy `.worktreeinclude`. Codex CLI
-  and the IDE extension provision a detached worktree, report its path, and start or resume Codex
-  there before creating the task branch from the base commit.
+- Codex desktop uses Handoff to create a local managed detached worktree and copy
+  `.worktreeinclude`. Codex CLI and the IDE extension provision a detached worktree, report its
+  path, and start or resume Codex there before creating the task branch from the base commit.
 
 For terminal Git, creating the worktree before reading `.worktreeinclude` is intentional:
 `git wt-add` creates the destination first, then reads the tracked manifest and copies approved

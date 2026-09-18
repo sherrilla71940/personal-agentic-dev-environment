@@ -68,7 +68,7 @@ There are two Codex entry paths:
 
 - In the Codex desktop app, a Local chat should use the chat header's Handoff control to move to
   Worktree after the resolved echo. Select the requested `<base-branch>`. Codex creates the
-  managed detached worktree, copies the repository's `.worktreeinclude` entries, and keeps the
+  local managed detached worktree, copies the repository's `.worktreeinclude` entries, and keeps the
   chat associated with that worktree. If `open-code=true` was requested, use Codex's native Open
   control after Handoff; do not create a second terminal worktree for this path.
 - In the Codex CLI or IDE extension, the adapter can provision the worktree, but a shell command
@@ -190,10 +190,11 @@ Report the worktree's absolute path, branch, origin identities, and base commit 
 not only in a tool call. The chat's workspace is not where the user is working, so an unreported
 path leaves them looking at the primary checkout with no sign of the change.
 
-Also report what ignored local configuration this worktree actually has. An app-created Codex
-worktree and one made with `git wt-add` can both arrive without it, and a provisioning skip such
-as `[skipped] .worktreeinclude: manifest not found in source worktree` is silent until the app
-fails to run.
+Also report what ignored local configuration this worktree actually has. Codex desktop local
+managed worktrees should process `.worktreeinclude`; Codex remote, CLI, and IDE paths do not get
+that native guarantee, and a fallback worktree can also lack the manifest. A provisioning skip
+such as `[skipped] .worktreeinclude: manifest not found in source worktree` is silent until the
+app fails to run, so inspect the actual result rather than assuming the creator copied it.
 
 ## 7. Implement through publishing
 

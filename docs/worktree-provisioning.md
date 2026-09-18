@@ -14,15 +14,17 @@ fallback for the remaining gaps.
 - [Claude Code worktrees](https://code.claude.com/docs/en/worktrees) provides `--worktree`,
   `EnterWorktree`, worktree cleanup, resume binding, and
   `.worktreeinclude`. Its `worktree.baseRef` supports the default remote branch, local `HEAD`, and
-  pull or merge request inputs, but not every named existing branch. The workflow therefore uses
-  Git when it must start from an exact `origin/<base>`.
+  pull or merge request inputs, but not every named existing branch. This native manifest handling
+  applies when Claude creates the Git worktree; a custom `WorktreeCreate` hook owns provisioning
+  instead. The workflow therefore uses Git when it must start from an exact `origin/<base>`.
 - [Codex desktop worktrees](https://learn.chatgpt.com/docs/environments/git-worktrees) provides
   Worktree and Handoff, starting-branch selection, Create branch here,
   [local-environment](https://learn.chatgpt.com/docs/environments/local-environment) setup scripts,
   actions, and built-in commit, push, and GitHub pull-request controls. The
-  workflow still validates the requested base and keeps its branch and request contract. The
-  CLI and IDE extension use the repository provisioning fallback because the desktop controls are
-  not available there.
+  local managed worktree path consumes `.worktreeinclude`; the workflow still validates the
+  requested base and keeps its branch and request contract. Remote worktrees and command-line
+  created worktrees use the repository provisioning fallback, as do CLI and IDE extension paths
+  where the desktop controls are not available.
 - Neither client's native setup or verification features allocate a per-worktree port or carry
   portable state to another client. Use the runtime descriptor and project continuity layers for
   those contracts.
@@ -48,8 +50,8 @@ files without making them tracked:
 
 | Worktree creator | How ignored files arrive |
 | --- | --- |
-| Claude Code | Claude reads the repository's `.worktreeinclude` automatically. |
-| Codex desktop local worktrees | Codex reads `.worktreeinclude` automatically. |
+| Claude-created Git worktrees | Claude reads the repository's `.worktreeinclude`; a custom `WorktreeCreate` hook must copy approved files itself. |
+| Codex desktop local managed worktrees | Codex reads `.worktreeinclude`; remote and command-line-created worktrees are outside this native path. |
 | VS Code and local Copilot sessions | VS Code uses the managed `git.worktreeIncludeFiles` setting. |
 | Terminal Git | `git wt-add` creates the worktree, then copies approved files. |
 | Already-created worktree | `git wt-copy` reruns only the approved copy step for files that are still missing. |
@@ -59,9 +61,10 @@ approved local file was later removed. In that case, `git wt-copy` copies the mi
 from another worktree. It does not repair Git metadata, recover unknown contents, switch the
 branch, or overwrite a target file that already exists.
 
-The repository-root `.worktreeinclude` file is the primary per-repository contract for
-Claude Code, Codex desktop, and the terminal commands. It contains repository-relative Git
-ignore patterns, never file contents. For example:
+The repository-root `.worktreeinclude` file is the shared per-repository allowlist. Claude and
+Codex consume it on their supported native worktree paths; `git wt-add` and `git wt-copy` use the
+same file for terminal and recovery paths. It contains repository-relative Git ignore patterns,
+never file contents. For example:
 
 ```gitignore
 CLAUDE.local.md
@@ -208,9 +211,10 @@ implementation stays compatible with the Bash 3.2 version included with macOS.
 
 ## Comparison with `claude --worktree`
 
-`git wt-add` makes terminal-created worktrees resemble Claude-created worktrees in one
-specific way: both create a Git worktree and provision ignored files approved by
-`.worktreeinclude`. They are not otherwise equivalent.
+`git wt-add` is the repository fallback for terminal-created worktrees. It makes them resemble
+Claude-created worktrees in one specific way: both create a Git worktree and provision ignored
+files approved by `.worktreeinclude`. It is not a second manifest or a replacement for native
+client worktree management.
 
 | Capability | `git wt-add` | `claude --worktree` |
 | --- | --- | --- |

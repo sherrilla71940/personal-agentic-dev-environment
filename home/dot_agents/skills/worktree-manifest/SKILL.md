@@ -1,6 +1,6 @@
 ---
 name: worktree-manifest
-description: "Author or extend a repository's .worktreeinclude, the tracked manifest that lets git wt-add, Claude Code and Codex copy approved ignored files into a new worktree. Use when provisioning reports 'manifest not found in source worktree', when a fresh worktree cannot run the app because a local config file is missing, when a repository moves configuration into ignored files so that every worktree created afterwards will need them - externalized secrets, configSource or include targets, a new .env or *.local.* file - or when the user asks which ignored files a worktree should carry."
+description: "Author or extend a repository's .worktreeinclude, the tracked manifest consumed by Claude-created Git worktrees, Codex desktop local managed worktrees, and the repository's provisioning fallback to copy approved ignored files. Use when provisioning reports 'manifest not found in source worktree', when a fresh worktree cannot run the app because a local config file is missing, when a repository moves configuration into ignored files so that every worktree created afterwards will need them - externalized secrets, configSource or include targets, a new .env or *.local.* file - or when the user asks which ignored files a worktree should carry."
 argument-hint: "[repo path] optional; defaults to the current repository"
 disable-model-invocation: true
 ---
@@ -13,10 +13,13 @@ worktree can compile and still not run. `.worktreeinclude` is the tracked, repos
 manifest that authorizes copying those files. It holds repository-relative gitignore patterns,
 never file contents.
 
-Every worktree creator except VS Code reads it: `git wt-add`, `git wt-copy`, Claude Code and
-Codex. VS Code uses the separate user-level `git.worktreeIncludeFiles` setting, so a repository
-manifest does not change what VS Code copies. Say so rather than implying one file covers
-everything.
+Claude Code consumes it when Claude creates a Git worktree, and Codex consumes it for local
+desktop-managed worktrees. `git wt-add` and `git wt-copy` implement the same allowlist for
+terminal-created or already-created worktrees. Do not imply that the manifest is processed by
+Codex remote/CLI/IDE paths or by a Claude `WorktreeCreate` hook: those paths need their own
+provisioning route. VS Code uses the separate user-level `git.worktreeIncludeFiles` setting, so a
+repository manifest does not change what VS Code copies. Say so rather than implying one file
+covers everything.
 
 This skill produces one commit in the target repository. It never copies a file itself; `git
 wt-add` and `git wt-copy` do that.

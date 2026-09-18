@@ -446,7 +446,7 @@ flowchart TD
 worktree 階段會依 adapter 採用不同的 Git 流程：
 
 - Claude adapter 用 `git wt-add` 從 `origin/<base>` 一次建立任務分支與 worktree，再用 `EnterWorktree` 進入該路徑。
-- Codex desktop 透過 Handoff 建立 detached worktree 並複製 `.worktreeinclude`。Codex CLI 與 IDE extension 會先佈建
+- Codex desktop 透過 Handoff 建立本機管理的 detached worktree 並複製 `.worktreeinclude`。Codex CLI 與 IDE extension 會先佈建
   detached worktree、回報路徑，再讓 Codex 在該路徑建立或接續工作階段，最後從基底 commit 建立任務分支。
 
 對 terminal Git 來說，先建立 worktree 再讀取 `.worktreeinclude` 是刻意的順序：`git wt-add` 先建立目的地，接著才讀取
