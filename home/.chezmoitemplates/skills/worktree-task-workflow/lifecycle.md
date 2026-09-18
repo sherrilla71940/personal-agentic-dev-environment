@@ -47,6 +47,11 @@ to the main checkout. If the inventory was missed, call `ExitWorktree` with `act
 inspect the main checkout there, then re-enter the preserved task worktree and continue this
 provisioning gate.
 
+Keep Bash and Monitor calls inside isolation plain and separate. Claude may reject a compound
+command such as `A && B`, a dynamically shaped pipeline, or a heredoc when it cannot verify that
+every Git operation stays inside the worktree. Use one plain command per call or the Write tool;
+do not bypass the guard with a redirect to the main checkout.
+
 What that listing shows answers only one of two questions. Whether anything needs provisioning for
 the app to build and run here is settled by building and running it, not by classifying filenames:
 a dependency directory is regenerable in principle yet still required in practice, as a

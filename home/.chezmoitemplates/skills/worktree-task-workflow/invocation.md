@@ -87,7 +87,18 @@ Named options bind to their keys in any order. Bare tokens fill these slots in o
 
 When inference is on, the task slot is closed, so every bare token after the base branch is a material.
 
+When inference is off and neither `task=` nor `materials=` was supplied, accept the common
+unquoted form by joining all ordinary bare tokens after the base into one task. Treat a token as a
+material candidate instead of task text when it is a URL, an existing path, or a path-like value
+such as an absolute path, `./` or `../` path, drive-letter path, or file-like path. A material
+candidate must remain in the trailing material portion; if it is missing, unreadable, or mixed with
+later task-like words, reject the invocation and show the named form rather than guessing.
+
+Quoted multi-word tasks and named options remain preferred when materials are present. Named
+`task=`, repeatable `materials=`, and `--infer-task` retain their current precedence.
+
 ```text
+{{ .invoke }} feat/CCTVPipiCons inspect the CCTV pipe record
 {{ .invoke }} feat/CCTVPipiCons "inspect the CCTV pipe record" "handoff.md"
 {{ .invoke }} base=feat/CCTVPipiCons task="inspect the CCTV pipe record" materials="handoff.md"
 {{ .invoke }} feat/CCTVPipiCons --infer-task "handoff.md" "screens.pptx"
@@ -110,7 +121,8 @@ Stop and create nothing for any of these:
 | an unclosed quote | the value boundary is unknown |
 | a missing or unreadable material | planning would rely on material that was not read |
 | a material URL this host cannot fetch, or a design URL with no connected integration | same reason; say which capability is missing and ask for an exported file instead |
-| the positional task token resolves to a file or is a URL | the task was probably omitted; ask for a task or inference |
+| the positional task token resolves to a file, is path-like, or is a URL | the task was probably omitted; ask for a task or inference |
+| a material candidate is followed by ordinary task-like words | positional meaning is ambiguous; use `task=` and `materials=` |
 | the positional base resolves to a file or contains whitespace | it is in the wrong slot |
 | `branch=` together with `type=`, `slug=`, or `suffix=` | two branch names were described |
 
