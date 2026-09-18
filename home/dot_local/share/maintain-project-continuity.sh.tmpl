@@ -329,16 +329,18 @@ report_session_start() {
       message="Project continuity is active in '$root'. Before substantive work, invoke the"
       message="$message project-continuity skill and reconcile its state against Git."
     fi
-    message="$message State 'Continuity: enabled' in the first progress update."
+    message="$message For a task that reaches an activation signal, state 'Continuity: enabled' in the first progress update;"
+    message="$message for a lightweight unrelated request, leave this state untouched and skip continuity boilerplate."
   elif [[ "$session_source" == "compact" ]]; then
     message="This conversation was compacted without active project continuity in '$root'."
-    message="$message Before resuming substantive work, reassess continuity under the global rule"
-    message="$message and make the decision visible in the next progress update."
+    message="$message Before resuming substantive work, reassess continuity under the global rule."
+    message="$message If resumed work reaches an activation signal, make the decision visible in the next progress update;"
+    message="$message otherwise keep the response quiet."
   else
     message="Project continuity is not active in '$root'. Before the first substantive repository"
-    message="$message action, apply the global continuity rule and make the activation decision"
-    message="$message visible in the first progress update. Skip this reminder for explanation-only"
-    message="$message or small self-contained work."
+    message="$message action, apply the global continuity rule. For a task that reaches an activation signal,"
+    message="$message make the decision visible in the first progress update; skip this reminder for"
+    message="$message explanation-only or small self-contained work."
   fi
 
   message="$message Do not repeat this reminder in later responses."
