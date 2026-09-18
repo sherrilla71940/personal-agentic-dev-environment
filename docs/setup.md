@@ -330,6 +330,17 @@ Pass one or more relative `.sh` paths to run only selected suites. The wrapper d
 `PATH` or install anything; it resolves and validates the Git for Windows `bash.exe` before
 running each script.
 
+To run the repository pre-commit hook manually from PowerShell, use the dedicated wrapper instead
+of invoking `bash` directly:
+
+```powershell
+.\scripts\tests\run-pre-commit.ps1
+```
+
+It resolves the same Git for Windows Bash and prepends only that child process's `usr\bin` to
+`PATH`, so utilities such as `grep` and `mktemp` are available without changing the machine or
+PowerShell session. It validates the staged snapshot; it does not stage files or apply chezmoi.
+
 The pre-commit hook, in order (the script's own numbering starts at the render step):
 
 - confirms the default chezmoi source resolves inside this repository,
