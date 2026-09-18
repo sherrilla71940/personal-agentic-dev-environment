@@ -467,11 +467,13 @@ worktree 階段會依 adapter 採用不同的 Git 流程：
 [worktree 佈建指南](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)。
 
 專案素材也是工作流程的一部分。建立 worktree 前，流程會先閱讀提供的規格、交接筆記、參考文件與測試
-輸入，分類後把路徑記進連續性狀態。需要歸檔時，需要長期保留的參考資料放在
-`~/Documents/reference-docs/{repo}/`，大型或需要跨 worktree 共用的人工測試輸入放在
-`~/Documents/test-files/{repo}/`，沒有正式歸屬位置的 agent 交接摘要放在
-`~/Documents/handoff/{repo}/`。目前任務狀態留在 worktree 內由 Git 忽略的
-`.project-continuity/state.md`；可長期維護的測試程序與 fixture 留在儲存庫裡。有正式歸屬位置的產出，
+輸入，分類後把路徑記進連續性狀態。需要歸檔時，穩定的參考資料放在
+`~/Documents/reference-docs/{repo}/{source-or-topic}/`；只有在多個版本讓檢索變困難時，才在下面再加上版本
+或出版日期目錄，而且要把來源的出版／版本日期和本機收到的時間分開記錄。大型或需要跨 worktree 共用的
+人工測試輸入放在 `~/Documents/test-files/{repo}/{task-or-fixture}/`，沒有正式歸屬位置的 agent 交接摘要則放在
+`~/Documents/handoff/{repo}/YYYY-MM-DD/{HH-mm}-{slug}.md`。交接檔記錄 `Created`、`Last updated`、時區或
+UTC offset，以及所對應的 commit 或 state；給人閱讀的時間記到分鐘即可。目前任務狀態留在 worktree 內由 Git
+忽略的 `.project-continuity/state.md`；可長期維護的測試程序與 fixture 留在儲存庫裡。有正式歸屬位置的產出，
 例如 MR 說明，就留在原本的地方，不另外複製。
 
 **圖：儲存庫 A 用多個 worktree 平行執行任務，其中一個任務透過連續性狀態跨用戶端接續。**
@@ -656,6 +658,9 @@ pre-commit hook 會把 staged 的來源產生到暫存目錄——絕不寫進�
 | AI profile 選擇器、組合方式、語言預設值或連續性開關 | `bash scripts/tests/test-ai-configuration-profiles.sh` |
 | workflow archive／restore／delete 契約 | `bash scripts/tests/test-workflow-archive.sh` |
 | Worktree runtime descriptor、配置與連接埠 lease | `python scripts/tests/test-worktree-runtime.py -v` |
+
+在 Windows PowerShell 中，請透過 `.\scripts\tests\run-git-bash-tests.ps1` 執行以 Bash 為基礎的測試套件。
+這個 wrapper 會明確找到 Windows Git Bash，避免 `bash` 指令誤用 WSL 或 WindowsApps shim。
 
 連指示本身也有測試。`scripts/tests/continuity-fixtures/` 收了成對的 prompt 與預期行為，針對的是
 連續性最容易處理錯的情境——狀態還在的時候突然冒出一個無關問題、實質換了另一個任務、使用者明確

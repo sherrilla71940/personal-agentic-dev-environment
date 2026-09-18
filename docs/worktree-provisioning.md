@@ -111,6 +111,14 @@ unfinished task — which is the right answer when the two tasks need separate u
 changes, and unnecessary when they do not. For a second task in the same directory, the
 `project-continuity` skill parks the first under `.project-continuity/parked/` instead.
 
+Main-checkout inspection has a timing boundary in Claude Code. Inspect ignored files and other
+source-worktree inventory before `EnterWorktree` whenever possible. After Claude enters an
+isolated worktree, run Git commands only from that current worktree; Claude rejects `git -C`,
+`--git-dir`, and similar redirects to the main checkout, including read-only status checks. If
+the inspection was missed, use `ExitWorktree` with `action: "keep"`, inspect the main checkout,
+and then re-enter the preserved task worktree. Do not remove the worktree or restart the task
+just to perform this inventory.
+
 The machine-local AI profile does not remove worktree capabilities. Both `managed` and `native`
 AI harnesses keep the canonical `worktree-task-workflow` and `worktree-manifest` skills available
 for explicit invocation. Both skills are state-changing workflows, so neither client starts them

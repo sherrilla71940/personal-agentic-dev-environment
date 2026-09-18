@@ -523,13 +523,17 @@ and branch-preserving cleanup.
 
 Project materials are part of the workflow. Before creating a worktree, the workflow reads
 supplied specifications, handoff notes, reference documents, and test inputs, classifies them, and
-records their paths in continuity. When filing is needed, durable references go in
-`~/Documents/reference-docs/{repo}/`, bulky or cross-worktree manual-test inputs go in
-`~/Documents/test-files/{repo}/`, and agent-authored briefs without a canonical destination go in
-`~/Documents/handoff/{repo}/`. Current task state stays in the worktree's ignored
-`.project-continuity/state.md`; durable test procedures and fixtures stay in the repository.
-Artifacts with a canonical destination, such as an MR description, stay there instead of being
-duplicated.
+records their paths in continuity. When filing is needed, stable references go in
+`~/Documents/reference-docs/{repo}/{source-or-topic}/`; add a version or publication-date
+subdirectory only when multiple snapshots make retrieval harder. Keep the source's publication or
+version date distinct from the local receipt time. Bulky or cross-worktree manual-test inputs go
+in `~/Documents/test-files/{repo}/{task-or-fixture}/`, while agent-authored briefs without a
+canonical destination go in `~/Documents/handoff/{repo}/YYYY-MM-DD/{HH-mm}-{slug}.md`. Handoff
+files record `Created`, `Last updated`, the timezone or UTC offset, and the commit or state they
+are pinned to; use minute precision for human-readable metadata. Current task state stays in the
+worktree's ignored `.project-continuity/state.md`; durable test procedures and fixtures stay in
+the repository. Artifacts with a canonical destination, such as an MR description, stay there
+instead of being duplicated.
 
 **Figure: Repository A runs parallel worktrees, while one task crosses clients through continuity
 state.**
@@ -735,6 +739,10 @@ Durable suites run by hand when their protected behavior changes:
 | AI profile selectors, composition, language defaults, or continuity toggle | `bash scripts/tests/test-ai-configuration-profiles.sh` |
 | Workflow archive, restore, and deletion contract | `bash scripts/tests/test-workflow-archive.sh` |
 | Worktree runtime descriptor, allocation, and port lease | `python scripts/tests/test-worktree-runtime.py -v` |
+
+On Windows PowerShell, run the Bash-based suites through
+`.\scripts\tests\run-git-bash-tests.ps1`. It resolves Windows Git Bash explicitly, so a `bash`
+command supplied by WSL or the WindowsApps shim cannot run the suite in the wrong environment.
 
 Instructions get tested too. `scripts/tests/continuity-fixtures/` holds paired prompts and
 expected behavior for the cases continuity handling gets wrong — an unrelated question arriving

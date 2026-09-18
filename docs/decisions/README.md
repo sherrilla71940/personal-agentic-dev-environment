@@ -47,6 +47,7 @@ agent session.
 | [0021](./0021-add-native-workflow-profile-mode.md) | Superseded by 0022 | First, narrower native mode; retained as historical context |
 | [0022](./0022-define-native-and-managed-ai-harness-modes.md) | Accepted | Define `ai_harness` native and managed boundaries, including retained notifications and conditional lifecycle hooks |
 | [0023](./0023-optional-per-worktree-runtime-isolation.md) | Accepted | Add explicit, descriptor-driven per-worktree HTTP port isolation without coupling it to AI profiles |
+| [0024](./0024-refine-continuity-and-material-filing-policy.md) | Accepted | Clarify instruction provenance, continuity reassessment, verification scope, and material filing timestamps |
 
 ## Template
 

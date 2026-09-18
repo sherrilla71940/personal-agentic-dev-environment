@@ -319,6 +319,17 @@ From the repository root, run `bash scripts/dev-env doctor` when diagnosing a ma
 the chezmoi source identity, resolved profile values, unapplied drift, Claude shared-skill links,
 and required tool versions without changing any target.
 
+On Windows, run the repository's Bash-based suites through the PowerShell wrapper so they use
+Windows Git Bash rather than a `bash` command that may resolve to WSL:
+
+```powershell
+.\scripts\tests\run-git-bash-tests.ps1
+```
+
+Pass one or more relative `.sh` paths to run only selected suites. The wrapper does not modify
+`PATH` or install anything; it resolves and validates the Git for Windows `bash.exe` before
+running each script.
+
 The pre-commit hook, in order (the script's own numbering starts at the render step):
 
 - confirms the default chezmoi source resolves inside this repository,

@@ -77,11 +77,16 @@ Whoever created the directory, any supported client can work in it.
 
 ## Activation
 
-Enable continuity when losing the conversation now would cost materially more than re-reading the diff: substantive implementation, multi-file changes, investigation that produced real findings, refactors, migrations, architectural work, or unresolved dependencies.
+Reassess continuity when losing the conversation might cost materially more than re-reading the
+diff: substantive implementation, multi-file changes, investigation that produced real findings,
+refactors, migrations, architectural work, unresolved dependencies, an explicit handoff or resume,
+or recovery after compaction. Initialize it only when the resulting state is not cheaply recoverable
+from the repository, diff, or another durable source.
 
 **Wait for material state before creating the file.** Discussion, questions, options being weighed and a plan still being negotiated are not yet expensive to lose — the user holds that context too, and writing state during them produces a file describing a task nobody has started. Create it at the first point where the work itself becomes the record: implementation begins, a change spans several files, an investigation turns up something non-obvious, a decision is made that constrains what follows, or a dependency is left unresolved. This is later activation, not optional activation — once that point is reached, create it without asking.
 
-Reassess when a small task grows into one of those, and always use continuity for an explicit handoff, an explicit resume, or recovery after compaction, whatever stage the work is at.
+Reassess when a small task grows into one of those. An explicit handoff, resume, or compaction
+recovery may require state so the receiving session can continue without guessing.
 
 Do not enable it for explanation-only questions, small self-contained edits, formatting, or work that is obvious from the diff.
 
@@ -208,7 +213,8 @@ durable in the repository or current state.
 
 Required external materials include deliverables and durable context that the repository cannot
 recover. If that context is too large to inline, put it in a companion file under
-`~/Documents/handoff/{repo}/` and link it from `state.md`. Keep `state.md` as the entry point for
+`~/Documents/handoff/{repo}/YYYY-MM-DD/{HH-mm}-{slug}.md`, record its `Created`, `Last updated`,
+timezone or UTC offset, and commit or state pin, and link it from `state.md`. Keep `state.md` as the entry point for
 the objective, decisions, blockers, and next action; do not create competing copies of those facts.
 
 Do not checkpoint when nothing meaningful changed, when the information is already obvious in code or tests, when the update would repeat conversation text, or when the change is trivial and cheap to redo.
@@ -258,7 +264,7 @@ Use exactly one of these labels in the user-facing response:
 to open a Claude Artifact when it has the required access and browser path, but the receiving client
 must verify that; the URL alone is not evidence that the content was opened. Record an Artifact URL
 for the source client's convenience, but put any fact or deliverable a receiving client needs in
-`state.md` or a companion file under `~/Documents/handoff/{repo}/`. If the Artifact is the only copy,
+`state.md` or a companion file under `~/Documents/handoff/{repo}/YYYY-MM-DD/{HH-mm}-{slug}.md`. If the Artifact is the only copy,
 say so explicitly and treat the missing content as a blocker rather than guessing or claiming to
 have read it. When both an Artifact and a file exist, record which one is authoritative.
 
