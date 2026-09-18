@@ -39,8 +39,8 @@ You do not need to remember every related skill, adapter, document, or instructi
 archive or delete skill a workflow name or description:
 
 ```text
-/workflow-archive archive the old worktree task workflow and remove its active sources
-/workflow-delete delete the old worktree task workflow without creating an archive
+/workflow-archive old worktree task workflow
+/workflow-delete old worktree task workflow; do not create an archive
 /workflow-restore archives/workflows/worktree-task-workflow/v1
 ```
 

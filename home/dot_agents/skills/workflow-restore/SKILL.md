@@ -1,13 +1,13 @@
 ---
 name: workflow-restore
-description: "Validate and restore a tracked workflow archive into canonical repository source files with a dry-run, collision protection, and explicit confirmation."
+description: "Validate and restore a repository workflow archive into canonical source files with a dry-run, collision protection, and explicit confirmation."
 argument-hint: "[archives/workflows/<name>/<id>]"
 disable-model-invocation: true
 ---
 
 # Workflow restore
 
-Restore a workflow archive into the canonical source tree of
+Restore a repository workflow archive into the canonical source tree of
 `personal-agentic-dev-environment`. This workflow restores source files only. It never restores
 generated targets, private state, application settings, conversation history, or machine profiles.
 

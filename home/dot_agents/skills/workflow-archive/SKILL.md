@@ -8,8 +8,8 @@ disable-model-invocation: true
 # Workflow archive
 
 Create a recoverable archive of a reusable workflow after bounded discovery and user confirmation.
-This is the one user-facing archive operation for `personal-agentic-dev-environment`: it creates
-the archive copy and removes the active canonical workflow sources as one lifecycle. It does not
+This is the user-facing operation for creating a recoverable workflow archive: it creates the
+archive copy and removes the active canonical workflow sources as one lifecycle. It does not
 archive a conversation, a worktree's runtime state, application state, or a machine profile.
 
 It never removes live home-directory targets directly. It queues their removal for a later,
@@ -23,15 +23,15 @@ does not need to know its manifest path:
 Claude Code:
 
 ```text
-/workflow-archive archive the current worktree task workflow and remove its active sources
-/workflow-archive archive the project-continuity implementation only; exclude runtime state
+/workflow-archive current worktree task workflow
+/workflow-archive project-continuity implementation only; exclude runtime state
 ```
 
 Codex CLI or IDE extension:
 
 ```text
-$workflow-archive archive the current worktree task workflow and remove its active sources
-$workflow-archive archive the project-continuity implementation only; exclude runtime state
+$workflow-archive current worktree task workflow
+$workflow-archive project-continuity implementation only; exclude runtime state
 ```
 
 ## Discovery and confirmation
