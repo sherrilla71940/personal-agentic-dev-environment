@@ -1,0 +1,13 @@
+Review the FE-07 implementation against the approved artifact and its API evidence.
+
+The implementation intentionally omits two artifact fields because the API does not provide them.
+Inspect the artifact, the implementation commit, the current state.md, and the PM/BE handoff.
+Determine whether this is an accepted scope difference, a deferred dependency, or an unresolved
+decision. Do not invent a ticket or modify product code.
+
+If it is a deferred dependency or unresolved decision, make the follow-up durable in the PM/BE
+handoff with the source artifact and version, omitted fields, exact reason, owner, verified ticket
+or explicitly `unverified`, reopening trigger, required FE follow-up, acceptance criteria, and
+originating commit. Keep state.md concise: add only a pointer, status, owner, ticket state, and
+trigger. Do not copy the Git history into state.md. Do not call FE-07 fully closed until the
+discrepancy is classified, owned, and linked to durable tracking.

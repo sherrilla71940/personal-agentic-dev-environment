@@ -17,6 +17,12 @@ the next session to identify the first unfinished action. A commit may be a usef
 it changes what must be recovered, but a commit by itself does not require rerunning the continuity
 decision.
 
+When implementation differs from an approved artifact, classify it as an accepted scope difference,
+a deferred dependency, or an unresolved decision. Keep deferred dependencies and unresolved
+decisions in a durable PM/BE handoff or issue record, with only a concise pointer in `state.md`.
+Do not treat a feature as fully closed until the difference is classified, owned, and durably
+linked; an explicitly unverified ticket is valid, but an invented ticket is not.
+
 When a task reaches a reassessment point, make the decision visible in the next progress update:
 `Continuity: enabled` once state exists, or `Continuity: not needed — <reason>` when the task
 remains cheaply recoverable. Keep trivial work quiet.

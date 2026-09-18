@@ -65,7 +65,11 @@ Continuity belongs to **one working directory**, and each working tree has at mo
 - **Switching branches does not create a new continuity scope.** Continuity is scoped to the directory, not the branch. If a branch switch means a different task while useful unfinished state is still present, apply the wrong-task rules below before replacing it. When both tasks must stay independently resumable, park one of them, or use a separate worktree when they also need separate uncommitted changes.
 - **A branch switch is not a reconciliation trigger.** Claude's Stop hook reports a recorded branch that no longer matches the checkout, and that report is a warning not to merge rather than an instruction to update. Do not fold the new branch's work into state describing the old task, and do not rewrite the recorded branch just to silence the notice. Reconcile only once the task is established to be the same one. Do not key state files by branch name to avoid this decision either: a detached HEAD has no branch to key on, which is how the Codex app runs its managed worktrees, and uncommitted work belongs to the directory rather than to any branch.
 - **Uncommitted work does not follow a branch, and a stash hides it entirely.** If a branch switch stashed or carried the task's changes, record that in `Status` — and record any other stash of this task's work the same way, naming the stash message or ref. A branch switch is the common cause, not the only one: a plain `git stash` leaves the same clean tree while state still describes work in progress, and a later reconciliation may conclude the work was finished or lost. A stash made outside the session leaves nothing to record at all, which is why Resume checks `git stash list` instead of trusting `Status` alone.
-- A new worktree starts with no continuity and must not inherit another task's state. Claude Code and the Codex app both read `.worktreeinclude` at the repository root to decide which ignored files to copy into a new worktree, so a pattern there matching `.project-continuity/` would leak one task's state into every new worktree of both clients. Never add one.
+- A new worktree starts with no continuity and must not inherit another task's state. Claude Code's
+  Git-created worktrees, Codex desktop's local managed worktrees, and this repository's `git
+  wt-add` fallback consult `.worktreeinclude` at the repository root to decide which ignored files
+  to copy. A pattern there matching `.project-continuity/` would leak one task's state into every
+  supported provisioning path. Never add one.
 
 Client worktree support differs, and that affects only how a directory is *created*, never who may work in it:
 
@@ -233,6 +237,30 @@ When checkpointing:
 4. Remove stale, resolved, duplicated, or superseded entries.
 5. Keep it under about 120 lines; compact it by dropping resolved history and detail the repository already holds.
 6. If the work is complete and nothing continuity-worthy remains, do not invent a next action — say continuity looks unnecessary and offer cleanup.
+
+## Deferred follow-ups and completion
+
+When implementation differs from an approved mockup, specification, or other artifact, classify
+the difference before treating the feature as complete:
+
+- **Accepted scope difference:** the omission is intentional and needs no follow-up; preserve the
+  rationale in the appropriate project record or commit when it matters.
+- **Deferred dependency:** the implementation cannot match the artifact until another dependency
+  changes, such as an API or schema. It remains open and needs a durable follow-up record.
+- **Unresolved decision:** the expected behavior or scope still needs a PM, product, or owner
+  decision. It remains open and needs a durable follow-up record.
+
+For a deferred dependency or unresolved decision, keep the complete record in the PM/BE handoff or
+issue tracker, not in continuity state. It must identify the source artifact and version, missing or
+mismatched fields, exact reason and current limitation, owner, verified ticket or link (or explicitly
+`unverified`), reopening trigger, required implementation follow-up, acceptance criteria, and
+originating commit. Do not invent a ticket. Put only a concise pointer, status, owner, ticket state,
+and trigger in `TODO / deferred` or `Next actions`.
+
+Before declaring a feature **fully closed**, surface each active deferred follow-up and confirm that
+it is classified, owned, and linked to durable tracking. “Implementation complete” may coexist with
+an open deferred follow-up; “fully closed” may not. On resume, re-check the durable pointer and the
+Git evidence rather than copying the implementation history into `state.md`.
 
 ## Handoff
 

@@ -30,6 +30,11 @@ The phase another session should resume from.
 
 - Unresolved work that is real but not the immediate next action.
 - Use labels such as `TODO integration` when appropriate to the project.
+- When an implementation differs from an approved artifact, classify the difference as an
+  accepted scope difference, a deferred dependency, or an unresolved decision. For the latter
+  two, keep only a concise pointer here, for example:
+  `Deferred follow-up: <slug> - unresolved; durable record: <path or issue URL>; owner: <role>;
+  ticket: <verified ID/link or unverified>; trigger: <event>`.
 
 ## Decisions still in force
 
@@ -78,6 +83,12 @@ The phase another session should resume from.
 - Remove resolved blockers and completed TODOs from active sections.
 - Record a completed step only inside `Current phase` or a decision that still constrains the work; there is no `Completed` section, because finished work belongs to Git.
 - Label assumptions and unverified claims explicitly.
+- Keep durable deferred-follow-up details in the PM/BE handoff or issue tracker rather than
+  duplicating them in `state.md`. A deferred dependency or unresolved decision must have a durable
+  record containing the source artifact and version, missing or mismatched fields, exact reason
+  and current limitation, owner, verified ticket/link or explicit `unverified`, reopening trigger,
+  required follow-up, acceptance criteria, and originating commit. Git remains authoritative for
+  code and historical rationale; the state file is only the resumability pointer.
 - When recording feature-level progress and verification, prefer the explicit form
   `Feature: \`<name>\` - <status>` outside and inside `Verification`. The lifecycle reporter uses
   that narrow vocabulary to flag an obvious contradiction such as a feature marked `complete`
@@ -90,6 +101,9 @@ The phase another session should resume from.
   empty or absent. Claude's Stop hook reads that same test to raise the cleanup offer, so do not
   park a placeholder item in them to keep a finished file alive. Being finished is not by itself
   sufficient for cleanup, which also requires that nothing remains worth promoting elsewhere.
+- A feature may be implementation-complete while a deferred follow-up remains open, but it is not
+  fully closed until the discrepancy is classified, owned, and linked to a durable record. An
+  unverified ticket is allowed; an invented ticket is not.
 - Apply the finished-state invariant to active `state.md` and to every file in `parked/` during a
   continuity review. A completed parked file is a closure candidate, not permission to delete it;
   ask for confirmation for the named file first.
