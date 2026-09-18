@@ -228,8 +228,17 @@ the worktree itself is the goal and a terminal, VS Code, Codex, or another tool 
 ### Claude worktree task workflow
 
 For this workflow, `<base>` means the user-provided existing branch on `origin`. The task branch
-is created from `origin/<base>` in the new worktree, and the eventual pull or merge request targets
-that same base branch; it is not a generic label for whichever branch happens to be checked out.
+is created from the exact commit resolved from `origin/<base>` in the new worktree, and the eventual
+pull or merge request targets that same base branch; it is not a generic label for whichever branch
+happens to be checked out.
+
+Before provisioning, the workflow records the fetch and push identities of the `origin` remote,
+resolves the base branch to one full commit, and shows that checkpoint. It re-reads both remote
+URLs and the base ref immediately before creating the worktree. A changed remote identity or a
+moved base ref stops the run and requires the plan to be resolved again. The worktree is created
+from the recorded commit ID rather than from the mutable remote-tracking ref. Remote credentials
+are never shown or written to continuity state. Before publishing, the workflow confirms that the
+same origin identities remain configured and that the named base branch still exists.
 
 The Claude adapter of `worktree-task-workflow` combines them, because neither alone gives an
 isolated session on a branch taken from an arbitrary remote base. Claude Code's own worktree
@@ -238,7 +247,8 @@ pull or merge request passed to `--worktree` as `"#1234"` or as a GitHub or GitL
 the only three, and none of them expresses a named branch: `worktree.baseRef` takes `fresh` or
 `head` and nothing else, and Claude Code's own documentation sends you to Git directly to start
 from a specific existing branch. So the skill creates the worktree with
-`git wt-add` from `origin/<base>`, places it at `<repo>/.claude/worktrees/<slug>` where entering
+`git wt-add` from the recorded commit resolved from `origin/<base>`, places it at
+`<repo>/.claude/worktrees/<slug>` where entering
 it raises no approval prompt, and then moves the running session into it with the
 `EnterWorktree` tool's `path` argument. From that point Claude Code enforces the isolation
 itself, refusing edits and commands that resolve back into the main checkout.
@@ -287,13 +297,13 @@ invoke the resolved workflow again; changing only a shell's directory does not m
 chat's workspace.
 
 If the desktop Handoff selects a different starting commit than the requested
-`origin/<base>`, the adapter stops rather than resetting the worktree. Use the explicit
-`git wt-add -- --detach <path> origin/<base>` route in that case. This preserves the distinction
+the recorded remote-base commit, the adapter stops rather than resetting the worktree. Use the
+explicit `git wt-add -- --detach <path> <recorded-base-commit>` route in that case. This preserves the distinction
 between Codex-managed worktrees and worktrees created by the terminal wrapper while giving CLI
 and IDE sessions a safe automatic entry point.
 
 Codex-managed worktrees begin detached. After fetching, the skill creates the task branch from
-the requested `origin/<base>` inside that clean worktree, so the selected starting branch does not
+the requested recorded base commit inside that clean worktree, so the selected starting branch does not
 silently replace the workflow's explicit base. It keeps every operation in that directory and
 uses project continuity so another client can resume there.
 

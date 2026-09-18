@@ -137,6 +137,25 @@ Strip an `origin/` prefix from `base` after parsing. Resolve every material befo
 must exist and a URL must actually be fetched. Check `origin/<base>` after fetching; when it is
 absent, show near matches and create nothing.
 
+After the resolved echo and before any worktree is created, establish a remote-base checkpoint:
+
+1. Read both `git remote get-url origin` and `git remote get-url --push origin`. Treat those as
+   the fetch and push identities of the named `origin` remote; do not infer the repository from
+   the current directory name. Redact embedded credentials before showing or recording either
+   value.
+2. Fetch `origin` and resolve `refs/remotes/origin/<base>^{commit}` to one full commit ID.
+3. Show and record the redacted origin identities, the base branch, and that full base commit.
+   For a task using project continuity, record them in its Verification block using the optional
+   `Origin fetch`, `Origin push`, `Base branch`, and `Started from` fields from the state format.
+4. Immediately before provisioning, re-read both remote URLs and the remote-tracking base commit.
+   If an identity or the commit differs, stop and re-resolve the plan; do not silently start from
+   a moved branch or push to a changed repository. Use the recorded commit ID as the worktree
+   start point, not the mutable `origin/<base>` ref.
+
+The base branch name remains the request target. A later movement of that branch does not change
+the task's recorded starting commit; before publishing, verify that the same origin identities
+remain configured and that the named target branch still exists.
+
 ## 5. Resolve from materials
 
 Read every supplied material before planning:
@@ -179,6 +198,15 @@ worktree   {{ .worktreeExample }}
 commit     commit | batch | zhtw
 agent-test true        cleanup  {{ .cleanupDefault }}
 runtime    off        port     none
+```
+
+The Git preflight then adds a separate checkpoint before provisioning:
+
+```text
+origin fetch <redacted remote identity>
+origin push  <redacted remote identity>
+base branch feat/CCTVPipiCons
+base commit <full commit ID resolved from origin/feat/CCTVPipiCons>
 ```
 
 For rejection, show unresolved fields, the exact problem, and a corrected invocation when clear.

@@ -223,6 +223,7 @@ check_profile() {
   local commit_skill="$destination/.agents/skills/git-commit-action/SKILL.md"
   local lifecycle_hook="$destination/.local/share/maintain-project-continuity.sh"
   local project_continuity="$destination/.agents/skills/project-continuity/SKILL.md"
+  local workflow="$destination/.agents/skills/worktree-task-workflow/SKILL.md"
   local invocation="$destination/.agents/skills/worktree-task-workflow/references/invocation.md"
   local publishing="$destination/.agents/skills/worktree-task-workflow/references/publish.md"
   local settings
@@ -232,6 +233,7 @@ check_profile() {
   assert_file "$copilot"
   assert_file "$commit_skill"
   assert_file "$project_continuity"
+  assert_file "$workflow"
   assert_file "$invocation"
   assert_file "$publishing"
   [[ "$(head -n 1 "$codex")" != '---' ]] ||
@@ -269,6 +271,9 @@ check_profile() {
   assert_contains "$claude" 'comments are written in English unconditionally'
   assert_contains "$project_continuity" 'State language is independent of conversation language.'
   assert_contains "$project_continuity" 'Session export: required'
+  assert_contains "$workflow" 'recorded base commit'
+  assert_contains "$invocation" 'remote-base checkpoint'
+  assert_contains "$publishing" 'redacted identities'
   assert_not_contains "$commit_skill" '{{'
   assert_not_contains "$invocation" '{{'
   assert_not_contains "$publishing" '{{'

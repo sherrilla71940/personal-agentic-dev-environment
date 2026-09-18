@@ -227,6 +227,24 @@ if [[ -n "$annotated_message" ]]; then
   exit 1
 fi
 
+# An explicit feature checkpoint can expose a contradiction that Git alone cannot answer. The
+# lifecycle reporter stays conservative: it only checks the documented structured form and leaves
+# broader reconciliation to the project-continuity skill.
+{
+  printf '# Project Continuity\n\n## Objective\n\nExercise the progress guard.\n\n'
+  printf '## Current phase\n\n- Feature: `FE-03` - complete\n\n'
+  printf '## Verification\n\n'
+  printf -- '- Branch: `%s`\n' "$fixture_branch"
+  printf -- '- HEAD: `%s`\n' "$fixture_head"
+  printf -- '- Feature: `FE-03` - browser verification pending\n'
+} > "$state_file"
+contradiction_message="$(notice_message "$(stop_notice)")"
+case "$contradiction_message" in
+  *"progress/verification contradiction"*"FE-03"*"pending"*) ;;
+  *) printf 'expected a structured progress/verification contradiction notice, got: %s\n' \
+    "$contradiction_message" >&2; exit 1 ;;
+esac
+
 
 # A detached HEAD has no branch name, which is how the Codex app runs its managed worktrees. It
 # must not read as branch drift.

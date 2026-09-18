@@ -205,6 +205,11 @@ Checkpoint when the cost of losing what is not yet recorded becomes material. Fa
 
 Before the first substantive action of a turn, checkpoint when the current user instruction materially changes the objective, requirements, decisions, blockers or next action. Record normalized task state, not prompt text. During a long-running turn, checkpoint again at meaningful phase boundaries when losing the new state would be materially expensive.
 
+Treat a verified feature-completion boundary and the transition to the next feature as explicit
+checkpoint opportunities. Before ending a response while unfinished work remains, checkpoint
+enough for another client to identify the first unfinished action. These are semantic checkpoints,
+not a requirement to rewrite state after every commit.
+
 At each checkpoint and before ending a response with unfinished work, apply this resumability test:
 if this session ended now, could another supported client identify the objective, current phase,
 first unfinished action, blockers, required external materials, and unverified assumptions without

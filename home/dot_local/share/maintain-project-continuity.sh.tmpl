@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Report what a hook can establish about continuity state without interpreting it: whether state
-# exists and what task it says it tracks, a recorded branch or HEAD that no longer matches the
-# checkout, a task whose tracking sections hold nothing, and completed parked-state candidates.
-# Semantic state belongs to the project-continuity skill.
+# Report what a hook can establish about continuity state: whether state exists and what task it
+# says it tracks, a recorded branch or HEAD that no longer matches the checkout, an explicitly
+# structured progress/verification contradiction, a task whose tracking sections hold nothing,
+# and completed parked-state candidates. Broader semantic reconciliation belongs to the
+# project-continuity skill.
 #
 # Deliberately client-neutral. Claude Code and Codex send the same fields and accept the same
 # output, so both run this one script; anything naming a specific client belongs in that
@@ -179,6 +180,57 @@ report_stale_verification() {
   jq -cn --arg message "$message" '{systemMessage:$message}'
 }
 
+# State remains human-readable, so this is deliberately narrow rather than an NLP pass. When a
+# writer uses the documented `Feature: `name` - status` form, an explicit completion outside the
+# Verification section must not coexist with a pending/unverified/failed verification line for the
+# same feature. The notice is advisory; the skill still reconciles against Git and actual checks.
+report_progress_verification_contradictions() {
+  local state_file="$1"
+  local contradiction
+
+  contradiction="$(awk '
+    function feature_name(line, value) {
+      value = line
+      sub(/^[[:space:]-]*Feature:[[:space:]]*`/, "", value)
+      sub(/`.*/, "", value)
+      return value
+    }
+    /^## / {
+      section = substr($0, 4)
+      sub(/[[:space:]]+$/, "", section)
+      verification = (tolower(section) == "verification")
+      next
+    }
+    /^[[:space:]-]*Feature:[[:space:]]*`[^`]+`[[:space:]]*-[[:space:]]*/ {
+      name = feature_name($0)
+      status = tolower($0)
+      key = tolower(name)
+      if (!verification && status ~ /(complete|completed|done|finished)/) {
+        completed[key] = name
+      }
+      if (verification && status ~ /(pending|unverified|not verified|failed)/) {
+        pending[key] = name
+      }
+    }
+    END {
+      for (key in completed) {
+        if (key in pending) {
+          print completed[key]
+        }
+      }
+    }
+  ' "$state_file" 2>/dev/null || true)"
+
+  [[ -n "$contradiction" ]] || return 0
+
+  contradiction="$(printf '%s' "$contradiction" | paste -sd ', ' -)"
+  local message="Project continuity may contain a progress/verification contradiction for feature(s): $contradiction."
+  message="$message A feature is marked complete outside Verification while its Verification line"
+  message="$message is still pending, unverified, or failed. Reconcile .project-continuity/state.md"
+  message="$message against Git and the actual checks before claiming completion."
+  jq -cn --arg message "$message" '{systemMessage:$message}'
+}
+
 # The skill's trigger for offering cleanup sat inside its checkpoint step, and a finished task
 # removes the reason to checkpoint, so a completed task's state file could sit in the tree
 # indefinitely. Whether these four sections hold any open item is the one part of that judgment a
@@ -250,10 +302,19 @@ report_finished_parked_states() {
 # where an unretired finished file only wastes a cleanup.
 report_continuity_notice() {
   local state_file="$1"
-  local directory notice parked_notice first_message second_message
+  local directory notice semantic_notice parked_notice first_message second_message
 
   directory="$(dirname "$(dirname "$state_file")")"
   notice="$(report_stale_verification "$state_file" "$directory")"
+  semantic_notice="$(report_progress_verification_contradictions "$state_file")"
+  if [[ -z "$notice" ]]; then
+    notice="$semantic_notice"
+  elif [[ -n "$semantic_notice" ]]; then
+    first_message="$(printf '%s' "$notice" | jq -r '.systemMessage // ""')"
+    second_message="$(printf '%s' "$semantic_notice" | jq -r '.systemMessage // ""')"
+    notice="$(jq -cn --arg first "$first_message" --arg second "$second_message" \
+      '{systemMessage:($first + " " + $second)}')"
+  fi
   if [[ -z "$notice" ]]; then
     notice="$(report_finished_state "$state_file")"
   fi

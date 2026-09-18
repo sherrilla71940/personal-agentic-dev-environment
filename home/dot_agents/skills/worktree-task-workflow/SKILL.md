@@ -89,18 +89,27 @@ Unless supplied, derive:
 - an ASCII two-to-four-word kebab-case `slug` from the task's meaning;
 - `branch` as `{type}/{slug}/{suffix}`.
 
-Then fetch and verify the user-provided base branch and the new task branch:
+Then establish the remote identity and fetch the user-provided base branch:
 
 ```bash
+git remote get-url origin
+git remote get-url --push origin
 git fetch origin --prune
-git rev-parse --verify --quiet "refs/remotes/origin/<base>"
+git rev-parse --verify --quiet "refs/remotes/origin/<base>^{commit}"
 git rev-parse --verify --quiet "refs/heads/<branch>"
 ```
 
-Show near remote matches and stop when `origin/<base>` is absent. The task branch must not exist
-for a new task; a resume may find its existing task branch and must validate it in section 5. Do
-not switch branches until the current checkout has passed through section 4; this allows a primary
-checkout to reach its safe Handoff or provisioning path without branching there.
+Record the redacted fetch URL, push URL, base branch, and full commit ID resolved from
+`origin/<base>`. Show that remote-base checkpoint after the resolved invocation echo. Show near
+remote matches and stop when `origin/<base>` is absent. The task branch must not exist for a new
+task; a resume may find its existing task branch and must validate it in section 5. Do not switch
+branches until the current checkout has passed through section 4; this allows a primary checkout
+to reach its safe Handoff or provisioning path without branching there.
+
+Immediately before provisioning, re-read both origin URLs and the base commit. If either remote
+identity changed, or `origin/<base>` now resolves to a different commit, stop and re-resolve the
+plan. Use the recorded base commit as the worktree start point so a moving remote-tracking ref
+cannot silently change the task's starting point. Never show or record embedded credentials.
 
 ## 4. Enter or provision the worktree
 
@@ -116,7 +125,7 @@ surface:
 
   ```bash
   # Add --open-code only when open-code=true was requested.
-  git wt-add --open-code -- --detach "<repo-parent>/<repo-name>.worktrees/<slug>" "origin/<base>"
+  git wt-add --open-code -- --detach "<repo-parent>/<repo-name>.worktrees/<slug>" "<recorded-base-commit>"
   ```
 
   Without the option, run the same command without `--open-code`.
@@ -140,7 +149,7 @@ surface:
 
 After Handoff or terminal provisioning, verify that the current root is the intended linked
 worktree, that the worktree is detached for a new task, and that its HEAD equals the recorded
-`origin/<base>` commit. If native Handoff selected a different starting commit, stop without
+base commit. If native Handoff selected a different starting commit, stop without
 resetting it and use the explicit CLI/IDE provisioning path instead.
 
 ## 5. Establish the task branch
@@ -150,12 +159,17 @@ branch directly from the recorded remote commit:
 
 ```bash
 git symbolic-ref --quiet --short HEAD   # must fail for a new task
-git switch -c <branch> origin/<base>
+git switch -c <branch> <recorded-base-commit>
 ```
 
 If already on `<branch>`, treat it only as a resume: reconcile `project-continuity` and verify that
 its objective and starting point match. Stop on any other checked-out branch or on an existing
 task branch with no matching continuity; never silently reuse, reset, or relocate it.
+
+On resume, re-read the recorded redacted origin identities and base branch from continuity before
+publishing. If the current origin identity differs, stop and re-resolve the workflow rather than
+silently changing the request target. A task may continue from its recorded base commit even when
+the named base branch has advanced; that later movement does not rewrite the task's starting point.
 
 ## 6. Verify isolation
 
@@ -168,13 +182,13 @@ git rev-parse HEAD
 git status --porcelain
 ```
 
-For a new task, HEAD must equal the recorded `origin/<base>` commit and the branch must be the
-resolved task branch. Keep every file operation and command rooted in this worktree. Do not reach
+For a new task, HEAD must equal the recorded base commit and the branch must be the resolved task
+branch. Keep every file operation and command rooted in this worktree. Do not reach
 back into the primary checkout with absolute paths, `git -C`, `--git-dir`, or `GIT_DIR`.
 
-Report the worktree's absolute path, branch, and base commit in the response, not only in a tool
-call. The chat's workspace is not where the user is working, so an unreported path leaves them
-looking at the primary checkout with no sign of the change.
+Report the worktree's absolute path, branch, origin identities, and base commit in the response,
+not only in a tool call. The chat's workspace is not where the user is working, so an unreported
+path leaves them looking at the primary checkout with no sign of the change.
 
 Also report what ignored local configuration this worktree actually has. An app-created Codex
 worktree and one made with `git wt-add` can both arrive without it, and a provisioning skip such

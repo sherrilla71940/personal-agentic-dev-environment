@@ -62,14 +62,23 @@ full reasoning and the pre-v2.1.246 sweep caveat.
 ## 3. Establish the remote base
 
 ```bash
+git remote get-url origin
+git remote get-url --push origin
 git fetch origin --prune
-git rev-parse --verify --quiet "refs/remotes/origin/<base>"
+git rev-parse --verify --quiet "refs/remotes/origin/<base>^{commit}"
 git rev-parse --verify --quiet "refs/heads/<branch>"
 ```
 
-Show near remote matches and stop when `origin/<base>` does not exist. Stop and ask when the task
-branch already exists; never silently reuse or reset it. Record the remote-base commit. A local
-branch named `<base>` is irrelevant and must not be updated by this workflow.
+Record the redacted fetch URL, push URL, base branch, and full commit ID resolved from
+`origin/<base>`, and show that remote-base checkpoint after the resolved invocation echo. Show near
+remote matches and stop when `origin/<base>` does not exist. Stop and ask when the task branch
+already exists; never silently reuse or reset it. A local branch named `<base>` is irrelevant and
+must not be updated by this workflow.
+
+Immediately before provisioning, re-read both origin URLs and the base commit. If either remote
+identity changed, or `origin/<base>` now resolves to a different commit, stop and re-resolve the
+plan. Use the recorded base commit as the worktree start point so a moving remote-tracking ref
+cannot silently change the task's starting point. Never show or record embedded credentials.
 
 ## 4. Create and enter the worktree
 
@@ -78,7 +87,7 @@ create the branch and worktree with the managed wrapper:
 
 ```bash
 # Add --open-code only when open-code=true was requested.
-git wt-add --open-code -- -b <branch> "<repo-root>/.claude/worktrees/<slug>" "origin/<base>"
+git wt-add --open-code -- -b <branch> "<repo-root>/.claude/worktrees/<slug>" "<recorded-base-commit>"
 ```
 
 Without the option, run the same command without `--open-code`.
@@ -88,7 +97,7 @@ opens the exact worktree in a separate VS Code window before the session enters 
 switch the user's existing editor window. If VS Code is unavailable, keep the created worktree,
 report the exact path, and let the user open it manually.
 
-If `git wt-add` is unavailable, use `git worktree add -b <branch> <path> origin/<base>` and state
+If `git wt-add` is unavailable, use `git worktree add -b <branch> <path> <recorded-base-commit>` and state
 that `.worktreeinclude` files were not provisioned. Either way, report what provisioning actually
 did. `git wt-add` can succeed while copying nothing, for example
 `[skipped] .worktreeinclude: manifest not found in source worktree`, and that skip is silent
@@ -107,8 +116,13 @@ verdict; reaching them at step 6 means reading them after the point where they a
 ## 5. Verify isolation
 
 From inside the worktree, verify its root, branch, HEAD, and status. They must equal the created
-path, task branch, recorded `origin/<base>` commit, and a clean checkout apart from approved
+path, task branch, recorded base commit, and a clean checkout apart from approved
 provisioned files. Stop on any mismatch.
+
+When resuming an existing task, re-read its recorded redacted origin identities and base branch
+from continuity before publishing. If the current origin identity differs, stop and re-resolve the
+workflow rather than silently changing the request target. A later movement of the named base
+branch does not rewrite the task's recorded starting commit.
 
 Respect Claude Code's worktree boundary. If it refuses a command that it cannot trace safely,
 rewrite the command plainly rather than bypassing the guard.
@@ -134,9 +148,9 @@ with `git -C` afterwards, and hold the manual-test gate exactly where it was. A 
 started in the worktree recovers just as well. Nothing on disk is lost either way, so say what
 happened and which recovery was taken instead of quietly routing around it.
 
-Report the worktree's absolute path, branch, and base commit in the response, not only in a tool
-call. The session has moved and the user's editor has not, so an unreported path leaves them
-looking at the old branch in the main checkout with no sign of the change.
+Report the worktree's absolute path, branch, origin identities, and base commit in the response,
+not only in a tool call. The session has moved and the user's editor has not, so an unreported path
+leaves them looking at the old branch in the main checkout with no sign of the change.
 
 Do not treat the status line as evidence either way. After `EnterWorktree` moves the session by
 path, Claude Code has been observed still sending the main checkout as `workspace.current_dir`,

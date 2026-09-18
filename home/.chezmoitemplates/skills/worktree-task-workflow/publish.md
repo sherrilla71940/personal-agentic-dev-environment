@@ -5,7 +5,11 @@ and stop; nothing is pushed.
 
 ## Detect the forge
 
-Inspect `git remote get-url origin` before pushing.
+Before pushing, re-read both `git remote get-url origin` and `git remote get-url --push origin` and
+compare their redacted identities with the remote-base checkpoint recorded during invocation. If
+either identity changed, stop and ask the user to re-resolve the workflow; do not assume that the
+name `origin` still points at the same repository. Also verify that the invocation's named base
+branch still exists on that remote. Never show or record embedded credentials.
 
 | Origin host | Push | Open request |
 | --- | --- | --- |

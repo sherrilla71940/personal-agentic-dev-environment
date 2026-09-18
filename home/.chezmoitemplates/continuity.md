@@ -7,12 +7,15 @@ before substantive repository work. Do not initialize it for discussion, explana
 questions, trivial self-contained edits, formatting, or work fully recoverable from the diff.
 
 Reassess continuity when a task develops meaningful scope, produces important investigation
-findings, makes decisions that constrain later work, gains an unresolved dependency, reaches an
+findings, makes decisions that constrain later work, gains an unresolved dependency, reaches a
+verified feature-completion boundary, is about to transition to another feature, reaches an
 explicit handoff or resume boundary, or follows conversation compaction. Initialize it when the
 resulting state is not cheaply recoverable from the repository, diff, or other durable sources.
 An explicit handoff, resume, or compaction recovery may require state so another session can act
-without guessing. A commit may be a useful checkpoint when it changes what must be recovered, but
-a commit by itself does not require rerunning the continuity decision.
+without guessing. Before ending a response while unfinished work remains, checkpoint enough for
+the next session to identify the first unfinished action. A commit may be a useful checkpoint when
+it changes what must be recovered, but a commit by itself does not require rerunning the continuity
+decision.
 
 When a task reaches a reassessment point, make the decision visible in the next progress update:
 `Continuity: enabled` once state exists, or `Continuity: not needed — <reason>` when the task

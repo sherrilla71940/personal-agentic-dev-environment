@@ -41,6 +41,9 @@ The phase another session should resume from.
 - Branch: `<branch or unknown>`
 - HEAD: `<commit or unknown>`
 - Started from: `<commit this task began at, when known>`
+- Base branch: `<workflow base branch, when a task workflow selected one>`
+- Origin fetch: `<redacted origin identity, when a task workflow selected one>`
+- Origin push: `<redacted push identity, when a task workflow selected one>`
 - Status: `<clean / modified / concise description>`
 - Last reconciled: `<ISO 8601 timestamp with timezone>`
 - Cleanup: `<omit normally; set to declined once the user has refused cleanup for this task>`
@@ -75,6 +78,11 @@ The phase another session should resume from.
 - Remove resolved blockers and completed TODOs from active sections.
 - Record a completed step only inside `Current phase` or a decision that still constrains the work; there is no `Completed` section, because finished work belongs to Git.
 - Label assumptions and unverified claims explicitly.
+- When recording feature-level progress and verification, prefer the explicit form
+  `Feature: \`<name>\` - <status>` outside and inside `Verification`. The lifecycle reporter uses
+  that narrow vocabulary to flag an obvious contradiction such as a feature marked `complete`
+  outside `Verification` while its verification line still says `pending`, `unverified`, or
+  `failed`; free-form prose remains the skill's responsibility.
 - Keep implementation details in the repository rather than copying large code snippets here.
 - Do not invent next actions when the tracked work is complete; ask about cleanup instead.
 - **Finished-state invariant.** `In progress`, `Next actions`, `Blockers` and `TODO / deferred` are

@@ -48,6 +48,7 @@ agent session.
 | [0022](./0022-define-native-and-managed-ai-harness-modes.md) | Accepted | Define `ai_harness` native and managed boundaries, including retained notifications and conditional lifecycle hooks |
 | [0023](./0023-optional-per-worktree-runtime-isolation.md) | Accepted | Add explicit, descriptor-driven per-worktree HTTP port isolation without coupling it to AI profiles |
 | [0024](./0024-refine-continuity-and-material-filing-policy.md) | Accepted | Clarify instruction provenance, continuity reassessment, verification scope, and material filing timestamps |
+| [0025](./0025-pin-worktree-task-origin-and-base.md) | Accepted | Pin each task to a verified origin identity and immutable base commit |
 
 ## Template
 
