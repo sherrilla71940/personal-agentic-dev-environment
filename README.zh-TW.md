@@ -280,8 +280,6 @@ sequenceDiagram
     W->>G: 清理 worktree 並保留任務分支
 ```
 
-這個 loop 會重複執行使用者的手動測試，直到使用者核准；`alt` 分支表示測試通過或失敗時的處理方式。
-
 工作流程會固定起點與最後 request target 都使用選定的 base，讓每個任務的目錄、分支與
 continuity state 綁在一起；如果佈建被略過，也會明確回報，而不是靜默當成成功。它會在
 建立 worktree 前讀取並分類 specification、handoff、參考文件與測試輸入。流程會檢查已審閱的
@@ -293,7 +291,7 @@ manifest 不存在，流程會回報略過，判斷缺少的檔案是否影響�
 不會靠猜測補足，也不會照單執行。
 
 自動驗證在本機執行；若專案與 driver 支援，也會驗證實際瀏覽器操作。它不能取代使用者的
-手動測試；這項手動測試就是 manual-verification gate。清理時移除 worktree，但不刪除任務分支。詳細的
+手動測試。清理時移除 worktree，但不刪除任務分支。詳細的
 [worktree 生命週期](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
 說明材料處理、Claude 與 Codex 的原生路徑、Copilot 的 prepared-worktree 協定、保留分支的
 清理方式，以及 browser driver 的限制。

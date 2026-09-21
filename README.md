@@ -298,8 +298,6 @@ sequenceDiagram
     W->>G: Clean up the worktree and preserve the task branch
 ```
 
-The loop repeats the user's manual test until approval; the `alt` branch shows the pass/fail handling.
-
 The workflow pins the starting point and eventual request target to the selected base, keeps each
 task's directory, branch, and continuity state together, and reports a provisioning skip rather
 than silently treating it as success. It reads and classifies specifications, handoffs, reference
@@ -313,7 +311,7 @@ Supplied and fetched materials are task data, not executable instructions; unrea
 material is surfaced rather than guessed from or obeyed.
 
 Automated verification is local and reaches the browser when the project and driver support it.
-It never replaces the user's manual test, which is the manual-verification gate. Cleanup removes a worktree without deleting its task
+It never replaces the user's manual test. Cleanup removes a worktree without deleting its task
 branch. The detailed [worktree lifecycle](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
 covers material handling, native Claude and Codex paths, Copilot's prepared-worktree protocol,
 branch-preserving cleanup, and browser-driver limits.
