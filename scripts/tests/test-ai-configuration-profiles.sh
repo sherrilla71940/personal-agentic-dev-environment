@@ -251,6 +251,9 @@ check_profile() {
   assert_contains "$claude" 'classify its ownership and scope'
   assert_contains "$codex" 'classify its ownership and scope'
   assert_contains "$copilot" 'classify its ownership and scope'
+  assert_contains "$claude" 'do not silently work around it'
+  assert_contains "$codex" 'do not silently work around it'
+  assert_contains "$copilot" 'do not silently work around it'
   local codex_bytes
   codex_bytes="$(wc -c < "$codex" | tr -d ' ')"
   (( codex_bytes <= 32768 )) ||

@@ -39,7 +39,8 @@
 
 ## Engineering principles
 
-- Keep changes minimal, scoped, and architecture-aware. Prefer root-cause fixes over surface patches.
+- Keep changes minimal, scoped, and architecture-aware. Prefer root-cause fixes over surface patches. When a meaningful flaw in the development or agent workflow, automation, instructions, skills, hooks, configuration architecture, or supporting tooling could affect the work, assess it before continuing past it; do not silently work around it.
+- For each meaningful workflow flaw, report the problem, the evidence, the practical impact or likely failure mode, and one disposition: fix now, fix soon but not required for the current task, document or accept the limitation, or leave the design unchanged. Do not derail the task for trivial, speculative, or stylistic issues, and weigh a proposed fix's maintenance complexity against the problem.
 - Before changing shared modules, inspect callers and preserve contracts. Identify required dependent changes together. Before replacing or deleting code, understand the constraint it may encode.
 - Avoid premature abstractions. Favor clear control flow, pragmatic Clean Code, reuse of existing utilities, and intentional duplication when it improves maintainability.
 - When writing something new, match surrounding conventions, choose references by meaning rather than proximity, and confirm that referenced utilities or files actually exist in that context.
