@@ -59,6 +59,7 @@
 ## Readability and documentation
 
 - Prefer the clearest correct code over clever or merely short code. Favor descriptive names and straightforward control flow.
+- For landing READMEs and overview pages, state the architecture and user-visible guarantees; keep implementation mechanics, edge-case semantics, and hook or state-machine details in focused guides unless they change a reader's decision.
 - Use JSDoc for exported or non-obvious functions, explaining purpose, constraints, parameters, and return values. Use inline comments sparingly to explain why a non-obvious workaround exists.
 - In application and project repositories, code comments default to {{ if eq $profile.ai_context "company" }}Traditional Chinese (zh-TW){{ else }}English{{ end }} unless repository instructions specify otherwise. In user-level configuration and customization sources, comments are written in English unconditionally. Chat responses stay English unless explicitly overridden.
 
