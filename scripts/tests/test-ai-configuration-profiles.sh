@@ -248,6 +248,13 @@ check_profile() {
 
   assert_contains "$claude" "Edit source-of-truth files"
   assert_contains "$claude" "The active context is \`$context\`."
+  assert_contains "$claude" 'classify its ownership and scope'
+  assert_contains "$codex" 'classify its ownership and scope'
+  assert_contains "$copilot" 'classify its ownership and scope'
+  local codex_bytes
+  codex_bytes="$(wc -c < "$codex" | tr -d ' ')"
+  (( codex_bytes <= 32768 )) ||
+    fail "Codex AGENTS.md exceeds 32 KiB: $codex_bytes bytes ($context/$continuity/$harness)"
   if [[ "$context" == company ]]; then
     assert_not_contains "$claude" 'The active context is `personal`.'
     assert_contains "$claude" "Traditional Chinese comments by default"

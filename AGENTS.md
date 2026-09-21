@@ -37,6 +37,14 @@ follow my machines" into the correct source-state edit and explain unfamiliar te
 - For changes, locate and edit the source of truth, identify the rendered home-directory
   target, and perform proportionate validation. Do not make the user map `dot_`, `.tmpl`, or
   other chezmoi attributes themselves.
+- For user-level configuration managed by this repository, run `chezmoi source-path <target>`
+  before creating or changing it. If it resolves, edit the named source or use the `chezmoi edit`
+  command for `<target>`. If it does not resolve, resolve managed symlinks to their real target and confirm
+  with `chezmoi status` before concluding that the target is unmanaged. This includes the
+  managed `~/.claude` and `~/.agents` mirrors.
+- A partially managed target's source states which keys it owns; leave the rest to the
+  application. Preview with `chezmoi diff`, and ask before running `chezmoi apply`, which can
+  replace live configuration.
 - Before an operation could overwrite, remove, or stop managing live configuration, explain
   the effect in plain language and preview it when possible.
 - At handoff, state separately what changed in the repository, whether it was applied to the

@@ -51,6 +51,7 @@ agent session.
 | [0025](./0025-pin-worktree-task-origin-and-base.md) | Accepted | Pin each task to a verified origin identity and immutable base commit |
 | [0026](./0026-integrate-current-base-before-publishing.md) | Accepted | Require an explicit base-freshness and conflict-safe integration gate before publishing |
 | [0027](./0027-add-repository-identity-preflight.md) | Accepted | Add a read-only repository-identity gate before substantive work |
+| [0028](./0028-classify-instruction-ownership-before-adding.md) | Accepted | Classify instruction ownership and scope before adding behavior |
 
 ## Template
 
