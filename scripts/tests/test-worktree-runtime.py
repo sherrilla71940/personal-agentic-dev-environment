@@ -15,6 +15,10 @@ import unittest
 from pathlib import Path
 
 
+# Loading the source helper by path would otherwise create ignored bytecode in the chezmoi
+# source tree, which makes `chezmoi diff` report a false target addition after this test.
+sys.dont_write_bytecode = True
+
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 HELPER = REPOSITORY_ROOT / "home" / "dot_local" / "share" / "worktree-runtime.py"
 _spec = importlib.util.spec_from_file_location("worktree_runtime", HELPER)

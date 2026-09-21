@@ -1,6 +1,8 @@
-{{- /* Codex lifecycle hooks. Codex CLI supports the same events, payload fields and output
-       contract as Claude Code, so the continuity hook is the same script for both clients:
-       it names no client machinery and reads only hook_event_name, cwd and source.
+{{- /* Codex lifecycle hooks. Codex and Claude Code share the command-hook payload and output
+       contract used here, so the continuity hook is the same script for both clients. Their
+       matcher values remain client-specific: Codex SessionStart sources are startup, resume,
+       clear and compact; Claude also supports fork. The script names no client machinery and
+       reads only hook_event_name, cwd and source.
 
        This file is user-authored configuration. Codex records hook *trust* separately, in
        config.toml under [hooks.state] keyed by this path plus a sha256, so managing this file

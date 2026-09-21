@@ -173,8 +173,9 @@ adapter，但不會配置每個 worktree 專用的連接埠，也不會提供可
 
 三個細節就能解釋大部分的結構：
 
-- **共用指示會直接嵌入，不是 import。** 每個用戶端的原生指示檔都收到同一份本文。Codex 只收到永遠
-  載入的核心，因為 Codex 既不支援 import，也沒有路徑範圍指示。
+- **共用指示會直接嵌入，不是 import。** 每個用戶端的原生指示檔都收到同一份本文。Codex 會收到永遠
+  載入的核心；在 managed 模式啟用連續性時，還會加上選用的連續性指示。Codex 既不支援 import，
+  也沒有路徑範圍指示。
 - **一個可攜式技能就是一份實體檔案。** 它放在 `home/dot_agents/skills/`，產生到 `~/.agents/skills`，
   Codex、Copilot 與 VS Code 都能原生找到。Claude Code 只從 `~/.claude/skills` 讀個人技能，所以改用
   個別 symlink 連到同一份檔案。`.codex-only` marker 則是擋住共用的那一份，不讓它被當初沒有要給的
@@ -555,9 +556,9 @@ worktree；Codex 會建立或進入 detached worktree，再從選定的基底分
 
 | 介面 | 代表性內容 |
 | --- | --- |
-| Claude Code | 共用 `CLAUDE.md`、路徑範圍規則、連結過去的技能、Claude 專屬技能與命令、hook、主題定義、跨平台狀態列與通知，以及選定的持久設定。 |
+| Claude Code | 共用 `CLAUDE.md`、路徑範圍規則、連結過去的技能、Claude 專屬技能與命令（例如 `project-orientation`）、hook、主題定義、跨平台狀態列與通知，以及選定的持久設定。 |
 | Codex | 共用 `AGENTS.md`、生命週期 hook、共用與受主機閘門管理的技能，以及 create-once 設定預設值。 |
-| GitHub Copilot CLI | 共用指示、Copilot 專屬 agent 與技能、設定，以及使用者 MCP 宣告。 |
+| GitHub Copilot CLI | 共用指示、Copilot 專屬 agent 與技能（例如 `remember`）、設定，以及使用者 MCP 宣告。 |
 | VS Code | Windows 與 macOS 的使用者設定、keybindings、MCP 設定、擴充功能清單，以及支援的 Copilot 自訂內容。 |
 | Shell 與 Git | Bash、Zsh、profile 啟動設定、延遲載入的 `nvm`、Git 身分與別名，以及 `git wt-add`／`git wt-copy` worktree 命令。 |
 | Windows Terminal | 持久的字型與輸入行為，加上完整的 actions 與 keybindings 陣列；自動產生的機器專屬設定檔仍由應用程式管理。 |
@@ -670,7 +671,8 @@ pre-commit hook 會把 staged 的來源產生到暫存目錄——絕不寫進�
 放棄、分支落差、任務其實已經完成、只有計畫的冷啟動、未經確認的資料來源歸屬，以及超出搜尋範圍的
 負面結論、只有 Artifact 的交接，以及 Claude 與 Codex 私有專案指示在用戶端之間不會自動互通的雙向界線。
 每個 fixture 都透過 `setup-case.sh` 在拋棄式儲存庫中建立。那裡的 `state.md` 是刻意做成跟真的一模一樣的，所以絕對不要
-對那個目錄底下找到的 `state.md` 採取任何行動。
+對那個目錄底下找到的 `state.md` 採取任何行動。這些 fixture 是人工檢視模型行為的探針，不是即時 agent 的自動測試；
+Shell 測試驗證的是周邊的 hook 與初始化行為。
 
 ## 儲存庫結構
 
@@ -717,7 +719,8 @@ docs/                              設定、工作流程、自訂與 ADR 指南
 採用薄型包裝器、為什麼 Claude 設定是按 key 合併而不是整份取代、為什麼工作樹固定在 `~/dotfiles`、
 為什麼 Codex 專屬技能用主機閘門而不是用目錄隔離、為什麼 workflow preservation 先做有界探索，再把明確 inventory 放在
 作用中的來源與探索路徑之外，以及為什麼整個工作樹統一成 LF。每份紀錄都寫明了
-什麼樣的變化該重新考慮這個決定，讓之後接手的人分得出哪些是刻意的限制、哪些只是歷史遺留。
+什麼樣的變化該重新考慮這個決定，讓之後接手的人分得出哪些是刻意的限制、哪些只是歷史遺留。近期的 workflow
+決定也要求新增行為前先分類權責與範圍，並且要用證據與處置方式說明有意義的 workflow 缺陷。
 
 探索路徑、frontmatter key、hook payload 與 worktree 行為都會隨上游版本改變。變更用戶端專屬的路徑或
 key 之前，請先對照最新的

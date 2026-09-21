@@ -43,6 +43,9 @@ The columns group surfaces only when they read the same personal configuration:
 
 Add an agent or client-only skill only when it has a concrete purpose. Empty prepared
 directories exist only where a client requires the directory before a session starts.
+Current client-only examples include Claude's `project-orientation` command and Copilot's
+`remember` skill. These features stay in their native client sources because their behavior is not
+portable across all supported clients.
 
 VS Code lists every shared skill twice. Claude Code reads personal skills only from
 `~/.claude/skills`, so this repository links each shared skill there, and VS Code scans both
@@ -290,10 +293,11 @@ source-state changes, run `chezmoi diff` and `chezmoi apply`; do not run `chezmo
 
 ### Give the skill a way to be reached
 
-A skill that nothing points at is unlikely to be used. Across 161 local sessions, every skill
-that had ever been invoked was named explicitly in always-on context — a rule body, `core.md`, or
-the continuity bootstrap — and no skill without such a reference had ever run. Description
-quality was not what separated them; routing was.
+A skill that nothing points at is unlikely to be used. An earlier local-session audit found that
+every skill that had been invoked was named explicitly in always-on context — a rule body,
+`core.md`, or the continuity bootstrap — and no skill without such a reference had run. Description
+quality was not what separated them; routing was. Treat that observation as a historical finding,
+not a current usage measurement.
 
 So name a new skill from the instruction that covers its topic, the way
 `home/.chezmoitemplates/rules/accessibility.md` ends by pointing at `accessibility-review`.

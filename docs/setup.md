@@ -328,7 +328,14 @@ Windows Git Bash rather than a `bash` command that may resolve to WSL:
 
 Pass one or more relative `.sh` paths to run only selected suites. The wrapper does not modify
 `PATH` or install anything; it resolves and validates the Git for Windows `bash.exe` before
-running each script.
+running each script. In PowerShell, pass multiple paths as an array:
+
+```powershell
+.\scripts\tests\run-git-bash-tests.ps1 -TestScript @(
+    "scripts/tests/test-ai-configuration-profiles.sh",
+    "scripts/tests/test-project-continuity-hook.sh"
+)
+```
 
 To run the repository pre-commit hook manually from PowerShell, use the dedicated wrapper instead
 of invoking `bash` directly:
@@ -396,9 +403,12 @@ continuity requests. Codex records trust by hook path and content hash, so switc
 can require a new `/hooks` approval.
 
 It lives in `~/.local/share` rather than under `~/.claude` because **both Claude Code and Codex
-run it**. They share hook event names, stdin fields (`cwd`, `hook_event_name`, `session_id`,
-`source`) and output contract (`systemMessage`, `hookSpecificOutput.additionalContext`), so one
-script serves both: Claude through
+run it**. They share the hook event names used here, common stdin fields (`cwd`, `hook_event_name`,
+`session_id`, `source`) and output contract (`systemMessage`, `hookSpecificOutput.additionalContext`),
+so one script serves both while each client keeps its own matcher values. Claude also matches
+`fork`; Codex `SessionStart` currently accepts only `startup`, `resume`, `clear`, and `compact`.
+See the current [Codex hooks documentation](https://learn.chatgpt.com/docs/hooks) before changing
+that boundary. Claude calls the script through
 [`settings-durable.json`](../home/.chezmoitemplates/claude/settings-durable.json), Codex through
 [`hooks.json`](../home/dot_codex/hooks.json.tmpl). Codex records hook trust separately, in
 `config.toml` under `[hooks.state]`, so each entry needs one `/hooks` approval per machine.

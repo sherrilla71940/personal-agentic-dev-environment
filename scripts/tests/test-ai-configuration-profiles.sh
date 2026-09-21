@@ -226,6 +226,7 @@ check_profile() {
   local workflow="$destination/.agents/skills/worktree-task-workflow/SKILL.md"
   local invocation="$destination/.agents/skills/worktree-task-workflow/references/invocation.md"
   local publishing="$destination/.agents/skills/worktree-task-workflow/references/publish.md"
+  local codex_hooks="$destination/.codex/hooks.json"
   local settings
 
   assert_file "$claude"
@@ -314,6 +315,9 @@ check_profile() {
     if [[ "$continuity" == on ]]; then
       assert_contains "$destination/.claude/settings.json" 'maintain-project-continuity.sh'
       assert_contains "$destination/.codex/hooks.json" 'maintain-project-continuity.sh'
+      assert_contains "$destination/.claude/settings.json" 'startup|resume|clear|compact|fork'
+      assert_contains "$codex_hooks" 'startup|resume|clear|compact'
+      assert_not_contains "$codex_hooks" 'fork'
     else
       assert_not_contains "$destination/.claude/settings.json" 'maintain-project-continuity.sh'
       assert_not_contains "$destination/.codex/hooks.json" 'maintain-project-continuity.sh'

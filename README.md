@@ -187,8 +187,8 @@ for the vendor-specific behavior behind this policy.
 Three details explain most of the structure:
 
 - **Shared instructions are inlined, not imported.** Each client's native instruction file receives the
-  same body. Codex receives the always-on core only, because Codex supports neither imports nor
-  path-scoped instructions.
+  same body. Codex receives the always-on core plus optional continuity guidance when managed mode
+  enables it; Codex supports neither imports nor path-scoped instructions.
 - **A portable skill is one real file.** It lives under `home/dot_agents/skills/` and renders to
   `~/.agents/skills`, where Codex, Copilot, and VS Code find it natively. Claude Code reads
   personal skills only from `~/.claude/skills`, so it reaches the same file through an individual
@@ -625,9 +625,9 @@ source resolution is tied to that one tree.
 
 | Surface | Representative contents |
 | --- | --- |
-| Claude Code | Shared `CLAUDE.md`, path-scoped rules, linked skills, Claude-only skills and commands, hooks, theme definitions, a cross-platform status line and notifications, and selected durable settings. |
+| Claude Code | Shared `CLAUDE.md`, path-scoped rules, linked skills, Claude-only skills and commands such as `project-orientation`, hooks, theme definitions, a cross-platform status line and notifications, and selected durable settings. |
 | Codex | Shared `AGENTS.md`, lifecycle hooks, shared and host-gated skills, and create-once configuration defaults. |
-| GitHub Copilot CLI | Shared instructions, Copilot-only agents and skills, settings, and user MCP declarations. |
+| GitHub Copilot CLI | Shared instructions, Copilot-only agents and skills such as `remember`, settings, and user MCP declarations. |
 | VS Code | Windows and macOS user settings, keybindings, MCP configuration, an extension manifest, and supported Copilot customizations. |
 | Shells and Git | Bash, Zsh, profile startup, lazy `nvm` loading, Git identity and aliases, and the `git wt-add` / `git wt-copy` worktree commands. |
 | Windows Terminal | Durable font and input behavior plus the complete actions and keybindings arrays, while generated machine-specific profiles stay application-owned. |
@@ -756,6 +756,8 @@ search claim, and an Artifact-only handoff. Each fixture stages a throwaway repo
 `setup-case.sh`, including the client-local instruction boundary in both directions. The fabricated
 `state.md` files are deliberately indistinguishable from real
 ones, so never act on a `state.md` found under that directory.
+These fixtures are manual model-behavior probes, not live automated agent tests; the shell suites
+verify the hook and setup behavior that surrounds them.
 
 ## Repository layout
 
@@ -804,7 +806,9 @@ rather than replaced, why the working tree stays at `~/dotfiles`, why a Codex-ta
 gated by host rather than by directory, why workflow archives use bounded discovery and explicit
 inventories outside active source and discovery paths, and why the whole tree is normalized to LF. Each record
 names the change that should trigger reconsideration, so a later session can tell a deliberate
-constraint from accidental legacy.
+constraint from accidental legacy. Recent workflow decisions also classify ownership and scope
+before adding behavior and require meaningful workflow flaws to be surfaced with evidence and a
+disposition.
 
 Discovery paths, frontmatter keys, hook payloads, and worktree behavior all change with upstream
 releases. Verify version-sensitive details against the current
