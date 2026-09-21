@@ -381,12 +381,13 @@ When `ai_continuity` is `on` and `ai_harness` is `managed`, the script rendered 
 `home/dot_local/share/maintain-project-continuity.sh.tmpl` adds the
 deterministic reporting that the skill cannot do for itself. On `SessionStart` it reports whether
 continuity exists and, when it does, names the objective it tracks, so the decision about whether
-this is the same task is made
-against a shown fact rather than from recall; it also ensures `.project-continuity/` is excluded
-from Git. On `Stop` it compares the recorded branch and HEAD against the checkout, offers cleanup
-when the active tracking sections are empty, and reports parked files with no unfinished sections
-as closure candidates. It never deletes parked state; the skill requires confirmation for each
-named file. HEAD is reported two ways. A
+this is the same task is made against a shown fact rather than from recall; it also ensures
+`.project-continuity/` is excluded from Git. On `Stop` it compares the recorded branch and HEAD
+against the checkout, keeps the completion-gate message when drift is also present, requires the
+cleanup review when the active tracking sections are empty, reports parked files with no unfinished
+sections as closure candidates, and reports parked files with missing or malformed `Parked:`
+metadata as unknown-age entries. It never deletes parked state; the skill requires confirmation for
+each named file. HEAD is reported two ways. A
 recorded commit that has left the history - rebased, reset, or belonging to another line of work
 - means the recorded starting point cannot be trusted. A recorded commit that is still an
 ancestor but more than one commit behind means a checkpoint opportunity passed without the file

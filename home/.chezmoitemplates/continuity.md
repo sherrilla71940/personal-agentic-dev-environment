@@ -45,5 +45,8 @@ English, regardless of the conversation language.
 
 Use the `project-continuity` skill for initialization, reconciliation, parking, resume, handoff,
 and cleanup. When `.project-continuity/state.md` already matches the current task, reconcile it
-before substantive work and apply the skill's completion gate when the task is complete.
+before substantive work and apply the skill's completion gate when the task is complete. The gate
+is a required final-response step: a lifecycle-hook reminder does not replace reconciliation or the
+user's explicit cleanup decision. Before ending a completed task, report whether cleanup was
+completed, declined and recorded, or remains pending with the named state files.
 {{- end }}

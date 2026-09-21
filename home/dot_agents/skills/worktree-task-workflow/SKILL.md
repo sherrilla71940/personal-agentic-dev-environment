@@ -226,9 +226,12 @@ publishing, run the `project-continuity` completion gate before the final respon
 the active state or any completed parked state; never treat a clean branch or removed worktree as
 permission to delete continuity state.
 
-The completion gate reconciles the actual delivery state and reviews parked state candidates. If the
-user declines a named cleanup, record `Cleanup: declined` in that file's Verification block and do
-not ask again for that task.
+The completion gate is a required final-response step, not a reminder to handle later. Reconcile
+the actual delivery state and review parked state candidates in the same response. If a stale HEAD
+or branch warning appears, reconcile it and then repeat the finished-state check instead of ending
+with the warning alone. If the user declines a named cleanup, record `Cleanup: declined` in that
+file's Verification block and do not ask again for that task. The final response must state whether
+cleanup was completed, declined and recorded, or remains pending with the named state files.
 
 ## Resume
 

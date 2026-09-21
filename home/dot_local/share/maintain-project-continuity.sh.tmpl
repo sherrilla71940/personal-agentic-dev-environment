@@ -251,13 +251,13 @@ report_finished_state() {
     return 0
   fi
 
-  message="Project continuity at .project-continuity/state.md records no unfinished work:"
-  message="$message In progress, Next actions, Blockers and TODO / deferred are all empty or"
-  message="$message absent. If the tracked task is genuinely complete, do not invent a next"
-  message="$message action - say continuity looks unnecessary and offer cleanup in this response,"
-  message="$message naming anything that belongs in durable documentation first. If work does"
-  message="$message remain, record it. If the user declines cleanup, record Cleanup: \`declined\`"
-  message="$message in the Verification block so this is not raised again."
+  message="CONTINUITY COMPLETION GATE REQUIRED: .project-continuity/state.md records no unfinished work:"
+  message="$message In progress, Next actions, Blockers and TODO / deferred are all empty or absent."
+  message="$message Before ending this response, invoke the project-continuity skill and reconcile"
+  message="$message the state against Git. If the tracked task is complete, ask the user to confirm"
+  message="$message deletion of this named state file after moving any durable information to its"
+  message="$message canonical home. If work remains, record a concrete next action instead. If the"
+  message="$message user declines cleanup, record Cleanup: \`declined\` in the Verification block."
 
   jq -cn --arg message "$message" '{systemMessage:$message}'
 }
@@ -289,7 +289,7 @@ report_finished_parked_states() {
 
   [[ -n "$candidates" ]] || return 0
 
-  message="Completed parked continuity files are closure candidates: $candidates."
+  message="CONTINUITY CLEANUP REVIEW REQUIRED: Completed parked continuity files are closure candidates: $candidates."
   message="$message Do not delete them automatically. Ask the user to confirm each named file's"
   message="$message deletion. If the user declines, record Cleanup: \`declined\` in that file's"
   message="$message Verification block."
@@ -297,39 +297,86 @@ report_finished_parked_states() {
   jq -cn --arg message "$message" '{systemMessage:$message}'
 }
 
-# A response carries at most one system message, so the notices are ranked. Drift comes first,
-# because a state file describing the wrong commit or branch actively misleads the next reader,
-# where an unretired finished file only wastes a cleanup.
+# Parking requires a timestamp because file-system mtimes are not a reliable cross-platform task
+# history. Report legacy or malformed entries instead of silently making age-based review
+# impossible. The continuity skill decides how to reconcile the file; this helper never edits it.
+report_parked_metadata() {
+  local root="$1"
+  local parked_directory="$root/.project-continuity/parked"
+  local parked_file parked_timestamp invalid_files="" message
+
+  [[ -d "$parked_directory" ]] || return 0
+
+  for parked_file in "$parked_directory"/*.md; do
+    [[ -f "$parked_file" ]] || continue
+    parked_timestamp="$(recorded_field "$parked_file" "Parked")"
+    if [[ ! "$parked_timestamp" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2})$ ]]; then
+      if [[ -n "$invalid_files" ]]; then
+        invalid_files="$invalid_files, "
+      fi
+      invalid_files="${invalid_files}${parked_file#"$root"/}"
+    fi
+  done
+
+  [[ -n "$invalid_files" ]] || return 0
+
+  message="Parked continuity metadata is incomplete; age is unknown for: $invalid_files."
+  message="$message Reconcile each file and add the required \`Parked: <ISO 8601 timestamp"
+  message="$message with timezone>\` line before using age-based stale review. Do not infer age"
+  message="$message from file timestamps or delete these files automatically."
+
+  jq -cn --arg message "$message" '{systemMessage:$message}'
+}
+
+combine_notices() {
+  local first="$1" second="$2"
+  local first_message second_message
+
+  [[ -n "$first" || -n "$second" ]] || return 0
+  if [[ -z "$first" ]]; then
+    printf '%s\n' "$second"
+    return 0
+  fi
+  if [[ -z "$second" ]]; then
+    printf '%s\n' "$first"
+    return 0
+  fi
+
+  first_message="$(printf '%s' "$first" | jq -r '.systemMessage // ""')"
+  second_message="$(printf '%s' "$second" | jq -r '.systemMessage // ""')"
+  jq -cn --arg first "$first_message" --arg second "$second_message" \
+    '{systemMessage:($first + " " + $second)}'
+}
+
+# A response carries at most one system message. Drift comes first because a state file describing
+# the wrong commit or branch actively misleads the next reader, but the completion and metadata
+# notices still accompany it so reconciliation cannot permanently hide cleanup work.
 report_continuity_notice() {
   local state_file="$1"
-  local directory notice semantic_notice parked_notice first_message second_message
+  local directory notice semantic_notice finished_notice parked_notice metadata_notice
 
   directory="$(dirname "$(dirname "$state_file")")"
   notice="$(report_stale_verification "$state_file" "$directory")"
   semantic_notice="$(report_progress_verification_contradictions "$state_file")"
-  if [[ -z "$notice" ]]; then
-    notice="$semantic_notice"
-  elif [[ -n "$semantic_notice" ]]; then
-    first_message="$(printf '%s' "$notice" | jq -r '.systemMessage // ""')"
-    second_message="$(printf '%s' "$semantic_notice" | jq -r '.systemMessage // ""')"
-    notice="$(jq -cn --arg first "$first_message" --arg second "$second_message" \
-      '{systemMessage:($first + " " + $second)}')"
-  fi
-  if [[ -z "$notice" ]]; then
-    notice="$(report_finished_state "$state_file")"
-  fi
+  finished_notice="$(report_finished_state "$state_file")"
   parked_notice="$(report_finished_parked_states "$directory")"
-  if [[ -z "$notice" ]]; then
-    notice="$parked_notice"
-  elif [[ -n "$parked_notice" ]]; then
-    first_message="$(printf '%s' "$notice" | jq -r '.systemMessage // ""')"
-    second_message="$(printf '%s' "$parked_notice" | jq -r '.systemMessage // ""')"
-    notice="$(jq -cn --arg first "$first_message" --arg second "$second_message" \
-      '{systemMessage:($first + " " + $second)}')"
-  fi
+  metadata_notice="$(report_parked_metadata "$directory")"
+  notice="$(combine_notices "$notice" "$semantic_notice")"
+  notice="$(combine_notices "$notice" "$finished_notice")"
+  notice="$(combine_notices "$notice" "$parked_notice")"
+  notice="$(combine_notices "$notice" "$metadata_notice")"
   if [[ -n "$notice" ]]; then
     printf '%s\n' "$notice"
   fi
+}
+
+report_parked_notices() {
+  local root="$1"
+  local finished_notice metadata_notice
+
+  finished_notice="$(report_finished_parked_states "$root")"
+  metadata_notice="$(report_parked_metadata "$root")"
+  combine_notices "$finished_notice" "$metadata_notice"
 }
 
 ensure_private_state_path() {
@@ -432,7 +479,7 @@ case "$event_name" in
     else
       root="$(git -C "$working_directory" rev-parse --show-toplevel 2>/dev/null || true)"
       if [[ -n "$root" ]]; then
-        report_finished_parked_states "$root"
+        report_parked_notices "$root"
       fi
     fi
     ;;

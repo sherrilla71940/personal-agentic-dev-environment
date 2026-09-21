@@ -391,10 +391,13 @@ review and CI. The Claude adapter exits with `keep` and then runs `git worktree 
 `--force`; the Codex adapter never removes its own active worktree at all. Every removal path that
 would delete a ref is deliberately unused.
 
-**Continuity cleanup is separate.** After publishing, the workflow runs the `project-continuity`
-completion gate. It reconciles active and parked state, asks before deleting completed state, and
-records `Cleanup: declined` when the user keeps it. Worktree disposal or branch preservation never
-authorizes continuity-state deletion.
+**Continuity cleanup is separate, but it is still a required completion step.** After publishing and
+before the final response, the workflow runs the `project-continuity` completion gate even when it
+also emits a stale HEAD or branch warning. The workflow reconciles active and parked state, validates
+parked timestamps before applying age-based review, asks before deleting completed state, and
+records `Cleanup: declined` when the user keeps it. A clean branch, worktree disposal, or branch
+preservation never authorizes continuity-state deletion, and the final response names any cleanup
+that remains pending.
 
 ## Safety boundaries
 

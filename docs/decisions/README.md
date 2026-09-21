@@ -52,6 +52,7 @@ agent session.
 | [0026](./0026-integrate-current-base-before-publishing.md) | Accepted | Require an explicit base-freshness and conflict-safe integration gate before publishing |
 | [0027](./0027-add-repository-identity-preflight.md) | Accepted | Add a read-only repository-identity gate before substantive work |
 | [0028](./0028-classify-instruction-ownership-before-adding.md) | Accepted | Classify instruction ownership and scope before adding behavior |
+| [0029](./0029-enforce-continuity-completion-gate.md) | Accepted | Enforce continuity reconciliation and cleanup review at task boundaries |
 
 ## Template
 

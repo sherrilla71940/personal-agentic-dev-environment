@@ -259,7 +259,7 @@ write_state "$fixture_branch" "$fixture_head"
 append_section 'Decisions still in force' '- A decision that still binds.'
 cleanup_message="$(notice_message "$(stop_notice)")"
 case "$cleanup_message" in
-  *"records no unfinished work"*"offer cleanup"*) ;;
+  *"CONTINUITY COMPLETION GATE REQUIRED"*"records no unfinished work"*"confirm"*) ;;
   *) printf 'expected cleanup offer, got: %s\n' "$cleanup_message" >&2; exit 1 ;;
 esac
 
@@ -279,6 +279,20 @@ case "$parked_message" in
   *"Completed parked continuity files are closure candidates"*"parked/completed-task.md"*"confirm"*) ;;
   *) printf 'expected completed parked closure candidate, got: %s\n' "$parked_message" >&2; exit 1 ;;
 esac
+
+# A parked file without the required timestamp must not disappear from age-based review. Report
+# the unknown age so the continuity skill can reconcile it without trusting file-system metadata.
+parked_metadata_candidate="$parked_directory/missing-timestamp.md"
+{
+  printf '# Project Continuity\n\n## Objective\n\nParked task with incomplete metadata.\n\n'
+  printf '## Next actions\n\n1. Keep the parked task open.\n'
+} > "$parked_metadata_candidate"
+metadata_message="$(notice_message "$(stop_notice)")"
+case "$metadata_message" in
+  *"Parked continuity metadata is incomplete"*"age is unknown"*"parked/missing-timestamp.md"*) ;;
+  *) printf 'expected unknown parked age notice, got: %s\n' "$metadata_message" >&2; exit 1 ;;
+esac
+rm -f "$parked_metadata_candidate"
 
 # The parked candidate is reported even when there is no active state file.
 rm -f "$state_file"
@@ -329,10 +343,19 @@ append_section 'Decisions still in force' '- A decision that still binds.'
 test -z "$(stop_notice)"
 
 # Drift outranks the cleanup offer, because one response carries one system message and wrong
-# recorded state misleads the next reader more than an unretired file does.
+# recorded state misleads the next reader more than an unretired file does. The completion gate is
+# still present when the stale state has no open tracking items.
 write_state "$fixture_branch" deadbee
 append_section 'Decisions still in force' '- A decision that still binds.'
 notice_message "$(stop_notice)" | grep -q 'is out of date'
+
+write_state "$fixture_branch" deadbee
+cleanup_with_drift_message="$(notice_message "$(stop_notice)")"
+case "$cleanup_with_drift_message" in
+  *"is out of date"*"CONTINUITY COMPLETION GATE REQUIRED"*) ;;
+  *) printf 'stale-state notice must not hide the completion gate, got: %s\n' \
+    "$cleanup_with_drift_message" >&2; exit 1 ;;
+esac
 
 # With no Verification block there is nothing to compare against, so drift stays silent -
 # but the file still records no unfinished work, so the cleanup offer is the right notice.

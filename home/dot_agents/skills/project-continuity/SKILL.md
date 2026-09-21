@@ -25,24 +25,33 @@ Read [references/state-format.md](references/state-format.md) when creating or r
 
 ## Completion gate
 
-Before ending a response that touched continuity, apply this gate:
+Before ending a response that touched continuity, apply this mandatory final-response gate. The
+lifecycle hook is a reminder, not a substitute for this reconciliation or for the user's cleanup
+decision:
 
 1. Reconcile the state against the current repository and Git reality.
 2. Apply the finished-state invariant: if `state.md` exists and `In progress`, `Next actions`,
    `Blockers`, and `TODO / deferred` are all empty or absent, the task is finished. Unless the
    Verification block already records `Cleanup: declined`, say that continuity looks unnecessary
-   and offer cleanup immediately.
+   and offer cleanup immediately. Do not end the response with only a stale-state warning; after
+   reconciling the warning, run this completion step in the same response.
 3. Review every `parked/*.md` during every continuity review, not only during cleanup or an
    explicit parked-task listing. Reconcile each file against Git enough to apply the same
    finished-state invariant. Report a parked file with no unfinished sections as a completed
-   parked-state closure candidate. Completion does not authorize deletion: ask for confirmation
-   before deleting each named file. If the user declines, record `Cleanup: declined` in that
-   parked file's Verification block and do not raise that candidate again.
+   parked-state closure candidate. Validate its `Parked:` timestamp before applying the age rule;
+   a missing or malformed timestamp has unknown age and must be reported rather than inferred from
+   file-system metadata. Completion does not authorize deletion: ask for confirmation before
+   deleting each named file. If the user declines, record `Cleanup: declined` in that parked
+   file's Verification block and do not raise that candidate again.
 4. If the user confirms cleanup for the active state or named parked candidates, follow
    [Cleanup](#cleanup) and delete only the confirmed targets; do not delete state merely because
    the task is complete.
 5. If the user declines cleanup for the active state, record `Cleanup: declined` in its
    Verification block and do not raise the offer again for that task.
+
+The completion outcome must be visible before the response ends: cleanup confirmed and completed,
+cleanup declined and recorded, or unfinished continuity retained with a concrete next action. A
+clean branch, a removed worktree, or a successful publish does not choose among those outcomes.
 
 This check is independent of checkpointing: a finished task removes the reason to keep state,
 so the cleanup offer must not depend on another checkpoint occurring.

@@ -180,9 +180,16 @@ For `cleanup=ask`, ask once and explain that dependencies and build output in th
 also removed. Recommend keeping the worktree while non-trivial review is likely. For
 `cleanup=auto`, the invocation supplies removal authorization, but the same safety checks remain.
 
+After publishing, run the required `project-continuity` completion gate before the final response,
+regardless of whether the worktree is kept or removed. Reconcile stale HEAD or branch warnings and
+repeat the finished-state check in the same response. The final response must state whether
+continuity cleanup was completed, declined and recorded, or remains pending with the named state
+files.
+
 When removal is authorized:
 
-1. Clean up continuity according to `project-continuity`.
+1. Use the completion-gate result; a clean branch or removed worktree does not authorize deleting
+   continuity state.
 2. Call `ExitWorktree` with `action: "keep"`.
 3. From the main checkout, run `git worktree remove "<path>"` without `--force`.
 4. Run `git worktree prune`.
