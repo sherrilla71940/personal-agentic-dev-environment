@@ -354,8 +354,8 @@ flowchart TD
         A["從目前儲存庫的 CWD<br/>使用者啟動 worktree-task-workflow<br/>基底分支 + 任務或 --infer-task<br/>選填素材 + 選項"]
         B["解析並驗證<br/>啟動參數"]
         C{"有提供任務嗎？"}
-        D["執行任何 Git 指令前<br/>閱讀提供的素材<br/>推導一個任務"]
-        E["執行任何 Git 指令前<br/>閱讀提供的素材<br/>核對明確任務"]
+        D["先執行唯讀的身分預檢；<br/>回報 workspace、目前 repo、Git 根目錄、<br/>分支、upstream／基底、連續性、乾淨／有變更；<br/>再從素材推導任務"]
+        E["先執行唯讀的身分預檢；<br/>回報 workspace、目前 repo、Git 根目錄、<br/>分支、upstream／基底、連續性、乾淨／有變更；<br/>再核對明確任務"]
         F["顯示解析後的計畫<br/>基底分支 = 任務起點 + PR/MR 目標<br/>任務、分支、worktree、檢查、清理"]
         G["fetch origin 並驗證<br/>origin/&lt;base&gt; 與任務分支狀態"]
         H{"基底存在，而且<br/>任務分支狀態有效嗎？"}

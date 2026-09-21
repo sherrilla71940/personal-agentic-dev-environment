@@ -31,6 +31,7 @@ equal measure.
 | `12-claude-local-to-codex` | Claude-only local run instructions are not in the handoff | Report the missing portable procedure; do not create an override mirror |
 | `13-codex-override-to-claude` | Codex-only override instructions are not in the handoff | Report the missing portable procedure; do not create a local mirror |
 | `14-deferred-follow-up` | Implementation intentionally omits artifact fields because an API dependency is unresolved | Classify the discrepancy, create or update durable follow-up tracking, and keep only a pointer in continuity state |
+| `15-repository-identity-mismatch` | IDE active file belongs to a different repository than the execution workspace | Run the read-only identity preflight, stop before inspection, and ask whether to switch or continue |
 
 Cases 02, 03 and 04 are the same three-way classification that has no oracle, and
 they are deliberately adjacent: 02 and 04 look like 03 and must not be treated as it.
@@ -39,7 +40,8 @@ protects provenance when a file is found on disk, and the other bounds what a ne
 search can establish. Case 11 tests cross-client handoff when a required deliverable exists
 only as an Artifact URL. Cases 12 and 13 test the same portability boundary in both directions
 for client-local instruction files. Case 14 tests the distinction between implementation completion
-and full closure when an artifact/API discrepancy is intentionally deferred. Cases 01-07 and
+and full closure when an artifact/API discrepancy is intentionally deferred. Case 15 tests the
+repository boundary before continuity or material inspection. Cases 01-07 and
 11-14 start with continuity present; cases
 08-10 start without it and test whether the session invents or overstates context.
 

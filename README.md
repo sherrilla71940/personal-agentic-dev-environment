@@ -398,8 +398,8 @@ flowchart TD
         A["From the current repository CWD<br/>invoke worktree-task-workflow<br/>base branch + task or --infer-task<br/>optional materials + options"]
         B["Resolve and validate<br/>the invocation"]
         C{"Task supplied?"}
-        D["Read supplied materials<br/>before any Git command;<br/>infer one task"]
-        E["Read supplied materials<br/>before any Git command;<br/>cross-check the explicit task"]
+        D["Run the read-only identity preflight;<br/>report workspace, active repo, Git root,<br/>branch, upstream/base, continuity, clean/dirty;<br/>then infer one task from materials"]
+        E["Run the read-only identity preflight;<br/>report workspace, active repo, Git root,<br/>branch, upstream/base, continuity, clean/dirty;<br/>then cross-check the explicit task"]
         F["Show the resolved plan<br/>base branch = task start + PR/MR target<br/>task, branch, worktree, checks, cleanup"]
         G["Fetch origin and verify<br/>origin/&lt;base&gt; and task-branch state"]
         H{"Base exists and<br/>task branch is valid?"}

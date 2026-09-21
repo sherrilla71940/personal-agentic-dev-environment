@@ -10,7 +10,7 @@ disable-model-invocation: true
 Run one task in its own Claude Code worktree:
 
 ```text
-validate -> read materials -> isolate -> plan -> implement -> verify
+identity preflight -> validate -> read materials -> isolate -> plan -> implement -> verify
          -> USER MANUAL TEST -> commit -> push -> request -> worktree cleanup
 ```
 
@@ -28,7 +28,8 @@ Read [references/invocation.md](references/invocation.md) and follow it through 
 - `--infer-task` / `infer-task=true` with readable materials.
 
 An empty `task=` is always invalid. When inference is requested, omit `task` rather than passing
-an empty value. Do not touch Git before showing the resolved echo.
+an empty value. Run the shared read-only repository identity preflight before reading materials;
+do not create or change Git state until the preflight and resolved echo pass.
 
 ## 2. Check repository and derive names
 

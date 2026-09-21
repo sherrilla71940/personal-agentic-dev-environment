@@ -34,6 +34,29 @@ can use `git wt-add --open-code` to open a separate VS Code window. Claude Code 
 own session or Handoff workspace rules, and the existing editor window remains on its current
 checkout unless the user changes it explicitly.
 
+## Repository identity preflight
+
+Before substantive repository work, every supported client reports a read-only identity preflight:
+
+- the execution workspace root and current Git root;
+- the active task repository when the host or user provides it;
+- the current branch, current upstream, and selected workflow base;
+- the physical `.project-continuity/state.md` path and whether it exists; and
+- whether the working tree is clean.
+
+If a known active file or repository resolves to a different Git root, the client warns and stops
+before reading project files or editing. It performs only identity checks and asks whether to switch
+context or continue with the current workspace. An explicitly confirmed second repository is a
+separate task; the current worktree's continuity state is not reconciled, parked, replaced, or
+updated for that task.
+
+The current hooks receive the execution `cwd`, event name, and session metadata, but they do not
+receive an IDE active-file path. When that path is unavailable, the client reports `active task
+repository: unavailable` and uses the explicit workspace preflight. It asks for confirmation when
+the intended repository is ambiguous. The workflow does not infer repository identity from a tab
+title, filename, or directory name, and changing a terminal CWD does not move an existing client
+session.
+
 The workflow is explicit-only. Native-first means “use the native mechanism when it satisfies the
 invariant,” not “make every task use the workflow.” If a future client feature satisfies one of
 the workflow's invariants reliably, remove or bypass the corresponding fallback instead of

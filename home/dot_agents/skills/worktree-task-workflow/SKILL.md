@@ -46,7 +46,8 @@ need an application server; this workflow is not a mandatory runtime harness.
 the task branch from `origin/<base>` in a new worktree, and the eventual pull or merge request
 targets that same base branch. Task identity requires exactly one non-empty explicit task or
 requested inference from readable materials. `task=""` is invalid; omit `task` when using
-inference. Do not touch Git before showing the resolved echo.
+inference. Run the shared read-only repository identity preflight before reading materials; do not
+create or change Git state until the preflight and resolved echo pass.
 
 ## 2. Prepare the working-tree entry point
 

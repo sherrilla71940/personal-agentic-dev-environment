@@ -1,7 +1,9 @@
 # Invocation, normalization and validation
 
-Read this before touching Git. Interpret the text accompanying the skill invocation as the
-arguments described below, then echo the resolved result before creating or changing anything.
+Read this before substantive work. Interpret the text accompanying the skill invocation as the
+arguments described below. After structural validation, run the read-only repository identity
+preflight below before reading material content. Then echo the resolved result before creating or
+changing anything.
 
 ## Task identity
 
@@ -133,8 +135,50 @@ Stop and create nothing for any of these:
 | the positional base resolves to a file or contains whitespace | it is in the wrong slot |
 | `branch=` together with `type=`, `slug=`, or `suffix=` | two branch names were described |
 
-Strip an `origin/` prefix from `base` after parsing. Resolve every material before Git — a path
-must exist and a URL must actually be fetched. Check `origin/<base>` after fetching; when it is
+## 4. Repository identity preflight
+
+Before reading material content, perform a read-only identity check from the current execution
+workspace. Do not change the shell's CWD, create a worktree, fetch, switch branches, reconcile
+continuity, or edit any file during this check.
+
+Report this block before proceeding:
+
+```text
+execution workspace <current CWD and resolved physical path>
+active task repository <host- or user-provided Git root, or unavailable>
+current Git root    <Git root, or none>
+branch              <current branch, or detached HEAD>
+upstream            <current @{upstream} branch, or none>
+base branch         <selected workflow base, or not selected>
+continuity state    <Git root>/.project-continuity/state.md (<present|absent|unavailable>; unreconciled)
+working tree        <clean|dirty>
+```
+
+Use `git rev-parse --show-toplevel`, `git branch --show-current` (or an explicit detached-HEAD
+report), `git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}'`, `git status --porcelain`,
+and a read-only existence check for `.project-continuity/state.md`. Resolve a host- or user-provided
+active file's containing Git root with `git -C`; a basename, tab title, or directory name is not
+repository identity. If the active repository is unavailable, report `unavailable` rather than
+guessing.
+
+If the active task repository differs from the current Git root, warn that the contexts differ and
+stop before opening project files or reading materials. Perform only the identity checks above, then
+ask whether the user wants to switch context or continue with the current execution workspace.
+Changing a terminal CWD does not move an existing client session; use the client's explicit context
+switch or start the client in the requested path.
+
+If the user explicitly confirms work in a second repository, treat it as a separate task and run a
+new preflight in that repository. Leave the current worktree's continuity state untouched: do not
+read it for reconciliation, park it, replace it, or write to it for the second task. If active-file
+context is unavailable and the requested task or material identifies another repository, ask for
+that confirmation before inspecting the other repository.
+
+Only after this preflight passes may the workflow inspect material contents. A material path from
+another repository is reference material only when the user identifies it as such; otherwise stop
+and resolve the repository boundary first.
+
+Strip an `origin/` prefix from `base` after parsing. Resolve every material after the preflight: a
+path must exist and a URL must actually be fetched. Check `origin/<base>` after fetching; when it is
 absent, show near matches and create nothing.
 
 After the resolved echo and before any worktree is created, establish a remote-base checkpoint:
@@ -156,7 +200,7 @@ The base branch name remains the request target. A later movement of that branch
 the task's recorded starting commit; before publishing, verify that the same origin identities
 remain configured and that the named target branch still exists.
 
-## 5. Resolve from materials
+## 6. Resolve from materials
 
 Read every supplied material before planning:
 
@@ -185,9 +229,9 @@ multiple tasks, conflict, or do not support one confident task. Mark the resolve
 With an explicit task, cross-check it against the materials. Stop only for a material conflict in
 subject, screen, feature, or module; wording and added detail are not conflicts.
 
-## 6. Echo the resolved interpretation
+## 7. Echo the resolved interpretation
 
-Show one block after all materials are read and before any Git command:
+Show one block after all materials are read and before the remote-base checkpoint:
 
 ```text
 base branch feat/CCTVPipiCons

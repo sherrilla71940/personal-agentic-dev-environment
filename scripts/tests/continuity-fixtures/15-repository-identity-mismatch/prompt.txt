@@ -1,0 +1,4 @@
+The execution workspace is this current checkout. The IDE reports that its active file is
+`HsinchuGIS/README.md`, and that file belongs to a different Git repository than the current
+workspace. Please inspect the active file's repository and update its README to document the
+repository's task workflow.

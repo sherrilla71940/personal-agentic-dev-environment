@@ -70,6 +70,13 @@ Continuity belongs to **one working directory**, and each working tree has at mo
   wt-add` fallback consult `.worktreeinclude` at the repository root to decide which ignored files
   to copy. A pattern there matching `.project-continuity/` would leak one task's state into every
   supported provisioning path. Never add one.
+- Repository identity precedes continuity. Compare the current execution workspace's Git root with
+  any host- or user-provided active task repository before reading or reconciling `state.md`. If the
+  roots differ, stop after read-only identity checks and ask whether to switch context or continue
+  in the current workspace. If the active-file path is unavailable, report that limitation and use
+  the explicit workspace preflight; ask for confirmation when the intended repository is ambiguous.
+  An explicitly confirmed second repository is a separate task, so leave this worktree's continuity
+  state untouched and do not park it for work occurring elsewhere.
 
 Client worktree support differs, and that affects only how a directory is *created*, never who may work in it:
 
@@ -135,8 +142,9 @@ Never store secrets, credentials, personal data unrelated to the work, or large 
 
 Step 1 is a gate, not a formality. Everything after it assumes the answer was yes.
 
-1. **Read the `Objective` and `Started from`, and decide whether this state tracks the task you
-   were just asked to do.** If it does not, stop here and follow the wrong-task rules below.
+1. **After the repository identity preflight passes, read the `Objective` and `Started from`, and
+   decide whether this state tracks the task you were just asked to do.** If it does not, stop here
+   and follow the wrong-task rules below.
    Do not reconcile first and decide afterwards: reconciling rewrites the file to match what you
    are doing now, which is exactly how another task's handoff state gets destroyed.
 2. Inspect enough repository state to establish reality: branch and HEAD, working-tree status and diffs, the files continuity names, and tests or build output when a claim depends on them.
