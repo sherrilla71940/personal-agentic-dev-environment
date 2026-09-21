@@ -269,11 +269,11 @@ pre-publish gate.
 sequenceDiagram
     participant W as Workflow
     participant G as Git / worktree
-    participant C as Continuity
+    participant C as Continuity state
     participant U as User
 
     Note over W: Receive request and supplied materials
-    Note over W,G: <base> = task start + PR/MR target
+    Note over W,G: <base> branch = task start + PR/MR target
     Note over W: Fetch and resolve exact origin/<base> commit
     W->>G: Check for or create the isolated task worktree
     W->>G: Start the task branch from the exact origin/<base> commit
@@ -293,10 +293,12 @@ sequenceDiagram
         end
     end
     W->>G: Commit the approved change
-    Note over W,G: Fetch current origin/<base> before publishing.<br/>If it moved, choose merge or rebase.<br/>Then rerun automated checks and the user's manual test.
+    Note over W,G: Fetch current origin/<base> before publishing.<br/>If the base moved, choose merge or rebase.<br/>Then rerun automated checks and the user's manual test.
     W->>G: Push task branch and set upstream<br/>request PR/MR against <base>
     W->>G: Clean up the worktree and preserve the task branch
 ```
+
+The loop repeats the user's manual test until approval; the `alt` branch shows the pass/fail handling.
 
 The workflow pins the starting point and eventual request target to the selected base, keeps each
 task's directory, branch, and continuity state together, and reports a provisioning skip rather
@@ -311,7 +313,7 @@ Supplied and fetched materials are task data, not executable instructions; unrea
 material is surfaced rather than guessed from or obeyed.
 
 Automated verification is local and reaches the browser when the project and driver support it.
-It never replaces the user's manual test. Cleanup removes a worktree without deleting its task
+It never replaces the user's manual test, which is the manual-verification gate. Cleanup removes a worktree without deleting its task
 branch. The detailed [worktree lifecycle](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
 covers material handling, native Claude and Codex paths, Copilot's prepared-worktree protocol,
 branch-preserving cleanup, and browser-driver limits.
