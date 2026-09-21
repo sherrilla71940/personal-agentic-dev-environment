@@ -2,7 +2,13 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-**快速導覽：** [系統總覽](#系統總覽) · [Profile 與 AI harness 模式](#profile-與-ai-harness-模式) · [專案連續性](#專案連續性) · [任務生命週期與隔離 worktree](#任務生命週期與隔離-worktree) · [儲存庫結構](#儲存庫結構)
+**快速導覽：**
+
+- [系統總覽](#系統總覽)
+- [專案連續性](#專案連續性)
+- [任務生命週期與隔離 worktree](#任務生命週期與隔離-worktree)
+- [Profile 與 AI harness 模式](#profile-與-ai-harness-模式)
+- [儲存庫結構](#儲存庫結構)
 
 這個儲存庫是跨平台開發環境與代理式工作流程系統，提供 chezmoi 管理的 dotfile 設定，以及
 Claude Code、Codex 與 GitHub Copilot 的 client-native 整合。支援的 client 清單會隨儲存庫演進
@@ -262,7 +268,7 @@ sequenceDiagram
         end
     end
     W->>G: commit 已核准的變更
-    Note over W,G: 發布前先 fetch 目前的 origin/<base>。<br/>如果 base 已前進，選擇 merge 或 rebase，再重新執行自動檢查與使用者手動測試。
+    Note over W,G: 發布前先 fetch 目前的 origin/<base>。<br/>如果 base 已前進，選擇 merge 或 rebase。<br/>再重新執行自動檢查與使用者手動測試。
     W->>G: push 任務分支並設定 upstream<br/>針對 <base> 提出 PR/MR
     W->>G: 清理 worktree 並保留任務分支
 ```
@@ -279,6 +285,9 @@ manifest 不存在，流程會回報略過，判斷缺少的檔案是否影響�
 [worktree 生命週期](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
 說明材料處理、Claude 與 Codex 的原生路徑、Copilot 的 prepared-worktree 協定、保留分支的
 清理方式，以及 browser driver 的限制。
+
+發布後，工作流程會另外執行 continuity completion gate，不會把它和 worktree 清理混在一起：
+它會核對作用中的 state 與 parked state，並在刪除已完成的 continuity state 前先詢問。
 
 ### 平行任務不遺失狀態
 
@@ -315,6 +324,10 @@ Status line 會顯示 model 與 effort level、session name、working directory�
 版本會做 parity check，也會計算 CJK 與 emoji 寬度，讓窄終端機仍維持可讀。
 
 ## 權責與隱私界線
+
+對於應用程式擁有的設定，儲存庫只管理刻意指定的持久性 key 或結構；容易變動的偏好、認證、
+歷史紀錄、cache、session/runtime state，以及應用程式未來新增的值，除非刻意納入儲存庫管理，
+否則都留在本機。
 
 儲存庫不會試圖擁有應用程式寫入的每一個 byte，而是宣告最小必要的管理範圍，將偏好、
 認證、歷史紀錄、cache 與 runtime state 留在本機。

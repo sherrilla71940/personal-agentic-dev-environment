@@ -2,7 +2,13 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-**Jump to:** [System at a glance](#system-at-a-glance) · [Profiles and AI harness modes](#profiles-and-ai-harness-modes) · [Project continuity](#project-continuity) · [Task lifecycle and isolated worktrees](#task-lifecycle-and-isolated-worktrees) · [Repository layout](#repository-layout)
+**Jump to:**
+
+- [System at a glance](#system-at-a-glance)
+- [Project continuity](#project-continuity)
+- [Task lifecycle and isolated worktrees](#task-lifecycle-and-isolated-worktrees)
+- [Profiles and AI harness modes](#profiles-and-ai-harness-modes)
+- [Repository layout](#repository-layout)
 
 This repository is a cross-platform developer environment and agentic workflow system, with managed
 dotfile configuration and client-native integrations for Claude Code, Codex, and GitHub Copilot. That
@@ -280,7 +286,7 @@ sequenceDiagram
         end
     end
     W->>G: Commit the approved change
-    Note over W,G: Fetch current origin/<base> before publishing.<br/>If it moved, choose merge or rebase, then rerun automated checks and the user's manual test.
+    Note over W,G: Fetch current origin/<base> before publishing.<br/>If it moved, choose merge or rebase.<br/>Then rerun automated checks and the user's manual test.
     W->>G: Push task branch and set upstream<br/>request PR/MR against <base>
     W->>G: Clean up the worktree and preserve the task branch
 ```
@@ -299,6 +305,9 @@ It never replaces the user's manual test. Cleanup removes a worktree without del
 branch. The detailed [worktree lifecycle](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
 covers material handling, native Claude and Codex paths, Copilot's prepared-worktree protocol,
 branch-preserving cleanup, and browser-driver limits.
+
+After publishing, the workflow runs the continuity completion gate separately from worktree cleanup:
+it reconciles active and parked state and asks before deleting completed continuity state.
 
 ### Parallel tasks without losing state
 
@@ -340,6 +349,10 @@ times. Bash and PowerShell implementations are parity-checked and measure CJK an
 narrow terminals.
 
 ## Ownership and privacy boundaries
+
+For application-owned configuration, the repository manages only deliberate durable keys or
+structures; volatile preferences, authentication, history, caches, session/runtime state, and
+future application-owned values remain local unless intentionally promoted into repository ownership.
 
 The repository does not own every byte an application writes. It claims the narrowest useful
 surface and leaves preferences, authentication, history, caches, and runtime state local.

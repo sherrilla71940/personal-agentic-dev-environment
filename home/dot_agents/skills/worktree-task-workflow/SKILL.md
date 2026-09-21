@@ -219,9 +219,16 @@ Only mark it ready for disposal when all are true:
 - the request exists and its URL is recorded;
 - this task left no stash.
 
-When the user chooses disposal and all checks pass, clean up continuity and explain that the user
-can archive the Codex-managed chat or use Handoff according to the app's worktree controls. Do not
-run `git worktree remove`, delete a branch, archive a chat, or claim the worktree was removed.
+When the user chooses disposal and all checks pass, explain that the user can archive the Codex-managed
+chat or use Handoff according to the app's worktree controls. Do not run `git worktree remove`, delete
+a branch, archive a chat, or claim the worktree was removed. Continuity cleanup is separate: after
+publishing, run the `project-continuity` completion gate before the final response. Ask before deleting
+the active state or any completed parked state; never treat a clean branch or removed worktree as
+permission to delete continuity state.
+
+The completion gate reconciles the actual delivery state and reviews parked state candidates. If the
+user declines a named cleanup, record `Cleanup: declined` in that file's Verification block and do
+not ask again for that task.
 
 ## Resume
 

@@ -154,3 +154,15 @@ gate run again before any push or request creation.
 Never merge the pull or merge request, enable auto-merge, approve the request, force-push without
 the explicit integration approval, or delete either the local or remote task branch. The branch must
 outlive the worktree for review and CI.
+
+## Complete continuity after delivery
+
+After a successful publish, run the `project-continuity` completion gate before the final response.
+Reconcile the active state with the actual checkout, commit/push/request state, and verification.
+Review every parked state and identify completed closure candidates.
+
+Worktree cleanup and continuity cleanup are separate decisions. If the active continuity state is
+finished, ask the user whether to delete `.project-continuity/state.md`. Ask separately before
+deleting each completed parked candidate. Never delete continuity state automatically; if the user
+declines, record `Cleanup: declined` in that file's Verification block and do not ask again for that
+task.
