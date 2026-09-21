@@ -266,6 +266,7 @@ provide materials, or give feedback at any point; the manual-test loop below is 
 pre-publish gate.
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#f3e8ff", "primaryBorderColor": "#9333ea", "primaryTextColor": "#111827", "lineColor": "#4b5563", "textColor": "#111827", "actorBkg": "#f3e8ff", "actorBorder": "#9333ea", "actorTextColor": "#111827", "actorLineColor": "#9333ea", "signalColor": "#4b5563", "signalTextColor": "#111827", "labelBoxBkgColor": "#f3e8ff", "labelBoxBorderColor": "#9333ea", "labelTextColor": "#111827", "loopTextColor": "#111827", "noteBkgColor": "#fef3c7", "noteBorderColor": "#d97706", "noteTextColor": "#111827"}}}%%
 sequenceDiagram
     participant W as Workflow
     participant G as Git / worktree
