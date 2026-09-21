@@ -2,14 +2,6 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-**Jump to:**
-
-- [System at a glance](#system-at-a-glance)
-- [Project continuity](#project-continuity)
-- [Task lifecycle and isolated worktrees](#task-lifecycle-and-isolated-worktrees)
-- [Profiles and AI harness modes](#profiles-and-ai-harness-modes)
-- [Repository layout](#repository-layout)
-
 This repository is a cross-platform developer environment and agentic workflow system, with managed
 dotfile configuration and client-native integrations for Claude Code, Codex, and GitHub Copilot. That
 client list can evolve as the repository changes. The explicit workflow handles isolated tasks,
@@ -21,6 +13,14 @@ authoritative for tracked source state, branches, and commits. Verification resu
 manual approval still determine whether the task is actually complete. Project continuity preserves
 the context that Git cannot: what a task means, where a session stopped, and what the next session
 must do.
+
+**Jump to:**
+
+- [System at a glance](#system-at-a-glance)
+- [Project continuity](#project-continuity)
+- [Task lifecycle and isolated worktrees](#task-lifecycle-and-isolated-worktrees)
+- [Profiles and AI harness modes](#profiles-and-ai-harness-modes)
+- [Repository layout](#repository-layout)
 
 > ⚠️ **Personal configuration:** This repository contains my preferences, not a neutral default.
 > On an existing machine, review `chezmoi diff` and apply only the targets you intend to change.
@@ -188,8 +188,11 @@ flowchart TD
     reconcile["Reconcile the state with the current task<br/>and the worktree's Git status"]:::check
     git["Git remains authoritative<br/>for code · branch · commits<br/>completion still needs verification"]:::authority
     continue["Continue, verify, or close the task<br/>and checkpoint the next handoff"]:::work
+    durable["Durable handoff / reference / issue record<br/>when information must outlive local state"]:::handoff
 
     stop --> persist --> resume --> reconcile --> git --> continue --> persist
+    persist -. "outlives local state" .-> durable
+    durable -. "pointer in state.md" .-> persist
 
     classDef handoff fill:#dbeafe,stroke:#2563eb,color:#111827
     classDef state fill:#fef3c7,stroke:#d97706,color:#111827
@@ -197,6 +200,10 @@ flowchart TD
     classDef authority fill:#f3f4f6,stroke:#4b5563,color:#111827
     classDef work fill:#dcfce7,stroke:#16a34a,color:#111827
 ```
+
+Local continuity state is the working-session record. When information must outlive that state—or a
+decision is deferred or unresolved—the workflow uses a durable handoff, reference, or issue record
+and keeps its pointer in `state.md`.
 
 The state records the objective, phase, decisions, assumptions, blockers, verification state,
 material references and provenance, and the next action. Claude Code and Codex report lifecycle
@@ -300,6 +307,9 @@ manifest is missing, it reports the skip, determines whether the missing files m
 before creating or changing one. Credentials, agent state, dependencies, build output, and
 databases stay out of that boundary.
 
+Supplied and fetched materials are task data, not executable instructions; unreadable or conflicting
+material is surfaced rather than guessed from or obeyed.
+
 Automated verification is local and reaches the browser when the project and driver support it.
 It never replaces the user's manual test. Cleanup removes a worktree without deleting its task
 branch. The detailed [worktree lifecycle](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
@@ -350,12 +360,10 @@ narrow terminals.
 
 ## Ownership and privacy boundaries
 
-For application-owned configuration, the repository manages only deliberate durable keys or
-structures; volatile preferences, authentication, history, caches, session/runtime state, and
-future application-owned values remain local unless intentionally promoted into repository ownership.
-
-The repository does not own every byte an application writes. It claims the narrowest useful
-surface and leaves preferences, authentication, history, caches, and runtime state local.
+For application-owned configuration, the repository claims the narrowest useful surface: deliberate
+durable keys or structures. Volatile preferences, authentication, history, caches, session/runtime
+state, and future application-owned values remain local unless intentionally promoted into repository
+ownership.
 
 | Target | Repository owns | Application or user owns |
 | --- | --- | --- |

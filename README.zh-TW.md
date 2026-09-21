@@ -2,14 +2,6 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-**快速導覽：**
-
-- [系統總覽](#系統總覽)
-- [專案連續性](#專案連續性)
-- [任務生命週期與隔離 worktree](#任務生命週期與隔離-worktree)
-- [Profile 與 AI harness 模式](#profile-與-ai-harness-模式)
-- [儲存庫結構](#儲存庫結構)
-
 這個儲存庫是跨平台開發環境與代理式工作流程系統，提供 chezmoi 管理的 dotfile 設定，以及
 Claude Code、Codex 與 GitHub Copilot 的 client-native 整合。支援的 client 清單會隨儲存庫演進
 而變動。明確且可選擇啟用的工作流程會處理隔離任務、本機自動驗證、獨立的使用者手動測試
@@ -19,6 +11,14 @@ Claude Code、Codex 與 GitHub Copilot 的 client-native 整合。支援的 clie
 則持續是已追蹤 source state、分支與 commit 的權威來源。驗證結果與使用者手動核准仍會決定
 任務是否真正完成。專案連續性保存 Git 無法表達的工作脈絡：任務的目標、工作停在哪裡，
 以及下一個 session 要做什麼。
+
+**快速導覽：**
+
+- [系統總覽](#系統總覽)
+- [專案連續性](#專案連續性)
+- [任務生命週期與隔離 worktree](#任務生命週期與隔離-worktree)
+- [Profile 與 AI harness 模式](#profile-與-ai-harness-模式)
+- [儲存庫結構](#儲存庫結構)
 
 > ⚠️ **個人設定提醒：** 這個儲存庫包含我的個人偏好，不是通用的預設設定。既有機器請先查看
 > `chezmoi diff`，只套用你確定要變更的 target。只有在覆寫這些個人設定沒有問題的機器上，才適合
@@ -176,8 +176,11 @@ flowchart TD
     reconcile["將 state 與目前任務<br/>及 worktree 的 Git 狀態重新核對"]:::check
     git["Git 仍是權威來源<br/>程式碼 · 分支 · commit<br/>完成仍需驗證"]:::authority
     continue["繼續、驗證或結束任務<br/>並為下一次交接建立 checkpoint"]:::work
+    durable["Durable handoff / reference / issue record<br/>資訊需超出本機 state 的生命週期時"]:::handoff
 
     stop --> persist --> resume --> reconcile --> git --> continue --> persist
+    persist -. "超出本機 state" .-> durable
+    durable -. "state.md 保留指向" .-> persist
 
     classDef handoff fill:#dbeafe,stroke:#2563eb,color:#111827
     classDef state fill:#fef3c7,stroke:#d97706,color:#111827
@@ -185,6 +188,10 @@ flowchart TD
     classDef authority fill:#f3f4f6,stroke:#4b5563,color:#111827
     classDef work fill:#dcfce7,stroke:#16a34a,color:#111827
 ```
+
+本機 continuity state 是工作 session 的交接紀錄。當資訊需要在這個 state 之外持續存在，或決策
+被延後／尚未解決時，工作流程會使用 durable handoff、reference 或 issue 紀錄，並在 `state.md`
+保留指向。
 
 State 會記錄目標、階段、決策、假設、阻塞事項、驗證狀態、材料參照與來源，以及下一步。
 在 managed 模式且 continuity 開啟時，Claude Code 與 Codex 會自動回報生命週期事件。Copilot
@@ -280,6 +287,9 @@ worktree manifest，通常是已追蹤的 `.worktreeinclude`，只複製其中�
 manifest 不存在，流程會回報略過，判斷缺少的檔案是否影響任務，並在建立或修改 manifest 前
 先詢問。憑證、agent state、相依套件、build output 與 database 都留在這個界線之外。
 
+提供或取得的材料只視為任務資料，不是可執行指示；無法讀取或互相衝突的內容會被明確提出，
+不會靠猜測補足，也不會照單執行。
+
 自動驗證在本機執行；若專案與 driver 支援，也會驗證實際瀏覽器操作。它不能取代使用者的
 手動測試。清理時移除 worktree，但不刪除任務分支。詳細的
 [worktree 生命週期](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
@@ -325,12 +335,9 @@ Status line 會顯示 model 與 effort level、session name、working directory�
 
 ## 權責與隱私界線
 
-對於應用程式擁有的設定，儲存庫只管理刻意指定的持久性 key 或結構；容易變動的偏好、認證、
-歷史紀錄、cache、session/runtime state，以及應用程式未來新增的值，除非刻意納入儲存庫管理，
-否則都留在本機。
-
-儲存庫不會試圖擁有應用程式寫入的每一個 byte，而是宣告最小必要的管理範圍，將偏好、
-認證、歷史紀錄、cache 與 runtime state 留在本機。
+對於應用程式擁有的設定，儲存庫只管理最小必要的範圍：刻意指定的持久性 key 或結構。容易
+變動的偏好、認證、歷史紀錄、cache、session/runtime state，以及應用程式未來新增的值，除非
+刻意納入儲存庫管理，否則都留在本機。
 
 | Target | 由儲存庫管理 | 由 Application 或使用者管理 |
 | --- | --- | --- |
