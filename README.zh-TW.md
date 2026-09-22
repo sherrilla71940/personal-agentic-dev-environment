@@ -2,7 +2,7 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-這是我平常在不同機器與 AI coding tools 之間使用的開發環境。它把我的個人 dotfiles、共用 AI 設定，以及 Claude Code、Codex 與 GitHub Copilot 的工作流程集中管理，同時仍保留各工具原本使用的檔案格式與慣例。
+這是我平常在不同作業系統上使用，並整合多個 AI coding tools 的開發環境。它把我的個人 dotfiles、共用 AI 設定，以及 Claude Code、Codex 與 GitHub Copilot 的工作流程集中管理，同時仍保留各工具原本使用的檔案格式與慣例。
 
 對於較大型或需要平行進行的開發任務，這套工作流程可以讓每個任務使用自己的 Git worktree，保留跨 session 或 AI client 的工作脈絡，執行本機自動檢查，並在分支發布供 review 前等待使用者明確完成手動驗證。
 
