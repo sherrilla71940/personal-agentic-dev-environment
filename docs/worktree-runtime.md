@@ -26,9 +26,12 @@ The equivalent `port=<number>` option requests a particular port within the desc
 /worktree-task-workflow develop "review the form" runtime=auto port=43125
 ```
 
-Runtime isolation is not the default. A small or non-UI task can omit it. `runtime=off` leaves
-startup to the project's ordinary procedure and means the workflow did not provide a per-worktree
-port guarantee.
+Runtime isolation is not the default. A small or non-UI task can omit it. However, browser or
+runtime testing from an isolated worktree must use `runtime=auto` before starting the server.
+`runtime=off` leaves startup to the project's ordinary procedure only for tasks that do not need
+isolated runtime testing; the workflow must report that it provided no per-worktree port guarantee
+before starting that server. It must not claim that browser/runtime results came from the current
+worktree.
 
 This preserves the harness boundary: strong runtime guarantees apply when the workflow is
 explicitly chosen, without forcing every task or every project into a rigid harness.
@@ -121,10 +124,17 @@ The helper:
 7. Waits for the health URL and verifies that the launched process owns the listening port.
 8. Persists the successful assignment in the user cache, outside the worktree and Git state.
 
+The provisioning check and this runtime helper report different states. A worktree can be
+`provisioning-ready` while its runtime remains `runtime-unverified`; only a successful descriptor
+health check that also verifies process ownership reports `runtime-health-verified`. If the
+descriptor is absent, invalid, or cannot inject a port, keep the runtime state unverified and do
+not claim that browser results came from this worktree.
+
 The saved assignment is a preference, not a reservation. Another process may already own it when
-the worktree resumes. An automatic selection can move to another candidate; an explicitly requested
-occupied port fails instead of silently changing the user's request. The lease is held while the
-helper's server process runs and is released when it exits.
+the worktree resumes. Automatic selection moves to the next available candidate within the bounded
+descriptor range when the preferred candidate is occupied; an explicitly requested occupied port
+fails instead of silently changing the user's request. The lease is held while the helper's server
+process runs and is released when it exits.
 
 If the project uses a fixed port and cannot accept the injected value, source/worktree isolation
 still works, but concurrent runtime execution is unsupported. The workflow must report that fact
@@ -151,4 +161,5 @@ python scripts/tests/test-worktree-runtime.py -v
 ```
 
 The test suite covers descriptor validation, stable assignment, exclusive leases, health-checked
-launch, Windows path spelling, and explicit occupied-port rejection.
+launch, automatic fallback from an occupied preferred port, Windows path spelling, and explicit
+occupied-port rejection.

@@ -30,13 +30,35 @@ doing that as an edit. Reaching outside for something genuinely outside — a re
 another worktree — is what the file-reading and search tools are for, since they take an absolute
 path without moving the shell.
 
-Confirm the ignored local configuration this app needs to run is actually present in the
-worktree, because a fresh checkout carries no ignored file. Provisioning can report a skip such
-as `[skipped] .worktreeinclude: manifest not found in source worktree`, which means nothing was
-copied. Do not treat a skip as harmless: say which files were expected, and whether the missing
-ones are needed to run the manual test. Resolve a real gap with `git wt-copy` from a worktree
-that has them, or name exactly what the user must place and where. A skip that genuinely does
-not matter, because the settings the app reads are tracked, is worth one sentence saying so.
+For every supported repository-provided non-native worktree creation path, run the read-only
+provisioning check before creating anything:
+
+```bash
+git wt-check --source <source-worktree>
+```
+
+The check reports manifest status, manifest matches, eligible ignored files that are not listed,
+private agent overrides and client-local settings as explicit-only, tracked `CLAUDE.md` and
+`AGENTS.md` as files already supplied by Git, missing manifest patterns, existing target conflicts
+when a target is supplied, explicitly named required local files, and explicit `configSource` or
+`appSettings file` references from tracked configuration candidates. It writes nothing and never creates `.worktreeinclude`. A result of
+`no-manifest-needed` or `manifest-present-no-matches` is different from
+`eligible-ignored-files-unlisted`; the latter requires an explicit decision before creation.
+Use `git wt-add --allow-unprovisioned` only after reviewing that report, or author a tracked
+manifest through the `worktree-manifest` skill. The override permits creation but does not copy
+the unlisted files.
+
+When the application has a known required local file, pass it explicitly with
+`--required <repo-relative-path>`. Otherwise, report the requirement as unknown and settle it by
+building or starting the app. The configuration reference report classifies expected, present,
+missing, and unmapped paths without printing values. After a raw `git worktree add`, run the check
+again with `--target <worktree>` and use `git wt-copy` only for approved ignored manifest entries.
+If a manifest pattern matches a tracked file, the command rejects it; tracked application
+configuration requires project-specific manual setup or an explicit repository contract. A tracked
+`.worktree-provision` contract may name a repository-relative setup script and documentation for
+manual review; the generic helper reports it but never executes it or prints its contents. Native
+Claude, Codex, and VS Code provisioning remains a separate path; do not route it through the
+terminal fallback or claim that its native copy result exists without checking the client result.
 
 Settle which of those it is rather than passing the warning along. Inspect the source worktree or
 main checkout before entering Claude's isolated worktree whenever possible: that tree has been
@@ -70,6 +92,31 @@ later task and only report the gap. Authoring itself belongs to the `worktree-ma
 whichever they pick. The rule this replaces is silent scope creep, not an explicit instruction, so
 the same offer fits any repository-infrastructure work this workflow turns up mid-task.
 
+After creation, run `git wt-readiness --source <source-worktree> --target <worktree>` when the
+source worktree may contain local configuration overrides. Treat `[tracked-config]`, `[rejected]`
+tracked manifest entries, `[missing]`, and `[unmapped]` results as advisory: never add a tracked
+file to `.worktreeinclude` or copy it automatically, and do not block `git wt-add` because a
+tracked change may be intentional. If the project owns a setup command, invoke it only through an
+explicit repository contract or user-approved step; do not infer or execute one from a filename.
+Provisioning readiness does not prove a fresh build, a running application server, an authenticated
+browser session, or valid application credentials.
+
+An external secrets folder or another directory outside the repository is never an implicit source.
+Only the selected worktree of the same Git repository may supply files to `git wt-copy`.
+
+If a project needs a file outside the ordinary manifest, use `git wt-provision --dry-run` with one
+exact source path, target worktree, destination, and operation. Show the sanitized report and its
+approval ID to the user, then ask for approval of that exact mapping. Only after an affirmative
+answer may the command be repeated with `--approve <approval-id>`; the helper recomputes the source
+fingerprint and target HEAD and refuses changed paths, contents, destinations, operations, target
+commits, existing targets, and
+tracked sources. The approval ID verifies mapping integrity, but cannot prove that a human approved
+the report; the client must obtain that affirmative approval separately. `copy-ignored-file` and
+`copy-external-file` are copy-only operations. Section
+merges and whole-file Web.config or `.env` replacement are report-only refusals. A dry run or
+successful copy still leaves the runtime state `runtime-unverified` until the separate descriptor
+health check passes.
+
 When the manual test needs a running app, start it and request one real route before writing
 the steps. A fresh worktree can fail at startup for reasons the build output does not reveal:
 a first build that restores dependencies but never runs their copy targets is the common one,
@@ -87,7 +134,8 @@ project rather than per worktree, so another worktree of the same repository may
 port and be serving a different build under the URL being tested. Establish which directory the
 running server was started from before trusting what it returns.
 
-When the invocation selects `runtime=auto`, use the consuming repository's tracked
+For browser or runtime testing from an isolated worktree, `runtime=auto` is required. When the
+invocation selects `runtime=auto`, use the consuming repository's tracked
 `.worktree-runtime.json` descriptor and the rendered user-level helper:
 
 ```text
@@ -98,11 +146,14 @@ python "$HOME/.local/share/worktree-runtime.py" start [--port <explicit-port>]
 The helper keeps the preferred port assignment outside the worktree, keyed to the physical
 worktree, acquires an inter-process lease before starting the server, retries bounded collisions,
 and verifies both the health URL and the listening process. Keep it running in a dedicated terminal
-for the manual test. If the descriptor is absent, report that runtime isolation is unconfigured;
+for the manual test. If `runtime=auto` was not selected, report that no per-worktree port guarantee
+was provided before starting the server. If the descriptor is absent, report that runtime isolation
+is unconfigured;
 source and Git isolation remain valid, but concurrent runtime testing is not guaranteed. If the
 descriptor cannot inject a port, report parallel runtime execution as unsupported rather than
 silently testing another worktree's server. `runtime=off` uses the project's ordinary startup
-procedure and must state that no per-worktree port guarantee was provided.
+procedure only for tasks that do not require isolated browser/runtime testing, and must state that
+no per-worktree port guarantee was provided.
 
 The descriptor may classify databases, caches, queues, Docker services, and external services as
 `per-worktree`, `shared-safe`, or `unsupported`. V1 reports those classifications but does not

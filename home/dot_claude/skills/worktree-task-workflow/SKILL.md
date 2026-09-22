@@ -48,10 +48,12 @@ Unless supplied, derive:
 - `branch` as `{type}/{slug}/{suffix}`;
 - the worktree path as `<repo-root>/.claude/worktrees/<slug>`.
 
-Runtime isolation is optional. When the task includes an application and the invocation selects
-`runtime=auto`, use the tracked `.worktree-runtime.json` descriptor and the rendered
-`~/.local/share/worktree-runtime.py` helper. Otherwise leave runtime startup to the project or
-user and report that no per-worktree port guarantee was provided.
+Runtime isolation is required for browser or runtime testing from an isolated worktree. When the
+invocation selects `runtime=auto`, use the tracked `.worktree-runtime.json` descriptor and the
+rendered `~/.local/share/worktree-runtime.py` helper. If `runtime=auto` is not selected, report
+that no per-worktree port guarantee was provided before starting the server, and do not claim that
+browser/runtime results came from this worktree. Tasks that do not need an application server may
+leave runtime off.
 
 That path is deliberate, not a copy of a terminal habit. `EnterWorktree` moves the session
 without an approval prompt only inside the repository's `.claude/worktrees/`, and no permission
@@ -98,12 +100,41 @@ opens the exact worktree in a separate VS Code window before the session enters 
 switch the user's existing editor window. If VS Code is unavailable, keep the created worktree,
 report the exact path, and let the user open it manually.
 
-If `git wt-add` is unavailable, use `git worktree add -b <branch> <path> <recorded-base-commit>` and state
-that `.worktreeinclude` files were not provisioned. Either way, report what provisioning actually
-did. `git wt-add` can succeed while copying nothing, for example
-`[skipped] .worktreeinclude: manifest not found in source worktree`, and that skip is silent
-until the app fails to run. Claude Code's own `.worktreeinclude` handling does not apply here,
-because the worktree is created by Git rather than by Claude Code.
+`git wt-add` runs a read-only provisioning check before Git creates anything. If it reports
+eligible ignored files outside the tracked manifest, review the report and either stop to author
+the manifest through the `worktree-manifest` skill or add `--allow-unprovisioned` to the wrapper
+command. The override creates the worktree but does not copy the unlisted files. If `git wt-add`
+is unavailable, run `git wt-check --source "<repo-root>"` first, then use
+`git worktree add -b <branch> <path> <recorded-base-commit>`. After creation, run
+`git wt-check --source "<repo-root>" --target "<exact-worktree-path>"` and state that raw Git
+did not provision files. Claude Code's own `.worktreeinclude` handling does not apply here,
+because this fallback worktree is created by Git rather than by Claude Code.
+
+When the source worktree may have a local configuration override, also run
+`git wt-readiness --source "<repo-root>" --target "<exact-worktree-path>"`. The report includes
+  explicit `configSource` and `appSettings file` references and classifies expected, present,
+  missing, and unmapped paths without printing values. Tracked `CLAUDE.md` and `AGENTS.md` are
+  reported as already supplied by Git. Private agent overrides and client-local settings are
+  explicit-only and are not suggested as ordinary candidates. A `[tracked-config]` warning is
+  advisory and must not block creation; never add a tracked application configuration file to
+  `.worktreeinclude` or copy it automatically. If a manifest pattern matches a tracked file,
+  provisioning rejects that entry and reports that application-owned configuration requires
+  project-specific manual setup or an explicit repository contract. If a project provides setup,
+  use its explicit `.worktree-provision` contract or user-approved command rather than guessing
+  from filenames. The contract is report-only: the generic helper never executes its script or
+  prints its contents. An external secrets folder is never an implicit source. Readiness does not
+  prove a fresh build, a running application server, an authenticated browser session, or valid
+  application credentials.
+
+  If a required local file is outside the ordinary manifest, use `git wt-provision --dry-run` with
+  one exact source path, target worktree, destination, and operation. Present its sanitized report
+  and approval ID to the user and ask for approval of that exact mapping. Only after an affirmative
+  answer may you repeat it with `--approve <approval-id>`; the helper recomputes the source
+fingerprint and target HEAD and refuses changed mappings, target commits, existing targets, and
+tracked sources. The ID proves mapping integrity, not that a human approved it. Copy operations
+  are limited to one explicitly named ignored or external non-tracked file. Section merges and
+  whole-file Web.config or `.env` replacement remain report-only refusals. A successful copy is
+  still `runtime-unverified` until the separate runtime descriptor health check passes.
 
 Enter the created path with Claude Code's `EnterWorktree` tool using its `path` parameter.
 `EnterWorktree` cannot itself select an arbitrary base, which is why Git creates the worktree

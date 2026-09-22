@@ -75,10 +75,14 @@ Continuity belongs to **one working directory**, and each working tree has at mo
 - **A branch switch is not a reconciliation trigger.** Claude's Stop hook reports a recorded branch that no longer matches the checkout, and that report is a warning not to merge rather than an instruction to update. Do not fold the new branch's work into state describing the old task, and do not rewrite the recorded branch just to silence the notice. Reconcile only once the task is established to be the same one. Do not key state files by branch name to avoid this decision either: a detached HEAD has no branch to key on, which is how the Codex app runs its managed worktrees, and uncommitted work belongs to the directory rather than to any branch.
 - **Uncommitted work does not follow a branch, and a stash hides it entirely.** If a branch switch stashed or carried the task's changes, record that in `Status` — and record any other stash of this task's work the same way, naming the stash message or ref. A branch switch is the common cause, not the only one: a plain `git stash` leaves the same clean tree while state still describes work in progress, and a later reconciliation may conclude the work was finished or lost. A stash made outside the session leaves nothing to record at all, which is why Resume checks `git stash list` instead of trusting `Status` alone.
 - A new worktree starts with no continuity and must not inherit another task's state. Claude Code's
-  Git-created worktrees, Codex desktop's local managed worktrees, and this repository's `git
-  wt-add` fallback consult `.worktreeinclude` at the repository root to decide which ignored files
-  to copy. A pattern there matching `.project-continuity/` would leak one task's state into every
-  supported provisioning path. Never add one.
+  Git-created worktrees and Codex desktop's local managed worktrees consult `.worktreeinclude` at
+  the repository root to decide which ignored files to copy. VS Code's native Agent Worktree uses
+  the user-level `git.worktreeIncludeFiles` setting instead. Codex desktop also automatically copies
+  an ignored `AGENTS.override.md`; that is client-owned behavior, not generic manifest approval.
+  This repository's non-native `git wt-add` fallback runs the read-only `git wt-check` first, and
+  blocks eligible ignored files that are not manifest-listed until an explicit unprovisioned
+  decision is made. A pattern there matching `.project-continuity/` would leak one task's state
+  into every supported provisioning path. Never add one.
 - Repository identity precedes continuity. Compare the current execution workspace's Git root with
   any host- or user-provided active task repository before reading or reconciling `state.md`. If the
   roots differ, stop after read-only identity checks and ask whether to switch context or continue
@@ -92,6 +96,7 @@ Client worktree support differs, and that affects only how a directory is *creat
 - **Claude Code** creates worktrees natively (`--worktree`, `EnterWorktree`, `isolation: worktree`) under `.claude/worktrees/`.
 - **Codex CLI** has no worktree flag; it operates on the directory you start it in, which is all interoperability requires.
 - **The Codex app** manages worktrees itself, in `$CODEX_HOME/worktrees` and in detached HEAD. Archiving a chat can delete its worktree, so clean up or hand off before archiving. Do not assume CLI, IDE extension and app behave alike.
+- **VS Code Agent Worktree** creates native worktrees for supported agent harnesses, including Copilot hosted by VS Code, and uses the user-level `git.worktreeIncludeFiles` setting.
 
 Whoever created the directory, any supported client can work in it.
 

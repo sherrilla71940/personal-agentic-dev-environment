@@ -504,8 +504,9 @@ def start_runtime(root: Path, descriptor: Path, config: dict[str, Any], explicit
                 if health_ok(config["healthUrl"].replace(PORT_TOKEN, str(port)), 1):
                     if owns_port(process, port):
                         write_state(state_path(root), root, descriptor, port)
+                        print("Runtime state: runtime-health-verified", flush=True)
                         print(
-                            f"Runtime ready: {config['healthUrl'].replace(PORT_TOKEN, str(port))}",
+                            f"Health URL: {config['healthUrl'].replace(PORT_TOKEN, str(port))}",
                             flush=True,
                         )
                         print("Keep this process running during the manual test; press Ctrl+C to stop.", flush=True)

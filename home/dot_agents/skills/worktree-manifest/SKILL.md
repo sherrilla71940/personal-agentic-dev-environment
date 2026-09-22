@@ -8,8 +8,8 @@ disable-model-invocation: true
 # Worktree manifest
 
 A Git worktree receives tracked files and nothing else. Ignored local configuration —
-`CLAUDE.local.md`, `connections.config`, `appsettings.secret.config` — stays behind, so a fresh
-worktree can compile and still not run. `.worktreeinclude` is the tracked, repository-root
+`connections.config`, `appsettings.secret.config`, or a local environment file — stays behind, so
+a fresh worktree can compile and still not run. `.worktreeinclude` is the tracked, repository-root
 manifest that authorizes copying those files. It holds repository-relative gitignore patterns,
 never file contents.
 
@@ -20,6 +20,12 @@ Codex remote/CLI/IDE paths or by a Claude `WorktreeCreate` hook: those paths nee
 provisioning route. VS Code uses the separate user-level `git.worktreeIncludeFiles` setting, so a
 repository manifest does not change what VS Code copies. Say so rather than implying one file
 covers everything.
+
+Codex desktop local managed worktrees have a native exception: Codex automatically copies an
+ignored `AGENTS.override.md` even when it is not listed in `.worktreeinclude`. This is client-owned
+behavior, not generic manifest approval, and does not apply to Codex CLI/IDE or the terminal
+fallback. Tell the user when that native path will carry the override; keep it explicit-only for
+generic manifest decisions.
 
 This skill produces one commit in the target repository. It never copies a file itself; `git
 wt-add` and `git wt-copy` do that.
@@ -37,11 +43,21 @@ An existing manifest means this is an extension, not an authoring task: read it 
 propose only additions.
 
 Then find out what the repository actually keeps locally. This is the step that decides whether
-there is anything to do:
+there is anything to do. Use the repository's read-only classifier first:
 
 ```bash
-git status --ignored --porcelain | grep '^!!'
+git wt-check --source <repository-root>
 ```
+
+The check distinguishes no manifest, an empty tracked manifest, eligible ignored files outside
+the manifest, invalid manifest entries, and explicitly missing required local files. It also
+reports tracked `CLAUDE.md` and `AGENTS.md` as files already supplied by Git, private agent
+overrides and client-local settings as explicit-only, and explicit `configSource` and
+`appSettings file` references from tracked configuration files. Those reference results are
+readiness evidence, not manifest approval: inspect the source and target paths without printing
+values, then classify only ignored files for the manifest. It never creates a manifest or copies a
+file. Use `git status --ignored --porcelain | grep '^!!'` only as a supporting inventory when you
+need to inspect a candidate's provenance.
 
 **Most repositories need no manifest.** A repository whose ignored entries are only build output,
 dependencies, agent state and data directories has nothing eligible, and the honest answer is
@@ -52,14 +68,32 @@ to make a warning go away.
 
 Two conditions must both hold before a path can be copied: `.worktreeinclude` matches its
 repository-relative path, and Git classifies it as ignored. Tracked files already arrive through
-Git and must never be listed.
+Git and must never be listed. If a manifest pattern matches a tracked path, provisioning rejects
+that manifest entry; it does not copy the tracked file from another worktree or branch.
+
+The manifest is limited to explicitly approved ignored files. A modified tracked configuration
+file is never a manifest candidate. If a provisioning command is asked to
+copy one, it reports that the file is application-owned and requires project-specific manual setup
+or an explicit repository contract. Use
+`git wt-readiness --source <source-worktree> --target <target-worktree>` to report that it was
+not copied, then review the source and target manually if the local override is required.
 
 Eligible — local development configuration that another worktree of the same repository needs:
 
-- agent instructions such as `CLAUDE.local.md` or `AGENTS.local.md`;
 - local connection strings, developer settings, and non-production environment files;
-- a client's repository-scoped settings file, but only when its permissions genuinely should
-  apply to every worktree.
+- a client-neutral repository configuration file whose contents are safe to share.
+
+Explicit-only on generic manifest and fallback paths — do not suggest these as ordinary
+configuration candidates:
+
+- private agent overrides such as `CLAUDE.local.md`, `AGENTS.override.md`, or a project-specific
+  alternate override name; they can change agent behavior and require an explicit manifest entry;
+- client-local settings such as `.claude/settings.local.json` or a project-specific settings file;
+  they can change permissions or tool behavior and require an explicit manifest entry.
+
+Tracked `CLAUDE.md` and `AGENTS.md` already arrive through Git. They are not copy candidates, and
+alternate instruction names are not recognized as active client instructions unless the client or
+repository explicitly configures them.
 
 Never eligible, whatever the user asks:
 
@@ -67,6 +101,23 @@ Never eligible, whatever the user asks:
 - agent history, memory, caches, `.project-continuity/**`, Codex local state;
 - dependencies and build output — `node_modules`, `packages`, `bin`, `obj`, `dist`, `coverage`;
 - database files, backups, and upload or temp directories holding real data.
+
+An external secrets folder or another directory outside this repository is never an implicit
+source. Provisioning accepts only the selected source worktree of the same Git repository. If a
+project needs external setup, its repository must provide an explicit, user-approved contract or
+setup command; this skill does not guess or execute one.
+
+The optional tracked `.worktree-provision` contract is a report-only pointer to a repository-relative
+setup script and documentation. It does not expand `.worktreeinclude`, authorize a copy, or permit
+the generic helper to execute project setup; review and run it only through the consuming repository's
+explicit process.
+
+For an approved project-specific mapping that is not representable by `.worktreeinclude`, use the
+generic helper's two-step protocol: run `git wt-provision --dry-run`, show the sanitized report and
+approval ID, obtain the user's affirmative approval for that exact source, destination, operation,
+and target worktree, then rerun with `--approve <approval-id>`. The helper fingerprints the source
+and target HEAD, refuses tracked files and existing targets, and does not infer section merges or replace whole
+Web.config or `.env` files. A changed source or destination requires a new approval.
 
 The last one is the trap worth naming to the user: a data directory can look like configuration
 and can hold client-confidential material, and neither its size nor its contents is obvious from
@@ -88,17 +139,20 @@ Write the approved patterns to `.worktreeinclude` at the repository root, one pe
 short comment for any entry whose purpose is not evident. Match the repository's existing line
 endings.
 
-Verify before committing, because a manifest that matches nothing is indistinguishable from a
-missing one:
+Verify before committing, because a manifest that matches nothing is a valid but often unnecessary
+choice:
 
 ```bash
 git check-ignore -v <each listed path>
+git wt-check --source <repository-root>
 git wt-add --dry-run -- <throwaway path> HEAD
 ```
 
-`--dry-run` validates inputs and lists the files that would be copied without creating a
-worktree. An entry that does not appear is either tracked already or not ignored, and belongs in
-neither the manifest nor the commit.
+`wt-check` is the read-only classification gate. `--dry-run` runs that same gate and additionally
+validates the native `git worktree add` arguments without creating a worktree. An entry that does
+not appear is either tracked already or not ignored, and belongs in neither the manifest nor the
+commit. Never create a manifest automatically to clear an unlisted-file warning; confirm its
+purpose with the user first.
 
 Commit the manifest alone, with a `chore` or `build` type. It is repository infrastructure, so its
 own branch off the base is the default — this matters most when the gap was found during another

@@ -48,37 +48,36 @@ home-directory files are native targets that applications read. `scripts/` and `
 the configuration and workflow planes with bootstrap, diagnostics, installers, tests, and decision
 records.
 
+The system has two connected planes. Configuration flows from tracked source state through
+composition and native delivery to the surfaces that tools read. A verified workflow governs
+changes through isolated worktrees, continuity, automated checks, and manual approval. Detailed
+client-to-surface mappings belong in the [customization support guide](./docs/customization-support.md).
+
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "nodeTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280"}, "flowchart": {"useMaxWidth": true}}}%%
 flowchart TB
     subgraph configuration["Configuration plane"]
-        aiSources["Managed AI sources<br/>home/ · shared instructions · portable skills<br/>client-specific instructions<br/>skills · agents · commands · config"]:::source
-        compose["Chezmoi composition<br/>source files · .chezmoitemplates<br/>profile selectors"]:::process
-        adapt["Native delivery<br/>wrappers · links/symlinks<br/>client metadata · discovery"]:::process
-        targets["Native targets<br/>Claude Code · Codex · GitHub Copilot<br/>VS Code · managed dotfiles"]:::target
-        aiSources --> compose
-        compose --> adapt --> targets
+        direction LR
+        sources["Tracked source state<br/>home/ · shared AI bodies · skills<br/>client and OS sources · dotfiles/helpers"]:::source
+        delivery["Composition and delivery<br/>chezmoi · templates · profile selectors<br/>wrappers · links/symlinks · explicit installers"]:::process
+        targets["Native developer surfaces<br/>Claude · Codex · Copilot · VS Code<br/>shell · Git · Windows Terminal"]:::target
+        sources --> delivery --> targets
     end
 
-    subgraph workflow["Task workflow plane"]
-        task["Explicit task workflow<br/>base · worktree · approved files"]:::process
-        state["Isolated worktree ↔ continuity state<br/>.project-continuity/state.md"]:::state
-        verify["Local checks → user approval"]:::check
-        authority["Git authority<br/>code · branch · commits<br/>completion still needs verification"]:::authority
-        task --> state --> verify --> authority
-    end
-
-    aiSources -. workflow skills .-> task
-    state -. reconcile .-> authority
+    workflow["Verified workflow<br/>isolated worktrees · continuity<br/>automated checks · manual approval · publish"]:::workflow
+    delivery -. "governs changes" .-> workflow
+    workflow -. "guards publishing" .-> targets
 
     classDef source fill:#dbeafe,stroke:#2563eb,color:#111827
     classDef process fill:#f3e8ff,stroke:#9333ea,color:#111827
     classDef target fill:#dcfce7,stroke:#16a34a,color:#111827
-    classDef state fill:#fef3c7,stroke:#d97706,color:#111827
-    classDef check fill:#f3e8ff,stroke:#9333ea,color:#111827
-    classDef authority fill:#f3f4f6,stroke:#4b5563,color:#111827
+    classDef workflow fill:#f3f4f6,stroke:#4b5563,color:#111827
 
-    style configuration fill:transparent,stroke:#4b5563,stroke-width:1px
-    style workflow fill:transparent,stroke:#4b5563,stroke-width:1px
+    style sources color:#111827
+    style delivery color:#111827
+    style targets color:#111827
+    style workflow color:#111827
+    style configuration fill:transparent,stroke:#6b7280,stroke-width:1px
 ```
 
 `home/` contains both plain chezmoi source files and templates. Reusable bodies in
@@ -114,6 +113,7 @@ ai_harness = "managed"        # managed or native
 ~~~
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "nodeTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280"}, "flowchart": {"useMaxWidth": true}}}%%
 flowchart TB
     baseline["Shared baseline"]:::base
     context["ai_context<br/>personal | company"]:::choice
@@ -144,6 +144,15 @@ flowchart TB
     class compose process
     class effective check
     class managedOn,managedOff,native result
+    style baseline color:#111827
+    style context color:#111827
+    style harness color:#111827
+    style continuity color:#111827
+    style compose color:#111827
+    style effective color:#111827
+    style managedOn color:#111827
+    style managedOff color:#111827
+    style native color:#111827
 ```
 
 | Selector | Controls | Default and boundary |
@@ -181,6 +190,7 @@ documentation and not proof that work is complete. Each physical worktree has at
 state.
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "nodeTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280"}, "flowchart": {"useMaxWidth": true}}}%%
 flowchart TD
     stop["One session or client stops"]:::handoff
     persist["The same physical worktree keeps<br/>.project-continuity/state.md<br/><br/>objective · decisions · blockers<br/>verification · materials · next action"]:::state
@@ -199,6 +209,13 @@ flowchart TD
     classDef check fill:#f3e8ff,stroke:#9333ea,color:#111827
     classDef authority fill:#f3f4f6,stroke:#4b5563,color:#111827
     classDef work fill:#dcfce7,stroke:#16a34a,color:#111827
+    style stop color:#111827
+    style persist color:#111827
+    style resume color:#111827
+    style reconcile color:#111827
+    style git color:#111827
+    style continue color:#111827
+    style durable color:#111827
 ```
 
 Local continuity state is the working-session record. When information must outlive that state—or a
@@ -265,9 +282,17 @@ small self-contained edit can remain in the current valid worktree. The user may
 provide materials, or give feedback at any point; the manual-test loop below is the explicit
 pre-publish gate.
 
+GitHub renders Mermaid diagrams in browser views; some mobile-app views may not render them reliably.
+If the diagram is missing or hard to read on mobile, open the README in a browser; the surrounding
+workflow text remains the fallback.
+
+At a glance, the lifecycle is provision → implement → verify → publish → clean up. The sequence
+below shows the gates, actors, and recovery loop that make those phases meaningful.
+
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#f3e8ff", "primaryBorderColor": "#9333ea", "lineColor": "#4b5563", "actorBkg": "#f3e8ff", "actorBorder": "#9333ea", "actorTextColor": "#111827", "actorLineColor": "#4b5563", "signalColor": "#4b5563", "labelBoxBkgColor": "#f3f4f6", "labelBoxBorderColor": "#4b5563", "labelTextColor": "#111827", "loopTextColor": "#111827", "noteBkgColor": "#fef3c7", "noteBorderColor": "#d97706", "noteTextColor": "#111827"}}}%%
+%%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280", "actorBkg": "#f3e8ff", "actorBorder": "#9333ea", "actorTextColor": "#111827", "actorLineColor": "#6b7280", "signalColor": "#6b7280", "signalTextColor": "#111827", "labelBoxBkgColor": "#f3f4f6", "labelBoxBorderColor": "#6b7280", "labelTextColor": "#111827", "loopTextColor": "#111827", "noteBkgColor": "#fef3c7", "noteBorderColor": "#d97706", "noteTextColor": "#111827"}}}%%
 sequenceDiagram
+    rect rgb(243, 244, 246)
     participant W as Workflow
     participant G as Git / worktree
     participant C as Continuity state
@@ -276,37 +301,70 @@ sequenceDiagram
     Note over W: Receive request and supplied materials
     Note over W,G: <base> branch = task start + PR/MR target
     Note over W: Fetch and resolve exact origin/<base> commit
-    W->>G: Check for or create the isolated task worktree
-    W->>G: Start the task branch from the exact origin/<base> commit
-    W->>G: Check the reviewed worktree manifest<br/>copy only approved ignored local files
+    W->>G: Run read-only provisioning check<br/>manifest · ignored matches · conflicts
+    W->>G: Create the isolated task worktree only after the check
+    W->>G: Copy only approved ignored local files
     Note over W: Implement the scoped change
     W->>C: Update continuity throughout<br/>checkpoint decisions, blockers, verification, and next action
     Note over W: Run local automated checks
     W->>U: Request manual verification
+    Note over W,U: Manual-test gate: publishing requires user approval
+    rect rgb(229, 231, 235)
     loop Until the user approves
         Note over U: Run the requested manual test
-        alt Test passes
+        rect rgb(249, 250, 251)
+        alt Manual test passes
             U-->>W: Approve
-        else Test fails
+        else Manual test fails
             U-->>W: Report failure
             Note over W: Fix and rerun applicable checks
             W-->>U: Request manual verification again
         end
+        end
+    end
     end
     W->>G: Commit the approved changes
     Note over W,G: Fetch current origin/<base> before publishing.<br/>If the base moved, choose merge or rebase.<br/>Then rerun automated checks and the user's manual test.
     W->>G: Push task branch and set upstream<br/>request PR/MR against <base>
     W->>G: Clean up the worktree and preserve the task branch
+    end
 ```
 
+The focused [worktree provisioning guide](./docs/worktree-provisioning.md#workflow-sequence) expands
+the provisioning checks, native client paths, runtime isolation, and cleanup contract behind this
+sequence.
+
 The workflow pins the starting point and eventual request target to the selected base, keeps each
-task's directory, branch, and continuity state together, and reports a provisioning skip rather
-than silently treating it as success. It reads and classifies specifications, handoffs, reference
-documents, and test inputs before creating a worktree. The workflow checks the reviewed worktree
-manifest, usually a tracked `.worktreeinclude`, and copies only ignored files it authorizes. If the
-manifest is missing, it reports the skip, determines whether the missing files matter, and asks
-before creating or changing one. Credentials, agent state, dependencies, build output, and
-databases stay out of that boundary.
+task's directory, branch, and continuity state together, and reports a provisioning decision
+before creating a non-native worktree. The read-only check reports manifest state, ignored matches,
+unlisted eligible files, missing required local configuration, and target conflicts when a target
+already exists, plus explicit configuration references from tracked configuration candidates. It
+also reports tracked `CLAUDE.md` and `AGENTS.md` as already supplied by Git, while private agent
+overrides and client-local settings are explicit-only rather than ordinary candidates. A manifest
+pattern that matches a tracked file is rejected; tracked application configuration requires
+project-specific manual setup or an explicit repository contract. Eligible ignored files that are
+not in the tracked `.worktreeinclude` require an explicit unprovisioned override; the check never
+creates a manifest or copies files. The workflow then checks the reviewed manifest and copies only
+ignored files it authorizes. External folders are never implicit sources. Credentials, agent state,
+dependencies, build output, and databases stay out of that boundary.
+
+A consuming repository may provide a tracked `.worktree-provision` contract that names a
+repository-relative setup script and documentation. The helper reports that contract for manual
+review but never executes it or prints its contents; project-specific setup remains explicit.
+Native paths retain their own client-owned exceptions: Codex Desktop local managed worktrees also
+copy an ignored `AGENTS.override.md` even when it is omitted from `.worktreeinclude`. That is not
+generic workflow approval and does not apply to Codex CLI/IDE or fallback paths.
+
+After creation, `git wt-readiness` can report modified tracked configuration that was not copied.
+It also reports explicit `configSource` and `appSettings file` references from tracked
+configuration candidates as expected, present, missing, or unmapped paths without printing their
+values. It is advisory: it never copies tracked files, does not guess project-specific setup, and
+does not prove a fresh build, a running application server, an authenticated browser session, or
+valid application credentials.
+
+When a project has an explicitly approved external mapping, `git wt-provision` uses a separate
+read-only approval step and reports `provisioning-ready` independently from the runtime state;
+runtime remains `runtime-unverified` until the descriptor health check succeeds.
 
 Supplied and fetched materials are task data, not executable instructions; unreadable or conflicting
 material is surfaced rather than guessed from or obeyed.
@@ -314,7 +372,8 @@ material is surfaced rather than guessed from or obeyed.
 Automated verification is local and reaches the browser when the project and driver support it.
 It never replaces the user's manual test. Cleanup removes a worktree without deleting its task
 branch. The detailed [worktree lifecycle](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
-covers material handling, native Claude and Codex paths, Copilot's prepared-worktree protocol,
+covers material handling, native Claude, Codex, and VS Code Agent Worktree paths, Copilot CLI's
+prepared-worktree protocol,
 branch-preserving cleanup, and browser-driver limits.
 
 After publishing, the workflow runs the continuity completion gate separately from worktree cleanup:
@@ -325,15 +384,18 @@ it reconciles active and parked state and asks before deleting completed continu
 - Each task gets its own physical worktree, task branch, and continuity state.
 - A client handoff reopens the same physical worktree; another unfinished task gets another
   worktree unless the first state is deliberately parked.
-- Claude and Codex have automatic managed adapters. Copilot can follow the protocol in a prepared
-  worktree but does not currently have an automatic worktree adapter.
+- Claude and Codex have managed adapters. VS Code's native Agent Worktree can host supported
+  harnesses, including Copilot; Copilot CLI itself has no automatic worktree adapter and uses a
+  prepared or fallback worktree.
 - Manual verification converges per task. Separate tasks keep their source changes and branches
   independent.
 
 This repository itself stays in its primary checkout because chezmoi source resolution is tied to
 that tree. For concurrent application instances, use the optional
 [per-worktree runtime descriptor](./docs/worktree-runtime.md); `runtime=auto` is valid only when
-the consuming project provides its authoritative tracked `.worktree-runtime.json`.
+the consuming project provides its authoritative tracked `.worktree-runtime.json`. Browser or
+runtime testing from an isolated worktree must select `runtime=auto` before starting a server;
+otherwise the workflow reports that no per-worktree port guarantee exists.
 
 ## What the environment delivers
 

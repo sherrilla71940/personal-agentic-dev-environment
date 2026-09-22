@@ -121,7 +121,7 @@ class WorktreeRuntimeTests(unittest.TestCase):
             for _ in range(3):
                 line = process.stdout.readline() if process.stdout else ""
                 output.append(line)
-            self.assertTrue(any(line.startswith("Runtime ready:") for line in output), output)
+            self.assertTrue(any("Runtime state: runtime-health-verified" in line for line in output))
             state = runtime.read_state(runtime.state_path(self.root))
             self.assertIsNotNone(state)
             port = state["port"]
@@ -161,6 +161,46 @@ class WorktreeRuntimeTests(unittest.TestCase):
             listener.close()
         self.assertEqual(result.returncode, 2)
         self.assertIn("already in use", result.stderr)
+
+    def test_automatic_port_fallback_skips_occupied_preferred_port(self) -> None:
+        descriptor = self.descriptor(45400, 45401)
+        runtime.write_state(runtime.state_path(self.root), self.root, descriptor, 45400)
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listener.bind(("127.0.0.1", 45400))
+        listener.listen(1)
+        process = subprocess.Popen(
+            [sys.executable, str(HELPER), "start"],
+            cwd=self.root,
+            env=os.environ.copy(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        try:
+            output = []
+            for _ in range(3):
+                line = process.stdout.readline() if process.stdout else ""
+                output.append(line)
+            self.assertTrue(any("Runtime state: runtime-health-verified" in line for line in output))
+            state = runtime.read_state(runtime.state_path(self.root))
+            self.assertIsNotNone(state)
+            self.assertEqual(state["port"], 45401)
+        finally:
+            listener.close()
+            if process.poll() is None:
+                if os.name == "nt":
+                    subprocess.run(
+                        ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                        capture_output=True,
+                        check=False,
+                    )
+                else:
+                    process.send_signal(signal.SIGINT)
+                process.wait(timeout=10)
+            if process.stdout:
+                process.stdout.close()
+            if process.stderr:
+                process.stderr.close()
 
 
 if __name__ == "__main__":

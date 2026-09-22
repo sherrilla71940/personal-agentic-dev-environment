@@ -7,8 +7,14 @@
 [alias]
 	wt-add = "!powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$HOME/.local/share/git-worktree-provision.ps1\" add"
 	wt-copy = "!powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$HOME/.local/share/git-worktree-provision.ps1\" copy"
+	wt-check = "!powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$HOME/.local/share/git-worktree-provision.ps1\" check"
+	wt-readiness = "!powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$HOME/.local/share/git-worktree-provision.ps1\" readiness"
+	wt-provision = "!powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$HOME/.local/share/git-worktree-provision.ps1\" provision"
 {{ else if eq .chezmoi.os "darwin" }}
 [alias]
 	wt-add = "!bash \"$HOME/.local/share/git-worktree-provision.sh\" add"
 	wt-copy = "!bash \"$HOME/.local/share/git-worktree-provision.sh\" copy"
+	wt-check = "!bash \"$HOME/.local/share/git-worktree-provision.sh\" check"
+	wt-readiness = "!bash \"$HOME/.local/share/git-worktree-provision.sh\" readiness"
+	wt-provision = "!bash \"$HOME/.local/share/git-worktree-provision.sh\" provision"
 {{ end }}

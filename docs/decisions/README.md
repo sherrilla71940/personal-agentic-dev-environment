@@ -53,6 +53,13 @@ agent session.
 | [0027](./0027-add-repository-identity-preflight.md) | Accepted | Add a read-only repository-identity gate before substantive work |
 | [0028](./0028-classify-instruction-ownership-before-adding.md) | Accepted | Classify instruction ownership and scope before adding behavior |
 | [0029](./0029-enforce-continuity-completion-gate.md) | Accepted | Enforce continuity reconciliation and cleanup review at task boundaries |
+| [0030](./0030-read-only-worktree-provisioning-preflight.md) | Accepted | Add a read-only provisioning preflight and explicit unprovisioned decision for non-native worktree creation |
+| [0031](./0031-read-only-tracked-configuration-readiness.md) | Accepted | Report modified tracked configuration without provisioning or blocking worktree creation |
+| [0032](./0032-read-only-configuration-reference-readiness.md) | Accepted | Report explicit configuration references without copying values or guessing project setup |
+| [0033](./0033-explicit-worktree-provisioning-safety.md) | Accepted | Refuse tracked-file provisioning and classify private client files |
+| [0034](./0034-require-explicit-runtime-isolation-for-browser-tests.md) | Accepted | Require explicit per-worktree runtime isolation for isolated browser/runtime testing |
+| [0035](./0035-add-report-only-worktree-setup-contract.md) | Accepted | Add a report-only tracked contract for project-specific worktree setup |
+| [0036](./0036-deterministic-worktree-mapping-and-runtime-states.md) | Accepted | Make external worktree mappings deterministic and separate provisioning from runtime states |
 
 ## Template
 

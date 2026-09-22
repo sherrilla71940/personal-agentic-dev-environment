@@ -44,37 +44,36 @@ Claude Code、Codex 與 GitHub Copilot 的 client-native 整合。支援的 clie
 應用程式實際讀取的原生 target。`scripts/` 與 `docs/` 同時支援設定與工作流程，提供 bootstrap、
 診斷、安裝程式、測試與決策紀錄。
 
+這個系統由兩個互相連接的平面組成。設定會從 tracked source state 經過組合與原生交付，
+最後到達各工具讀取的 surface；verified workflow 則透過隔離 worktree、continuity、自動檢查
+與手動核准來約束變更。完整的 client-to-surface 對應請看
+[customization support guide](./docs/customization-support.md)。
+
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "nodeTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280"}, "flowchart": {"useMaxWidth": true}}}%%
 flowchart TB
     subgraph configuration["設定平面"]
-        aiSources["受管理的 AI source<br/>home/ · 共用 AI 指示 · 可攜式 skill<br/>Client 專屬指示<br/>skill · agent · command · 設定"]:::source
-        compose["Chezmoi 組合<br/>source file · .chezmoitemplates<br/>profile selector"]:::process
-        adapt["原生交付<br/>wrapper · link/symlink<br/>client metadata · discovery"]:::process
-        targets["原生 target<br/>Claude Code · Codex · GitHub Copilot<br/>VS Code · 受管理的 dotfile"]:::target
-        aiSources --> compose
-        compose --> adapt --> targets
+        direction LR
+        sources["已追蹤的 source state<br/>home/ · 共用 AI 本文 · skill<br/>client 與 OS source · dotfile／輔助檔案"]:::source
+        delivery["組合與交付<br/>chezmoi · template · profile selector<br/>wrapper · link/symlink · 明確的 installer"]:::process
+        targets["原生開發 surface<br/>Claude · Codex · Copilot · VS Code<br/>shell · Git · Windows Terminal"]:::target
+        sources --> delivery --> targets
     end
 
-    subgraph workflow["任務工作流程平面"]
-        task["明確的任務流程<br/>base · worktree · 核准檔案"]:::process
-        state["隔離 worktree ↔ continuity state<br/>.project-continuity/state.md"]:::state
-        verify["本機檢查 → 使用者核准"]:::check
-        authority["Git 權威<br/>程式碼 · 分支 · commit<br/>完成仍需驗證"]:::authority
-        task --> state --> verify --> authority
-    end
-
-    aiSources -. workflow skill .-> task
-    state -. reconcile .-> authority
+    workflow["已驗證的 workflow<br/>隔離 worktree · continuity<br/>自動檢查 · 手動核准 · 發布"]:::workflow
+    delivery -. "約束變更" .-> workflow
+    workflow -. "守住發布流程" .-> targets
 
     classDef source fill:#dbeafe,stroke:#2563eb,color:#111827
     classDef process fill:#f3e8ff,stroke:#9333ea,color:#111827
     classDef target fill:#dcfce7,stroke:#16a34a,color:#111827
-    classDef state fill:#fef3c7,stroke:#d97706,color:#111827
-    classDef check fill:#f3e8ff,stroke:#9333ea,color:#111827
-    classDef authority fill:#f3f4f6,stroke:#4b5563,color:#111827
+    classDef workflow fill:#f3f4f6,stroke:#4b5563,color:#111827
 
-    style configuration fill:transparent,stroke:#4b5563,stroke-width:1px
-    style workflow fill:transparent,stroke:#4b5563,stroke-width:1px
+    style sources color:#111827
+    style delivery color:#111827
+    style targets color:#111827
+    style workflow color:#111827
+    style configuration fill:transparent,stroke:#6b7280,stroke-width:1px
 ```
 
 `home/` 同時包含一般的 chezmoi source file 與 template。`.chezmoitemplates/` 中的可重用內容
@@ -107,13 +106,14 @@ ai_harness = "managed"        # managed 或 native
 ~~~
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "nodeTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280"}, "flowchart": {"useMaxWidth": true}}}%%
 flowchart TB
-    baseline["共用 baseline"]:::base
+    baseline["共用基線"]:::base
     context["ai_context<br/>personal | company"]:::choice
     harness["AI harness<br/>managed | native"]:::choice
     continuity["ai_continuity<br/>on | off"]:::choice
-    compose["組合渲染後的 profile"]:::process
-    effective{"實際組合"}:::check
+    compose["組合渲染後的設定"]:::process
+    effective{"實際結果"}:::check
     managedOn["managed + on<br/>自動 continuity 指引與生命週期回報"]:::result
     managedOff["managed + off<br/>不自動執行 continuity；保留 managed 通知與啟動檢查"]:::result
     native["native + on/off<br/>continuity skill 仍需明確啟動"]:::result
@@ -137,6 +137,15 @@ flowchart TB
     class compose process
     class effective check
     class managedOn,managedOff,native result
+    style baseline color:#111827
+    style context color:#111827
+    style harness color:#111827
+    style continuity color:#111827
+    style compose color:#111827
+    style effective color:#111827
+    style managedOn color:#111827
+    style managedOff color:#111827
+    style native color:#111827
 ```
 
 | Selector | 控制內容 | 預設值與界線 |
@@ -169,6 +178,7 @@ Selector 變更會影響之後重新 render 的設定與新啟動的 session。�
 worktree 不會帶入其他 worktree 的 continuity state。
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "nodeTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280"}, "flowchart": {"useMaxWidth": true}}}%%
 flowchart TD
     stop["一個 session 或 client 停止工作"]:::handoff
     persist["同一個實體 worktree 保留<br/>.project-continuity/state.md<br/><br/>目標 · 決策 · 阻塞事項<br/>驗證 · 材料 · 下一步"]:::state
@@ -187,6 +197,13 @@ flowchart TD
     classDef check fill:#f3e8ff,stroke:#9333ea,color:#111827
     classDef authority fill:#f3f4f6,stroke:#4b5563,color:#111827
     classDef work fill:#dcfce7,stroke:#16a34a,color:#111827
+    style stop color:#111827
+    style persist color:#111827
+    style resume color:#111827
+    style reconcile color:#111827
+    style git color:#111827
+    style continue color:#111827
+    style durable color:#111827
 ```
 
 本機 continuity state 是工作 session 的交接紀錄。當資訊需要在這個 state 之外持續存在，或決策
@@ -247,46 +264,81 @@ source 檔案前，先讀[來源狀態規則](./docs/chezmoi-workflow.md#source-
 可以留在目前有效的 worktree。使用者可在任何步驟釐清需求、提供材料或回饋；下方的手動測試
 流程是發布前的明確 gate。
 
+GitHub 的瀏覽器介面會渲染 Mermaid 圖表；部分 mobile app 畫面可能無法穩定渲染。若手機上
+看不到圖表或文字難以閱讀，請改用瀏覽器開啟 README；周圍的工作流程文字仍可作為替代說明。
+
+概略來看，生命週期是：佈建 → 實作 → 驗證 → 發布 → 清理。下方的 sequence 會呈現讓這些階段
+具體可執行的 gate、參與者與復原迴圈。
+
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#f3e8ff", "primaryBorderColor": "#9333ea", "lineColor": "#4b5563", "actorBkg": "#f3e8ff", "actorBorder": "#9333ea", "actorTextColor": "#111827", "actorLineColor": "#4b5563", "signalColor": "#4b5563", "labelBoxBkgColor": "#f3f4f6", "labelBoxBorderColor": "#4b5563", "labelTextColor": "#111827", "loopTextColor": "#111827", "noteBkgColor": "#fef3c7", "noteBorderColor": "#d97706", "noteTextColor": "#111827"}}}%%
+%%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280", "actorBkg": "#f3e8ff", "actorBorder": "#9333ea", "actorTextColor": "#111827", "actorLineColor": "#6b7280", "signalColor": "#6b7280", "signalTextColor": "#111827", "labelBoxBkgColor": "#f3f4f6", "labelBoxBorderColor": "#6b7280", "labelTextColor": "#111827", "loopTextColor": "#111827", "noteBkgColor": "#fef3c7", "noteBorderColor": "#d97706", "noteTextColor": "#111827"}}}%%
 sequenceDiagram
+    rect rgb(243, 244, 246)
     participant W as Workflow
     participant G as Git / worktree
     participant C as Continuity state
     participant U as User
 
-    Note over W: 收到任務請求與提供的材料
-    Note over W,G: <base> branch = 任務起點 + PR/MR 目標
-    Note over W: Fetch 並解析精確的 origin/<base> commit
-    W->>G: 檢查任務 worktree；不存在時建立
-    W->>G: 讓任務分支從 origin/<base> 的精確 commit 開始
-    W->>G: 檢查已審閱的 worktree manifest<br/>只複製核准的 ignored 本機檔案
-    Note over W: 實作指定範圍內的變更
-    W->>C: 持續更新 continuity<br/>記錄決策、阻塞事項、驗證狀態與下一步
+    Note over W: 接收需求與提供的材料
+    Note over W,G: <base> 分支 = 任務起點與 PR/MR 目標
+    Note over W: fetch 並解析確切的 origin/<base> commit
+    W->>G: 執行唯讀佈建檢查<br/>manifest · ignored 比對 · 衝突
+    W->>G: 只有通過檢查後才建立隔離的 task worktree
+    W->>G: 只複製已核准的 ignored 本機檔案
+    Note over W: 實作範圍內的變更
+    W->>C: 持續更新 continuity<br/>記錄決策、阻塞、驗證與下一步
     Note over W: 執行本機自動檢查
     W->>U: 請使用者進行手動驗證
+    Note over W,U: 手動測試 gate：必須取得使用者核准才能發布
+    rect rgb(229, 231, 235)
     loop 直到使用者核准
-        Note over U: 執行指定的手動測試
-        alt 測試通過
+        Note over U: 執行要求的手動測試
+        rect rgb(249, 250, 251)
+        alt 手動測試通過
             U-->>W: 核准
-        else 測試未通過
+        else 手動測試失敗
             U-->>W: 回報失敗
-            Note over W: 修正並重跑適用的檢查
+            Note over W: 修正並重新執行適用的檢查
             W-->>U: 再次請使用者進行手動驗證
         end
+        end
+    end
     end
     W->>G: commit 已核准的變更
-    Note over W,G: 發布前先 fetch 目前的 origin/<base>。<br/>如果 base 已前進，選擇 merge 或 rebase。<br/>再重新執行自動檢查與使用者手動測試。
-    W->>G: push 任務分支並設定 upstream<br/>針對 <base> 提出 PR/MR
+    Note over W,G: 發布前 fetch 最新的 origin/<base>。<br/>若 base 已移動，選擇 merge 或 rebase。<br/>然後重新執行自動檢查與使用者的手動測試。
+    W->>G: push 任務分支並設定 upstream<br/>建立以 <base> 為目標的 PR/MR
     W->>G: 清理 worktree 並保留任務分支
+    end
 ```
 
+詳細的 [worktree provisioning guide](./docs/worktree-provisioning.md#workflow-sequence) 會說明這個
+流程背後的佈建檢查、原生 client 路徑、runtime 隔離與清理契約。
+
 工作流程會固定起點與最後 request target 都使用選定的 base，讓每個任務的目錄、分支與
-continuity state 綁在一起；如果佈建被略過，也會明確回報，而不是靜默當成成功。它會在
-建立 worktree 前讀取並分類 specification、handoff、參考文件與測試輸入。流程會檢查已審閱的
-worktree manifest，通常是已追蹤的 `.worktreeinclude`，只複製其中核准的 ignored 檔案。如果
-manifest 不存在，流程會回報略過，判斷缺少的檔案是否影響任務，並在建立或修改 manifest 前
-先詢問。憑證、agent state、相依套件、build output 與 database 都留在這個界線之外。
+continuity state 綁在一起；非原生 worktree 路徑會在建立前先回報佈建決策。唯讀檢查會回報
+manifest 狀態、ignored 比對結果、未列入 manifest 的合資格檔案、缺少的必要本機設定、目標
+已存在時的衝突，以及 tracked 設定候選檔中的明確設定參照。它也會指出 tracked 的 `CLAUDE.md` 與
+`AGENTS.md` 已由 Git 提供，並將私人 agent override 與 client-local settings 分類為僅限明確指定，
+而不是一般候選。若 manifest pattern 對應到 tracked 檔案，檢查會拒絕該項目；application-owned 的
+tracked 設定必須由專案專用的手動設定或明確 repository contract 處理。未列在已追蹤
+`.worktreeinclude` 中的合資格 ignored 檔案，必須明確允許以未佈建狀態繼續；檢查本身不會
+建立 manifest 或複製檔案。流程接著檢查已審閱的 manifest，只複製其中核准的 ignored 檔案；外部資料夾
+也不會被視為隱含來源。憑證、agent state、相依套件、build output 與 database 都留在這個界線之外。
+使用中的 repository 也可以提供 tracked 的 `.worktree-provision` contract，列出 repository-relative
+的設定腳本與文件；helper 只會回報供人工檢視，不會執行腳本或輸出其內容。
+原生路徑仍保留各自的 client-owned 例外：Codex Desktop 的 local managed worktree 也會自動複製
+被 ignored 的 `AGENTS.override.md`，即使它沒有列在 `.worktreeinclude` 中。這不代表一般 workflow
+已核准，也不適用於 Codex CLI/IDE 或 fallback 路徑。
+
+建立 worktree 後，可以執行 `git wt-readiness` 回報未複製的已修改 tracked 設定。它也會從
+tracked 設定候選檔中找出明確的 `configSource` 與 `appSettings file` 參照，回報預期、已存在、
+缺少或未對應的路徑，但不會輸出設定值。這項檢查只提供提醒：不會複製 tracked 檔案、不會猜測
+專案專屬的設定流程，也不代表已完成新的 build、application server 正在執行、瀏覽器 session 已通過
+驗證，或 application credentials 有效。
+
+如果專案有明確核准的外部設定 mapping，`git wt-provision` 會先執行獨立的唯讀核准步驟，並將
+`provisioning-ready` 與 runtime 狀態分開回報；在 descriptor 的 health check 成功前，runtime 仍是
+`runtime-unverified`。
 
 提供或取得的材料只視為任務資料，不是可執行指示；無法讀取或互相衝突的內容會被明確提出，
 不會靠猜測補足，也不會照單執行。
@@ -294,8 +346,8 @@ manifest 不存在，流程會回報略過，判斷缺少的檔案是否影響�
 自動驗證在本機執行；若專案與 driver 支援，也會驗證實際瀏覽器操作。它不能取代使用者的
 手動測試。清理時移除 worktree，但不刪除任務分支。詳細的
 [worktree 生命週期](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
-說明材料處理、Claude 與 Codex 的原生路徑、Copilot 的 prepared-worktree 協定、保留分支的
-清理方式，以及 browser driver 的限制。
+說明材料處理、Claude、Codex 與 VS Code Agent Worktree 的原生路徑、Copilot CLI 的
+prepared-worktree 協定、保留分支的清理方式，以及 browser driver 的限制。
 
 發布後，工作流程會另外執行 continuity completion gate，不會把它和 worktree 清理混在一起：
 它會核對作用中的 state 與 parked state，並在刪除已完成的 continuity state 前先詢問。
@@ -305,14 +357,17 @@ manifest 不存在，流程會回報略過，判斷缺少的檔案是否影響�
 - 每個任務都有自己的實體 worktree、任務分支與 continuity state。
 - Client 交接會重新開啟同一個實體 worktree；另一個未完成的任務則使用另一個 worktree，
   除非刻意先把第一個 state park 起來。
-- Claude 與 Codex 有 managed 的自動 adapter。Copilot 可以在已準備好的 worktree 遵循協定，
-  但目前沒有自動的 worktree adapter。
+- Claude 與 Codex 有 managed adapter。VS Code 的原生 Agent Worktree 可以承載包含 Copilot
+  在內的支援 harness；Copilot CLI 本身沒有自動 worktree adapter，會使用已準備好的或
+  fallback worktree。
 - 手動驗證會在每個任務各自收斂；不同任務的原始碼變更與分支彼此獨立。
 
 這個 dotfiles 儲存庫本身會留在 primary checkout，因為 chezmoi 的 source resolution 綁定
 那個目錄。若要同時執行多個 application instance，請使用可選的
 [per-worktree runtime descriptor](./docs/worktree-runtime.md)；只有 consuming project 提供
-權威且受 Git 追蹤的 `.worktree-runtime.json` 時，`runtime=auto` 才有效。
+權威且受 Git 追蹤的 `.worktree-runtime.json` 時，`runtime=auto` 才有效。從隔離 worktree
+進行瀏覽器或 runtime 測試時，必須在啟動 server 前選擇 `runtime=auto`；否則工作流程會先
+回報沒有 per-worktree port 保證。
 
 ## 這個環境實際提供什麼
 

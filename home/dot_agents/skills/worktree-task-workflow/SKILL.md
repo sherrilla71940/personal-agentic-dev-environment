@@ -37,10 +37,13 @@ $worktree-task-workflow <base-branch> "<task>" [materials...] [options...]
 $worktree-task-workflow <base-branch> --infer-task <materials...> [options...]
 ```
 
-For an application task that needs concurrent runtime testing, add `runtime=auto` and use the
-project's tracked `.worktree-runtime.json` descriptor. An explicit `port=<number>` may override
-the descriptor's preferred allocation. Leave runtime at its default `off` for tasks that do not
-need an application server; this workflow is not a mandatory runtime harness.
+For an application task that starts a server for browser or runtime testing in an isolated
+worktree, `runtime=auto` is required. Use the consuming project's tracked
+`.worktree-runtime.json` descriptor; an explicit `port=<number>` may override its preferred
+allocation. If `runtime=auto` is not selected, report that no per-worktree port guarantee exists
+before starting the server, and do not claim that browser/runtime results came from this worktree.
+Leave runtime at its default `off` for tasks that do not need an application server; this workflow
+is not a mandatory runtime harness.
 
 `base` is required and means the user-provided existing branch on `origin`. The workflow creates
 the task branch from `origin/<base>` in a new worktree, and the eventual pull or merge request
@@ -70,8 +73,10 @@ There are two Codex entry paths:
 - In the Codex desktop app, a Local chat should use the chat header's Handoff control to move to
   Worktree after the resolved echo. Select the requested `<base-branch>`. Codex creates the
   local managed detached worktree, copies the repository's `.worktreeinclude` entries, and keeps the
-  chat associated with that worktree. If `open-code=true` was requested, use Codex's native Open
-  control after Handoff; do not create a second terminal worktree for this path.
+  chat associated with that worktree. Codex also automatically copies an ignored `AGENTS.override.md`
+  on this native path even when it is not listed in `.worktreeinclude`; that is client-owned behavior,
+  not generic manifest approval. If `open-code=true` was requested, use Codex's native Open control
+  after Handoff; do not create a second terminal worktree for this path.
 - In the Codex CLI or IDE extension, the adapter can provision the worktree, but a shell command
   cannot move the current chat's workspace. It therefore creates a detached worktree, reports
   its exact path, and stops. Start Codex in that path and invoke the same resolved workflow again,
@@ -137,11 +142,42 @@ surface:
   the user to open it manually.
 
   The path is a sibling of the repository, so it does not add an ignored nested directory to the
-  primary checkout. `git wt-add` also provisions the tracked `.worktreeinclude` allowlist. If the
-  alias is unavailable, use `git worktree add --detach` with the same path and start point, and
-  state that ignored files were not provisioned. If `open-code=true` was requested on this fallback,
-  run `code --new-window "<exact-worktree-path>"` when the `code` command is available; otherwise
+  primary checkout. `git wt-add` runs a read-only provisioning check before Git creates anything.
+  If the report finds eligible ignored files outside the tracked manifest, review it and either
+  add `--allow-unprovisioned` to the wrapper command or stop to author the manifest through the
+  `worktree-manifest` skill. The override creates the worktree but does not copy the unlisted
+  files. If the alias is unavailable, run `git wt-check --source "<repo-root>"` first, then use
+  `git worktree add --detach` with the same path and start point. After creation, run
+  `git wt-check --source "<repo-root>" --target "<exact-worktree-path>"` and state that raw Git
+  did not provision files. If `open-code=true` was requested on this fallback, run
+  `code --new-window "<exact-worktree-path>"` when the `code` command is available; otherwise
   report that the user must open the path manually.
+
+  When the source worktree may have a local configuration override, also run
+  `git wt-readiness --source "<repo-root>" --target "<exact-worktree-path>"`. The report includes
+  explicit `configSource` and `appSettings file` references and classifies expected, present,
+  missing, and unmapped paths without printing values. Tracked `CLAUDE.md` and `AGENTS.md` are
+  reported as already supplied by Git. Private agent overrides and client-local settings are
+  explicit-only and are not suggested as ordinary candidates. A `[tracked-config]` warning is
+  advisory and must not block creation; never add a tracked application configuration file to
+  `.worktreeinclude` or copy it automatically. If a manifest pattern matches a tracked file,
+  provisioning rejects that entry and reports that application-owned configuration requires
+  project-specific manual setup or an explicit repository contract. If a project provides setup,
+  use its explicit `.worktree-provision` contract or user-approved command rather than guessing
+  from filenames. The contract is report-only: the generic helper never executes its script or
+  prints its contents. An external secrets folder is never an implicit source. Readiness does not
+  prove a fresh build, a running application server, an authenticated browser session, or valid
+  application credentials.
+
+  If a required local file is outside the ordinary manifest, use `git wt-provision --dry-run` with
+  one exact source path, target worktree, destination, and operation. Present its sanitized report
+  and approval ID to the user and ask for approval of that exact mapping. Only after an affirmative
+  answer may you repeat it with `--approve <approval-id>`; the helper recomputes the source fingerprint
+  and target HEAD and refuses changed mappings, target commits, existing targets, and tracked sources.
+  The ID proves mapping integrity, not that a human approved it. Copy operations
+  are limited to one explicitly named ignored or external non-tracked file. Section merges and
+  whole-file Web.config or `.env` replacement remain report-only refusals. A successful copy is
+  still `runtime-unverified` until the separate runtime descriptor health check passes.
 
   Stop after creation. Report the exact path, the provisioning result, and the continuation
   command with the resolved `branch=`. The user must start Codex in that directory, or attach the
@@ -191,11 +227,14 @@ Report the worktree's absolute path, branch, origin identities, and base commit 
 not only in a tool call. The chat's workspace is not where the user is working, so an unreported
 path leaves them looking at the primary checkout with no sign of the change.
 
-Also report what ignored local configuration this worktree actually has. Codex desktop local
-managed worktrees should process `.worktreeinclude`; Codex remote, CLI, and IDE paths do not get
-that native guarantee, and a fallback worktree can also lack the manifest. A provisioning skip
-such as `[skipped] .worktreeinclude: manifest not found in source worktree` is silent until the
-app fails to run, so inspect the actual result rather than assuming the creator copied it.
+Also report what ignored local configuration this worktree actually has. Private agent overrides
+and client-local settings should be reported as explicit-only, not as ordinary eligible files.
+Codex desktop local managed worktrees process `.worktreeinclude` and may additionally carry the
+ignored `AGENTS.override.md` native exception described above; Codex remote, CLI, and IDE paths do
+not get that native guarantee. The terminal fallback reports its read-only decision before creation, and
+the post-creation `wt-check --target` report identifies copy candidates and conflicts. Do not
+infer application necessity from a filename; use `--required` for a known required file and build
+or start the app for the remaining application-specific check.
 
 ## 7. Implement through publishing
 
