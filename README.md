@@ -2,21 +2,13 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-This repository is a cross-platform developer environment and agentic workflow system, with managed
-dotfile configuration and native configuration surfaces for Claude Code, Codex, and GitHub Copilot. That
-client list can evolve as the repository changes. The explicit workflow handles isolated tasks,
-local automated verification, a separate user manual-test gate, and cross-session project
-continuity.
+I built this as the development environment I use across machines and AI coding tools. It keeps my personal dotfiles, shared AI configuration, and workflows for Claude Code, Codex, and GitHub Copilot in one place while still respecting the native files and conventions each tool expects.
 
-[Chezmoi](https://www.chezmoi.io/) renders managed source state into native targets while Git remains
-authoritative for tracked source state, branches, and commits. Verification results and the user's
-manual approval still determine whether the task is actually complete. Project continuity preserves
-the context that Git cannot: what a task means, where a session stopped, and what the next session
-must do.
+For longer or parallel coding tasks, the workflow can give each task its own Git worktree, preserve working context across sessions or AI clients, run local automated checks, and wait for explicit manual approval before publishing a branch for review.
 
-Put simply, shared managed source state reaches native client and developer-tool surfaces, while
-opted-in AI-assisted work gets a resumable, isolated path for parallel tasks, cross-session
-continuity, local automated checks, and explicit user approval before publishing a branch for review.
+Project continuity makes those handoffs possible. It keeps a small per-worktree record of the task’s objective, important decisions, blockers, verification state, materials, and next action, so another session can reopen the same worktree and continue without reconstructing the task from chat history. Git still remains authoritative for the actual code, branch, and commits.
+
+Chezmoi⁠￼ handles the configuration side: shared source is rendered into the native files used by each supported tool and operating system. The workflow side adds isolation, continuity, verification, and controlled publishing around the coding task.
 
 **Jump to:**
 
