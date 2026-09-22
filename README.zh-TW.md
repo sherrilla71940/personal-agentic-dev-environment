@@ -2,19 +2,13 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-這個儲存庫是跨平台開發環境與代理式工作流程系統，提供 chezmoi 管理的 dotfile 設定，以及
-Claude Code、Codex 與 GitHub Copilot 的原生設定介面。支援的 client 清單會隨儲存庫演進
-而變動。明確且可選擇啟用的工作流程會處理隔離任務、本機自動驗證、獨立的使用者手動測試
-關卡，以及跨 session 的專案連續性。
+這是我平常在不同機器與 AI coding tools 之間使用的開發環境。它把我的個人 dotfiles、共用 AI 設定，以及 Claude Code、Codex 與 GitHub Copilot 的工作流程集中管理，同時仍保留各工具原本使用的檔案格式與慣例。
 
-[Chezmoi](https://www.chezmoi.io/) 會把受管理的 source state 轉成各工具原生使用的 target；Git
-則持續是已追蹤 source state、分支與 commit 的權威來源。驗證結果與使用者手動核准仍會決定
-任務是否真正完成。專案連續性保存 Git 無法表達的工作脈絡：任務的目標、工作停在哪裡，
-以及下一個 session 要做什麼。
+對於較大型或需要平行進行的開發任務，這套工作流程可以讓每個任務使用自己的 Git worktree，保留跨 session 或 AI client 的工作脈絡，執行本機自動檢查，並在分支發布供 review 前等待使用者明確完成手動驗證。
 
-簡單說，共用的受管理 source state 會交付到各工具的原生 client／developer-tool surface；
-對於明確啟用的 AI 輔助開發，則有一套可跨 session 恢復的隔離流程，支援平行任務、本機自動
-檢查，以及發布分支供 review 前的明確使用者核准。
+Project continuity 負責讓這些交接順利進行。它會在每個 worktree 中保留一份小型任務紀錄，包含任務目標、重要決策、阻塞事項、驗證狀態、使用的材料，以及下一步，讓另一個 session 可以重新開啟同一個 worktree 後直接繼續，而不需要重新從 chat history 還原整個任務脈絡。實際的程式碼、分支與 commit 仍然以 Git 為準。
+
+Chezmoi⁠￼ 負責設定管理這一側：共用的 source 會被渲染成各個支援工具與作業系統實際使用的原生檔案。工作流程層則補上隔離、continuity、驗證，以及受控的發布流程。
 
 **快速導覽：**
 
