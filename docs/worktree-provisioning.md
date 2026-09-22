@@ -554,6 +554,10 @@ branches. Purple participants, yellow notes, and neutral-gray lines preserve the
 palette. The diagrams use dark text explicitly because their semantic fills are light on both light
 and dark editor canvases.
 
+GitHub browser views render Mermaid, but some mobile-app views may not render it reliably. If the
+sequence is missing or hard to read on mobile, open the guide in a browser; the surrounding
+workflow text remains the fallback.
+
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280", "actorBkg": "#f3e8ff", "actorBorder": "#9333ea", "actorTextColor": "#111827", "actorLineColor": "#6b7280", "signalColor": "#6b7280", "signalTextColor": "#111827", "labelBoxBkgColor": "#f3f4f6", "labelBoxBorderColor": "#6b7280", "labelTextColor": "#111827", "loopTextColor": "#111827", "noteBkgColor": "#fef3c7", "noteBorderColor": "#d97706", "noteTextColor": "#111827"}}}%%
 sequenceDiagram

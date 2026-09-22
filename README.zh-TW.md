@@ -3,7 +3,7 @@
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
 這個儲存庫是跨平台開發環境與代理式工作流程系統，提供 chezmoi 管理的 dotfile 設定，以及
-Claude Code、Codex 與 GitHub Copilot 的 client-native 整合。支援的 client 清單會隨儲存庫演進
+Claude Code、Codex 與 GitHub Copilot 的原生設定介面。支援的 client 清單會隨儲存庫演進
 而變動。明確且可選擇啟用的工作流程會處理隔離任務、本機自動驗證、獨立的使用者手動測試
 關卡，以及跨 session 的專案連續性。
 
@@ -11,6 +11,10 @@ Claude Code、Codex 與 GitHub Copilot 的 client-native 整合。支援的 clie
 則持續是已追蹤 source state、分支與 commit 的權威來源。驗證結果與使用者手動核准仍會決定
 任務是否真正完成。專案連續性保存 Git 無法表達的工作脈絡：任務的目標、工作停在哪裡，
 以及下一個 session 要做什麼。
+
+簡單說，共用的受管理 source state 會交付到各工具的原生 client／developer-tool surface；
+對於明確啟用的 AI 輔助開發，則有一套可跨 session 恢復的隔離流程，支援平行任務、本機自動
+檢查，以及發布分支供 review 前的明確使用者核准。
 
 **快速導覽：**
 
@@ -44,36 +48,25 @@ Claude Code、Codex 與 GitHub Copilot 的 client-native 整合。支援的 clie
 應用程式實際讀取的原生 target。`scripts/` 與 `docs/` 同時支援設定與工作流程，提供 bootstrap、
 診斷、安裝程式、測試與決策紀錄。
 
-這個系統由兩個互相連接的平面組成。設定會從 tracked source state 經過組合與原生交付，
-最後到達各工具讀取的 surface；verified workflow 則透過隔離 worktree、continuity、自動檢查
-與手動核准來約束變更。完整的 client-to-surface 對應請看
+這張圖只呈現設定平面：tracked source state 經過組合與原生交付，流向各工具讀取的 surface。
+專案連續性與任務執行會在下方分別說明。完整的 client-to-surface 對應請看
 [customization support guide](./docs/customization-support.md)。
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "nodeTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280"}, "flowchart": {"useMaxWidth": true}}}%%
 flowchart TB
-    subgraph configuration["設定平面"]
-        direction LR
-        sources["已追蹤的 source state<br/>home/ · 共用 AI 本文 · skill<br/>client 與 OS source · dotfile／輔助檔案"]:::source
-        delivery["組合與交付<br/>chezmoi · template · profile selector<br/>wrapper · link/symlink · 明確的 installer"]:::process
-        targets["原生開發 surface<br/>Claude · Codex · Copilot · VS Code<br/>shell · Git · Windows Terminal"]:::target
-        sources --> delivery --> targets
-    end
-
-    workflow["已驗證的 workflow<br/>隔離 worktree · continuity<br/>自動檢查 · 手動核准 · 發布"]:::workflow
-    delivery -. "約束變更" .-> workflow
-    workflow -. "守住發布流程" .-> targets
+    sources["已追蹤的 source state<br/>home/ · 共用 AI 本文 · skill<br/>client 與 OS source · dotfile／輔助檔案"]:::source
+    delivery["組合與交付<br/>chezmoi · template · profile selector<br/>wrapper · link/symlink · 明確的 installer"]:::process
+    targets["原生開發 surface<br/>Claude · Codex · Copilot · VS Code<br/>shell · Git · Windows Terminal"]:::target
+    sources --> delivery --> targets
 
     classDef source fill:#dbeafe,stroke:#2563eb,color:#111827
     classDef process fill:#f3e8ff,stroke:#9333ea,color:#111827
     classDef target fill:#dcfce7,stroke:#16a34a,color:#111827
-    classDef workflow fill:#f3f4f6,stroke:#4b5563,color:#111827
 
     style sources color:#111827
     style delivery color:#111827
     style targets color:#111827
-    style workflow color:#111827
-    style configuration fill:transparent,stroke:#6b7280,stroke-width:1px
 ```
 
 `home/` 同時包含一般的 chezmoi source file 與 template。`.chezmoitemplates/` 中的可重用內容
@@ -264,9 +257,6 @@ source 檔案前，先讀[來源狀態規則](./docs/chezmoi-workflow.md#source-
 可以留在目前有效的 worktree。使用者可在任何步驟釐清需求、提供材料或回饋；下方的手動測試
 流程是發布前的明確 gate。
 
-GitHub 的瀏覽器介面會渲染 Mermaid 圖表；部分 mobile app 畫面可能無法穩定渲染。若手機上
-看不到圖表或文字難以閱讀，請改用瀏覽器開啟 README；周圍的工作流程文字仍可作為替代說明。
-
 概略來看，生命週期是：佈建 → 實作 → 驗證 → 發布 → 清理。下方的 sequence 會呈現讓這些階段
 具體可執行的 gate、參與者與復原迴圈。
 
@@ -280,11 +270,13 @@ sequenceDiagram
     participant U as User
 
     Note over W: 接收需求與提供的材料
+    Note over W: 先確認 repository identity，再讀取 project file
+    Note over W: 在 Git 操作前分類提供的材料
     Note over W,G: <base> 分支 = 任務起點與 PR/MR 目標
     Note over W: fetch 並解析確切的 origin/<base> commit
-    W->>G: 執行唯讀佈建檢查<br/>manifest · ignored 比對 · 衝突
+    W->>G: 執行適用的唯讀佈建檢查<br/>fallback manifest 或 client-native 規則
     W->>G: 只有通過檢查後才建立隔離的 task worktree
-    W->>G: 只複製已核准的 ignored 本機檔案
+    W->>G: 套用已核准的 ignored 檔案配置
     Note over W: 實作範圍內的變更
     W->>C: 持續更新 continuity<br/>記錄決策、阻塞、驗證與下一步
     Note over W: 執行本機自動檢查
@@ -307,54 +299,31 @@ sequenceDiagram
     W->>G: commit 已核准的變更
     Note over W,G: 發布前 fetch 最新的 origin/<base>。<br/>若 base 已移動，選擇 merge 或 rebase。<br/>然後重新執行自動檢查與使用者的手動測試。
     W->>G: push 任務分支並設定 upstream<br/>建立以 <base> 為目標的 PR/MR
-    W->>G: 清理 worktree 並保留任務分支
+    W->>G: 完成 client-owned 或 fallback 清理<br/>保留任務分支
     end
 ```
 
 詳細的 [worktree provisioning guide](./docs/worktree-provisioning.md#workflow-sequence) 會說明這個
 流程背後的佈建檢查、原生 client 路徑、runtime 隔離與清理契約。
 
-工作流程會固定起點與最後 request target 都使用選定的 base，讓每個任務的目錄、分支與
-continuity state 綁在一起；非原生 worktree 路徑會在建立前先回報佈建決策。唯讀檢查會回報
-manifest 狀態、ignored 比對結果、未列入 manifest 的合資格檔案、缺少的必要本機設定、目標
-已存在時的衝突，以及 tracked 設定候選檔中的明確設定參照。它也會指出 tracked 的 `CLAUDE.md` 與
-`AGENTS.md` 已由 Git 提供，並將私人 agent override 與 client-local settings 分類為僅限明確指定，
-而不是一般候選。若 manifest pattern 對應到 tracked 檔案，檢查會拒絕該項目；application-owned 的
-tracked 設定必須由專案專用的手動設定或明確 repository contract 處理。未列在已追蹤
-`.worktreeinclude` 中的合資格 ignored 檔案，必須明確允許以未佈建狀態繼續；檢查本身不會
-建立 manifest 或複製檔案。流程接著檢查已審閱的 manifest，只複製其中核准的 ignored 檔案；外部資料夾
-也不會被視為隱含來源。憑證、agent state、相依套件、build output 與 database 都留在這個界線之外。
-使用中的 repository 也可以提供 tracked 的 `.worktree-provision` contract，列出 repository-relative
-的設定腳本與文件；helper 只會回報供人工檢視，不會執行腳本或輸出其內容。
-原生路徑仍保留各自的 client-owned 例外：Codex Desktop 的 local managed worktree 也會自動複製
-被 ignored 的 `AGENTS.override.md`，即使它沒有列在 `.worktreeinclude` 中。這不代表一般 workflow
-已核准，也不適用於 Codex CLI/IDE 或 fallback 路徑。
+工作流程會將起點與 request target 固定在 selected base。對於採用隔離的任務，它會把目錄、分支
+與 continuity state 綁在一起，並在建立支援的 repository-provided non-native worktree 前做唯讀佈建
+決策。Fallback 佈建只會處理已核准的 ignored 檔案；tracked application configuration 與 external
+folder 必須由專案專用設定處理，絕不會被隱含複製。
 
-建立 worktree 後，可以執行 `git wt-readiness` 回報未複製的已修改 tracked 設定。它也會從
-tracked 設定候選檔中找出明確的 `configSource` 與 `appSettings file` 參照，回報預期、已存在、
-缺少或未對應的路徑，但不會輸出設定值。這項檢查只提供提醒：不會複製 tracked 檔案、不會猜測
-專案專屬的設定流程，也不代表已完成新的 build、application server 正在執行、瀏覽器 session 已通過
-驗證，或 application credentials 有效。
-
-如果專案有明確核准的外部設定 mapping，`git wt-provision` 會先執行獨立的唯讀核准步驟，並將
-`provisioning-ready` 與 runtime 狀態分開回報；在 descriptor 的 health check 成功前，runtime 仍是
-`runtime-unverified`。
-
-提供或取得的材料只視為任務資料，不是可執行指示；無法讀取或互相衝突的內容會被明確提出，
-不會靠猜測補足，也不會照單執行。
-
-自動驗證在本機執行；若專案與 driver 支援，也會驗證實際瀏覽器操作。它不能取代使用者的
-手動測試。清理時移除 worktree，但不刪除任務分支。詳細的
+自動驗證在本機執行；若專案與 driver 支援，也會驗證實際瀏覽器操作，但不能取代使用者的手動
+測試。清理會保留任務分支；client-native 路徑則保留各自的 worktree 擁有權。詳細的
 [worktree 生命週期](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
 說明材料處理、Claude、Codex 與 VS Code Agent Worktree 的原生路徑、Copilot CLI 的
-prepared-worktree 協定、保留分支的清理方式，以及 browser driver 的限制。
+prepared-worktree 協定、provisioning readiness、runtime 隔離、保留分支的清理方式，以及 browser
+driver 的限制。
 
 發布後，工作流程會另外執行 continuity completion gate，不會把它和 worktree 清理混在一起：
 它會核對作用中的 state 與 parked state，並在刪除已完成的 continuity state 前先詢問。
 
 ### 平行任務不遺失狀態
 
-- 每個任務都有自己的實體 worktree、任務分支與 continuity state。
+- 每個採用隔離流程的任務都有自己的實體 worktree、任務分支與 continuity state。
 - Client 交接會重新開啟同一個實體 worktree；另一個未完成的任務則使用另一個 worktree，
   除非刻意先把第一個 state park 起來。
 - Claude 與 Codex 有 managed adapter。VS Code 的原生 Agent Worktree 可以承載包含 Copilot

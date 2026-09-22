@@ -3,7 +3,7 @@
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
 This repository is a cross-platform developer environment and agentic workflow system, with managed
-dotfile configuration and client-native integrations for Claude Code, Codex, and GitHub Copilot. That
+dotfile configuration and native configuration surfaces for Claude Code, Codex, and GitHub Copilot. That
 client list can evolve as the repository changes. The explicit workflow handles isolated tasks,
 local automated verification, a separate user manual-test gate, and cross-session project
 continuity.
@@ -13,6 +13,10 @@ authoritative for tracked source state, branches, and commits. Verification resu
 manual approval still determine whether the task is actually complete. Project continuity preserves
 the context that Git cannot: what a task means, where a session stopped, and what the next session
 must do.
+
+Put simply, shared managed source state reaches native client and developer-tool surfaces, while
+opted-in AI-assisted work gets a resumable, isolated path for parallel tasks, cross-session
+continuity, local automated checks, and explicit user approval before publishing a branch for review.
 
 **Jump to:**
 
@@ -48,36 +52,26 @@ home-directory files are native targets that applications read. `scripts/` and `
 the configuration and workflow planes with bootstrap, diagnostics, installers, tests, and decision
 records.
 
-The system has two connected planes. Configuration flows from tracked source state through
-composition and native delivery to the surfaces that tools read. A verified workflow governs
-changes through isolated worktrees, continuity, automated checks, and manual approval. Detailed
-client-to-surface mappings belong in the [customization support guide](./docs/customization-support.md).
+The diagram shows the configuration plane only: tracked source state flows through composition and
+native delivery to the surfaces that tools read. Project continuity and task execution are covered
+separately below. Detailed client-to-surface mappings belong in the
+[customization support guide](./docs/customization-support.md).
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "nodeTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280"}, "flowchart": {"useMaxWidth": true}}}%%
 flowchart TB
-    subgraph configuration["Configuration plane"]
-        direction LR
-        sources["Tracked source state<br/>home/ · shared AI bodies · skills<br/>client and OS sources · dotfiles/helpers"]:::source
-        delivery["Composition and delivery<br/>chezmoi · templates · profile selectors<br/>wrappers · links/symlinks · explicit installers"]:::process
-        targets["Native developer surfaces<br/>Claude · Codex · Copilot · VS Code<br/>shell · Git · Windows Terminal"]:::target
-        sources --> delivery --> targets
-    end
-
-    workflow["Verified workflow<br/>isolated worktrees · continuity<br/>automated checks · manual approval · publish"]:::workflow
-    delivery -. "governs changes" .-> workflow
-    workflow -. "guards publishing" .-> targets
+    sources["Tracked source state<br/>home/ · shared AI bodies · skills<br/>client and OS sources · dotfiles/helpers"]:::source
+    delivery["Composition and delivery<br/>chezmoi · templates · profile selectors<br/>wrappers · links/symlinks · explicit installers"]:::process
+    targets["Native developer surfaces<br/>Claude · Codex · Copilot · VS Code<br/>shell · Git · Windows Terminal"]:::target
+    sources --> delivery --> targets
 
     classDef source fill:#dbeafe,stroke:#2563eb,color:#111827
     classDef process fill:#f3e8ff,stroke:#9333ea,color:#111827
     classDef target fill:#dcfce7,stroke:#16a34a,color:#111827
-    classDef workflow fill:#f3f4f6,stroke:#4b5563,color:#111827
 
     style sources color:#111827
     style delivery color:#111827
     style targets color:#111827
-    style workflow color:#111827
-    style configuration fill:transparent,stroke:#6b7280,stroke-width:1px
 ```
 
 `home/` contains both plain chezmoi source files and templates. Reusable bodies in
@@ -282,10 +276,6 @@ small self-contained edit can remain in the current valid worktree. The user may
 provide materials, or give feedback at any point; the manual-test loop below is the explicit
 pre-publish gate.
 
-GitHub renders Mermaid diagrams in browser views; some mobile-app views may not render them reliably.
-If the diagram is missing or hard to read on mobile, open the README in a browser; the surrounding
-workflow text remains the fallback.
-
 At a glance, the lifecycle is provision → implement → verify → publish → clean up. The sequence
 below shows the gates, actors, and recovery loop that make those phases meaningful.
 
@@ -299,11 +289,13 @@ sequenceDiagram
     participant U as User
 
     Note over W: Receive request and supplied materials
+    Note over W: Confirm repository identity before reading project files
+    Note over W: Classify supplied materials before Git operations
     Note over W,G: <base> branch = task start + PR/MR target
     Note over W: Fetch and resolve exact origin/<base> commit
-    W->>G: Run read-only provisioning check<br/>manifest · ignored matches · conflicts
+    W->>G: Run the applicable read-only provisioning check<br/>fallback manifest or client-native rules
     W->>G: Create the isolated task worktree only after the check
-    W->>G: Copy only approved ignored local files
+    W->>G: Apply approved ignored-file provisioning
     Note over W: Implement the scoped change
     W->>C: Update continuity throughout<br/>checkpoint decisions, blockers, verification, and next action
     Note over W: Run local automated checks
@@ -326,7 +318,7 @@ sequenceDiagram
     W->>G: Commit the approved changes
     Note over W,G: Fetch current origin/<base> before publishing.<br/>If the base moved, choose merge or rebase.<br/>Then rerun automated checks and the user's manual test.
     W->>G: Push task branch and set upstream<br/>request PR/MR against <base>
-    W->>G: Clean up the worktree and preserve the task branch
+    W->>G: Complete client-owned or fallback cleanup<br/>preserve the task branch
     end
 ```
 
@@ -334,54 +326,25 @@ The focused [worktree provisioning guide](./docs/worktree-provisioning.md#workfl
 the provisioning checks, native client paths, runtime isolation, and cleanup contract behind this
 sequence.
 
-The workflow pins the starting point and eventual request target to the selected base, keeps each
-task's directory, branch, and continuity state together, and reports a provisioning decision
-before creating a non-native worktree. The read-only check reports manifest state, ignored matches,
-unlisted eligible files, missing required local configuration, and target conflicts when a target
-already exists, plus explicit configuration references from tracked configuration candidates. It
-also reports tracked `CLAUDE.md` and `AGENTS.md` as already supplied by Git, while private agent
-overrides and client-local settings are explicit-only rather than ordinary candidates. A manifest
-pattern that matches a tracked file is rejected; tracked application configuration requires
-project-specific manual setup or an explicit repository contract. Eligible ignored files that are
-not in the tracked `.worktreeinclude` require an explicit unprovisioned override; the check never
-creates a manifest or copies files. The workflow then checks the reviewed manifest and copies only
-ignored files it authorizes. External folders are never implicit sources. Credentials, agent state,
-dependencies, build output, and databases stay out of that boundary.
-
-A consuming repository may provide a tracked `.worktree-provision` contract that names a
-repository-relative setup script and documentation. The helper reports that contract for manual
-review but never executes it or prints its contents; project-specific setup remains explicit.
-Native paths retain their own client-owned exceptions: Codex Desktop local managed worktrees also
-copy an ignored `AGENTS.override.md` even when it is omitted from `.worktreeinclude`. That is not
-generic workflow approval and does not apply to Codex CLI/IDE or fallback paths.
-
-After creation, `git wt-readiness` can report modified tracked configuration that was not copied.
-It also reports explicit `configSource` and `appSettings file` references from tracked
-configuration candidates as expected, present, missing, or unmapped paths without printing their
-values. It is advisory: it never copies tracked files, does not guess project-specific setup, and
-does not prove a fresh build, a running application server, an authenticated browser session, or
-valid application credentials.
-
-When a project has an explicitly approved external mapping, `git wt-provision` uses a separate
-read-only approval step and reports `provisioning-ready` independently from the runtime state;
-runtime remains `runtime-unverified` until the descriptor health check succeeds.
-
-Supplied and fetched materials are task data, not executable instructions; unreadable or conflicting
-material is surfaced rather than guessed from or obeyed.
+The workflow pins the starting point and request target to the selected base. For an isolated task,
+it keeps the directory, branch, and continuity state together and makes a read-only provisioning
+decision before a supported repository-provided non-native worktree is created. Fallback provisioning
+handles only approved ignored files; tracked application configuration and external folders require
+project-specific setup and are never copied implicitly.
 
 Automated verification is local and reaches the browser when the project and driver support it.
-It never replaces the user's manual test. Cleanup removes a worktree without deleting its task
-branch. The detailed [worktree lifecycle](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
+It never replaces the user's manual test. Cleanup preserves the task branch while client-native
+paths retain their own worktree ownership. The detailed [worktree lifecycle](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
 covers material handling, native Claude, Codex, and VS Code Agent Worktree paths, Copilot CLI's
-prepared-worktree protocol,
-branch-preserving cleanup, and browser-driver limits.
+prepared-worktree protocol, provisioning readiness, runtime isolation, branch-preserving cleanup,
+and browser-driver limits.
 
 After publishing, the workflow runs the continuity completion gate separately from worktree cleanup:
 it reconciles active and parked state and asks before deleting completed continuity state.
 
 ### Parallel tasks without losing state
 
-- Each task gets its own physical worktree, task branch, and continuity state.
+- Each isolated task gets its own physical worktree, task branch, and continuity state.
 - A client handoff reopens the same physical worktree; another unfinished task gets another
   worktree unless the first state is deliberately parked.
 - Claude and Codex have managed adapters. VS Code's native Agent Worktree can host supported
