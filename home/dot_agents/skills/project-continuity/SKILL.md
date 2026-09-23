@@ -53,6 +53,25 @@ The completion outcome must be visible before the response ends: cleanup confirm
 cleanup declined and recorded, or unfinished continuity retained with a concrete next action. A
 clean branch, a removed worktree, or a successful publish does not choose among those outcomes.
 
+## Finalization matrix
+
+Run the completion gate before every final response after continuity was enabled or touched.
+Publishing is one exit path, not the trigger for finalization. Reconcile the actual checkout and
+classify the terminal outcome as follows:
+
+| Exit path | Continuity action | Required report |
+| --- | --- | --- |
+| Plan-only request with no state | Do not create or change continuity state. | Continuity is not needed for the plan-only response. |
+| Manual gate waiting, failed verification, or an unresolved blocker | Reconcile the evidence and keep one concrete next action or blocker. | Continuity retained, with the first unfinished action or blocker named. |
+| Implementation complete with an uncommitted working-tree diff | Record `Delivery: commit pending` and keep the review/commit action explicit. | Do not offer continuity cleanup while the durable Git checkpoint is pending. |
+| Local commit complete without publishing | Record `Delivery: local-only complete` when no publish is requested, or `Delivery: publish pending` when publishing remains part of the task. | State whether cleanup is offered or why continuity remains active. |
+| User declines or defers publishing | Record the delivery decision and the exact next action only when the task still requires publication. | Keep continuity cleanup separate from worktree or branch retention. |
+| Publish, merge, or rebase complete | Reconcile HEAD, branch, status, request state, and verification, then apply the completion gate. | Report active cleanup and parked candidates separately. |
+
+Never put “offer cleanup,” “ask before deleting state,” or a similar cleanup prompt in `Next
+actions`. That section is reserved for unfinished task work. A completed task must leave the four
+unfinished sections empty so the completion gate can raise the cleanup offer deterministically.
+
 This check is independent of checkpointing: a finished task removes the reason to keep state,
 so the cleanup offer must not depend on another checkpoint occurring.
 
@@ -219,7 +238,7 @@ A worktree is the right answer when two tasks need separate working trees — se
   missing or invalid timestamp has unknown age and should be reported as such.
 - **Close:** delete the file when its task is done. Parked state is not an archive, and a finished task leaves nothing behind here — Git history and the pull request are where a decision's reasoning belongs.
 
-Park when the user turns to something substantial while unfinished state is still useful, and say that you did. Do not park to avoid asking: if the new request is small, answer it and leave `state.md` alone. If the old task is genuinely abandoned, replace it rather than parking it, so the directory does not fill with work nobody will return to.
+Park when the user turns to something substantial while unfinished state is still useful, and say that you did. Do not park to avoid asking: if the new request is small, answer it and leave `state.md` alone. If the old task is genuinely abandoned, replace it rather than parking it, so the directory does not fill with work nobody will return to. When a parked task is complete, leave its unfinished sections empty and let the completion gate report it as a named closure candidate; do not add cleanup as a placeholder next action.
 
 The Git exclude entry is `/.project-continuity/`, so it already covers `parked/`. The lifecycle
 reporter checks parked files for completed-state closure candidates but never deletes them; the
@@ -232,9 +251,11 @@ Checkpoint when the cost of losing what is not yet recorded becomes material. Fa
 Before the first substantive action of a turn, checkpoint when the current user instruction materially changes the objective, requirements, decisions, blockers or next action. Record normalized task state, not prompt text. During a long-running turn, checkpoint again at meaningful phase boundaries when losing the new state would be materially expensive.
 
 Treat a verified feature-completion boundary and the transition to the next feature as explicit
-checkpoint opportunities. Before ending a response while unfinished work remains, checkpoint
-enough for another client to identify the first unfinished action. These are semantic checkpoints,
-not a requirement to rewrite state after every commit.
+checkpoint opportunities. After a delivery action such as a commit, push, request creation,
+merge, rebase, manual-test result, or user decision to pause publishing, reconcile the actual
+delivery state before ending the response. Before ending a response while unfinished work remains,
+checkpoint enough for another client to identify the first unfinished action. These are semantic
+checkpoints, not a requirement to rewrite state after every commit.
 
 At each checkpoint and before ending a response with unfinished work, apply this resumability test:
 if this session ended now, could another supported client identify the objective, current phase,

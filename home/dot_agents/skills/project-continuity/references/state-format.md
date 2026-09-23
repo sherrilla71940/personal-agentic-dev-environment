@@ -50,6 +50,7 @@ The phase another session should resume from.
 - Origin fetch: `<redacted origin identity, when a task workflow selected one>`
 - Origin push: `<redacted push identity, when a task workflow selected one>`
 - Status: `<clean / modified / concise description>`
+- Delivery: `<not applicable / commit pending / local-only complete / publish pending / published / publish declined>`
 - Last reconciled: `<ISO 8601 timestamp with timezone>`
 - Cleanup: `<omit normally; set to declined once the user has refused cleanup for this task>`
 - Parked: `<omit normally; set to an ISO 8601 timestamp with timezone when this file is moved into parked/>`

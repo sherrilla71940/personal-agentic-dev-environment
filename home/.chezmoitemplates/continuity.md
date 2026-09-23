@@ -13,9 +13,10 @@ explicit handoff or resume boundary, or follows conversation compaction. Initial
 resulting state is not cheaply recoverable from the repository, diff, or other durable sources.
 An explicit handoff, resume, or compaction recovery may require state so another session can act
 without guessing. Before ending a response while unfinished work remains, checkpoint enough for
-the next session to identify the first unfinished action. A commit may be a useful checkpoint when
-it changes what must be recovered, but a commit by itself does not require rerunning the continuity
-decision.
+the next session to identify the first unfinished action. After a commit, push, request creation,
+merge, rebase, manual-test result, or decision to pause publishing, reconcile the delivery state
+before ending the response. A commit may be a useful checkpoint when it changes what must be
+recovered, but a commit by itself does not require rerunning the continuity decision.
 
 When implementation differs from an approved artifact, classify it as an accepted scope difference,
 a deferred dependency, or an unresolved decision. Keep deferred dependencies and unresolved
@@ -45,8 +46,9 @@ English, regardless of the conversation language.
 
 Use the `project-continuity` skill for initialization, reconciliation, parking, resume, handoff,
 and cleanup. When `.project-continuity/state.md` already matches the current task, reconcile it
-before substantive work and apply the skill's completion gate when the task is complete. The gate
-is a required final-response step: a lifecycle-hook reminder does not replace reconciliation or the
-user's explicit cleanup decision. Before ending a completed task, report whether cleanup was
-completed, declined and recorded, or remains pending with the named state files.
+before substantive work and apply the skill's completion gate on every terminal workflow path, not
+only after publishing. The gate is a required final-response step: a lifecycle-hook reminder does
+not replace reconciliation or the user's explicit cleanup decision. Before ending a completed task,
+report whether cleanup was completed, declined and recorded, or remains pending with the named
+state files. Keep continuity cleanup separate from worktree and branch cleanup.
 {{- end }}

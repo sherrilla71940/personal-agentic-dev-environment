@@ -206,11 +206,24 @@ Never merge the pull or merge request, enable auto-merge, approve the request, f
 the explicit integration approval, or delete either the local or remote task branch. The branch must
 outlive the worktree for review and CI.
 
-## Complete continuity after delivery
+## Finalize continuity on every workflow exit
 
-After a successful publish, run the `project-continuity` completion gate before the final response.
-Reconcile the active state with the actual checkout, commit/push/request state, and verification.
-Review every parked state and identify completed closure candidates.
+Run the `project-continuity` completion gate before every final response after continuity was
+enabled or touched. A successful publish is only one terminal path. Reconcile the active state with
+the actual checkout, delivery decision, request state, and verification, then classify the exit:
+
+| Workflow exit | State action | Final response |
+| --- | --- | --- |
+| Plan-only prompt | Do not create or modify continuity state. | Say continuity was not needed for planning. |
+| Manual gate waiting or failed verification | Keep the active state with the blocker or first concrete next action. | Say continuity is retained and name what happens next. |
+| Implementation complete with an uncommitted diff | Record `Delivery: commit pending` and keep review/commit as the next action. | Do not offer continuity cleanup before the durable Git checkpoint. |
+| Local commit without publish | Record `Delivery: local-only complete` or `Delivery: publish pending`. | State whether publication remains requested and whether continuity cleanup is offered. |
+| Publish declined or deferred | Record the delivery decision and a next action only if work remains. | Keep branch/worktree retention separate from continuity cleanup. |
+| Publish, merge, or rebase complete | Reconcile HEAD, branch, status, request state, and checks, then apply the completion gate. | Report active cleanup and parked candidates separately. |
+
+`Next actions` is reserved for unfinished task work. Do not put “offer cleanup” or “ask before
+deleting state” there; a completed state must leave the unfinished sections empty so the completion
+gate can report it deterministically.
 
 Worktree cleanup and continuity cleanup are separate decisions. If the active continuity state is
 finished, ask the user whether to delete `.project-continuity/state.md`. Ask separately before

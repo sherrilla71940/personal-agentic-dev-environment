@@ -86,7 +86,16 @@ count_open_items() {
       tracking = (section in tracked)
       next
     }
-    tracking && /^[[:space:]]*([-*]|[0-9]+[.])[[:space:]]+[^[:space:]]/ { count++ }
+    tracking && /^[[:space:]]*([-*]|[0-9]+[.])[[:space:]]+[^[:space:]]/ {
+      lower = tolower($0)
+      # Cleanup is a completion-gate decision, not unfinished task work. Ignore the common
+      # placeholder wording here so a parked file cannot suppress its own closure notice.
+      if (index(lower, "offer cleanup") || index(lower, "confirm deletion") ||
+          index(lower, "delete it only after") || index(lower, "ask before deleting state")) {
+        next
+      }
+      count++
+    }
     END { print count + 0 }
   ' "$state_file" 2>/dev/null || printf '1'
 }
@@ -262,6 +271,61 @@ report_finished_state() {
   jq -cn --arg message "$message" '{systemMessage:$message}'
 }
 
+# A cleanup reminder left under Next actions is not unfinished task work. Flag it so the skill can
+# reconcile the file and let the completion gate raise the real cleanup offer instead of carrying
+# the reminder forward as a fake task action.
+report_cleanup_placeholders() {
+  local root="$1"
+  local active_file="$root/.project-continuity/state.md"
+  local parked_directory="$root/.project-continuity/parked"
+  local candidate placeholder_files="" message
+
+  cleanup_placeholder_present() {
+    awk '
+      BEGIN {
+        tracked["In progress"] = 1
+        tracked["Next actions"] = 1
+        tracked["Blockers"] = 1
+        tracked["TODO / deferred"] = 1
+      }
+      /^## / {
+        section = substr($0, 4)
+        sub(/[[:space:]]+$/, "", section)
+        tracking = (section in tracked)
+        next
+      }
+      tracking && /^[[:space:]]*([-*]|[0-9]+[.])[[:space:]]+[^[:space:]]/ {
+        lower = tolower($0)
+        if (index(lower, "offer cleanup") || index(lower, "confirm deletion") ||
+            index(lower, "delete it only after") || index(lower, "ask before deleting state")) {
+          found = 1
+          exit
+        }
+      }
+      END { exit(found ? 0 : 1) }
+    ' "$1" >/dev/null 2>&1
+  }
+
+  for candidate in "$active_file" "$parked_directory"/*.md; do
+    [[ -f "$candidate" ]] || continue
+    if cleanup_placeholder_present "$candidate"; then
+      if [[ -n "$placeholder_files" ]]; then
+        placeholder_files="$placeholder_files, "
+      fi
+      placeholder_files="${placeholder_files}${candidate#"$root"/}"
+    fi
+  done
+
+  [[ -n "$placeholder_files" ]] || return 0
+
+  message="Continuity cleanup wording appears in unfinished-task sections: $placeholder_files."
+  message="$message Reconcile the file against Git and remove the cleanup reminder from In progress,
+Next actions, Blockers, or TODO / deferred; if the task is complete, leave those sections empty and
+let the completion gate ask for cleanup. Do not delete state automatically."
+
+  jq -cn --arg message "$message" '{systemMessage:$message}'
+}
+
 # A parked file is not active, so the ordinary active-state completion offer never reaches it.
 # Report structurally finished parked files as candidates; the skill requires confirmation before
 # any one is deleted.
@@ -353,16 +417,18 @@ combine_notices() {
 # notices still accompany it so reconciliation cannot permanently hide cleanup work.
 report_continuity_notice() {
   local state_file="$1"
-  local directory notice semantic_notice finished_notice parked_notice metadata_notice
+  local directory notice semantic_notice finished_notice placeholder_notice parked_notice metadata_notice
 
   directory="$(dirname "$(dirname "$state_file")")"
   notice="$(report_stale_verification "$state_file" "$directory")"
   semantic_notice="$(report_progress_verification_contradictions "$state_file")"
   finished_notice="$(report_finished_state "$state_file")"
+  placeholder_notice="$(report_cleanup_placeholders "$directory")"
   parked_notice="$(report_finished_parked_states "$directory")"
   metadata_notice="$(report_parked_metadata "$directory")"
   notice="$(combine_notices "$notice" "$semantic_notice")"
   notice="$(combine_notices "$notice" "$finished_notice")"
+  notice="$(combine_notices "$notice" "$placeholder_notice")"
   notice="$(combine_notices "$notice" "$parked_notice")"
   notice="$(combine_notices "$notice" "$metadata_notice")"
   if [[ -n "$notice" ]]; then
@@ -372,11 +438,13 @@ report_continuity_notice() {
 
 report_parked_notices() {
   local root="$1"
-  local finished_notice metadata_notice
+  local placeholder_notice finished_notice metadata_notice
 
+  placeholder_notice="$(report_cleanup_placeholders "$root")"
   finished_notice="$(report_finished_parked_states "$root")"
   metadata_notice="$(report_parked_metadata "$root")"
-  combine_notices "$finished_notice" "$metadata_notice"
+  placeholder_notice="$(combine_notices "$placeholder_notice" "$finished_notice")"
+  combine_notices "$placeholder_notice" "$metadata_notice"
 }
 
 ensure_private_state_path() {

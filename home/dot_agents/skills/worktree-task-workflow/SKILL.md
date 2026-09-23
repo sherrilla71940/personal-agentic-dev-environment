@@ -268,17 +268,19 @@ Only mark it ready for disposal when all are true:
 
 When the user chooses disposal and all checks pass, explain that the user can archive the Codex-managed
 chat or use Handoff according to the app's worktree controls. Do not run `git worktree remove`, delete
-a branch, archive a chat, or claim the worktree was removed. Continuity cleanup is separate: after
-publishing, run the `project-continuity` completion gate before the final response. Ask before deleting
-the active state or any completed parked state; never treat a clean branch or removed worktree as
-permission to delete continuity state.
+a branch, archive a chat, or claim the worktree was removed. Continuity cleanup is separate: before
+every final response after continuity was enabled or touched, run the `project-continuity` completion
+gate; publishing is only one exit path. Ask before deleting the active state or any completed parked
+state; never treat a clean branch or removed worktree as permission to delete continuity state.
 
 The completion gate is a required final-response step, not a reminder to handle later. Reconcile
-the actual delivery state and review parked state candidates in the same response. If a stale HEAD
-or branch warning appears, reconcile it and then repeat the finished-state check instead of ending
-with the warning alone. If the user declines a named cleanup, record `Cleanup: declined` in that
-file's Verification block and do not ask again for that task. The final response must state whether
-cleanup was completed, declined and recorded, or remains pending with the named state files.
+the actual delivery state and review parked state candidates in the same response on every exit path,
+including plan-only completion, manual-gate pauses, local commit without publish, publish deferral,
+and successful publish. If a stale HEAD or branch warning appears, reconcile it and then repeat the
+finished-state check instead of ending with the warning alone. If the user declines a named cleanup,
+record `Cleanup: declined` in that file's Verification block and do not ask again for that task. The
+final response must state whether cleanup was completed, declined and recorded, or remains pending
+with the named state files. Keep worktree and branch retention separate from continuity cleanup.
 
 ## Resume
 

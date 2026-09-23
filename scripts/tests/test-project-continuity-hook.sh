@@ -327,6 +327,17 @@ append_section 'Blockers' ''
 append_section 'TODO / deferred' ''
 notice_message "$(stop_notice)" | grep -q 'records no unfinished work'
 
+# A cleanup reminder accidentally left in Next actions must not suppress the completion gate. The
+# hook reports the placeholder so the skill can reconcile it out of the unfinished sections.
+write_state "$fixture_branch" "$fixture_head"
+append_section 'Next actions' '1. Offer cleanup of this active continuity state; delete it only after the user confirms.'
+cleanup_placeholder_message="$(notice_message "$(stop_notice)")"
+case "$cleanup_placeholder_message" in
+  *"records no unfinished work"*"cleanup wording appears in unfinished-task sections"*) ;;
+  *) printf 'expected cleanup placeholder and completion notices, got: %s\n' \
+    "$cleanup_placeholder_message" >&2; exit 1 ;;
+esac
+
 # One open item in any tracking section is enough to keep the offer silent.
 for open_section in 'In progress' 'Next actions' 'Blockers' 'TODO / deferred'; do
   write_state "$fixture_branch" "$fixture_head"
