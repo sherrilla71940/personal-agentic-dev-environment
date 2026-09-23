@@ -127,7 +127,76 @@ case_no_manifest() {
     run_git "$repository" wt-add -- --detach "$target" HEAD
     assert_status 0 'Creation without a manifest should succeed.' || return 1
     assert_output_contains '[skipped] .worktreeinclude' 'The missing manifest should be reported.' || return 1
+    assert_output_contains 'Provisioning verdict: nothing-to-provision' 'A cache-only worktree should distinguish no provisioning from unknown build readiness.' || return 1
     [[ -f "$target/.git" ]]
+}
+
+case_target_base_manifest() {
+    new_repository target-base-manifest || return 1
+    local repository=$fixture_repository target="$test_root/target-base-manifest-target"
+    write_fixture "$repository/.gitignore" $'.env.local\npackages/\n'
+    write_fixture "$repository/.env.local" $'source-value\n'
+    write_fixture "$repository/packages.config" $'<packages />\n'
+    git_checked "$repository" add .gitignore packages.config || return 1
+    git_checked "$repository" commit --quiet -m 'add ignored prerequisites' || return 1
+    git_checked "$repository" checkout --quiet -b target-base || return 1
+    write_fixture "$repository/.worktreeinclude" $'.env.local\n'
+    git_checked "$repository" add .worktreeinclude || return 1
+    git_checked "$repository" commit --quiet -m 'add target-base manifest' || return 1
+    git_checked "$repository" checkout --quiet main || return 1
+
+    run_git "$repository" wt-add -- --detach "$target" target-base
+    assert_status 3 'A target-base manifest and missing dependency directory must block before creation.' || return 1
+    assert_output_contains 'Manifest: target-base' 'The target-base manifest source should be reported.' || return 1
+    assert_output_contains '[matched] .env.local' 'The target-base manifest entry should be evaluated.' || return 1
+    assert_output_contains '[dependency-directory] packages/: missing' 'The missing ignored dependency directory should be reported.' || return 1
+    assert_output_contains 'Provisioning verdict: cannot-determine-build-prerequisites' 'The verdict should distinguish unknown build readiness.' || return 1
+    [[ ! -e "$target" ]]
+}
+
+case_copy_target_manifest() {
+    new_repository copy-target-manifest || return 1
+    local repository=$fixture_repository target="$test_root/copy-target-manifest-target"
+    write_fixture "$repository/.gitignore" $'.env.local\n'
+    write_fixture "$repository/.env.local" $'source-value\n'
+    git_checked "$repository" add .gitignore || return 1
+    git_checked "$repository" commit --quiet -m 'add ignored source' || return 1
+    git_checked "$repository" checkout --quiet -b target-base || return 1
+    write_fixture "$repository/.worktreeinclude" $'.env.local\n'
+    git_checked "$repository" add .worktreeinclude || return 1
+    git_checked "$repository" commit --quiet -m 'add target manifest' || return 1
+    git_checked "$repository" checkout --quiet main || return 1
+    git_checked "$repository" worktree add --quiet --detach "$target" target-base || return 1
+
+    run_git "$target" wt-copy --source "$repository"
+    assert_status 0 'wt-copy should use the target worktree manifest.' || return 1
+    assert_output_contains 'Manifest: target' 'The target manifest should be used for copying.' || return 1
+    assert_output_contains '[copied] .env.local' 'The target manifest entry should be copied.' || return 1
+    [[ $(<"$target/.env.local") == source-value ]]
+}
+
+case_union_manifests() {
+    new_repository union-manifests || return 1
+    local repository=$fixture_repository target="$test_root/union-manifests-target"
+    write_fixture "$repository/.gitignore" $'.env.source\n.env.target\n'
+    write_fixture "$repository/.env.source" $'source\n'
+    write_fixture "$repository/.env.target" $'target\n'
+    write_fixture "$repository/.worktreeinclude" $'.env.source\n'
+    git_checked "$repository" add .gitignore .worktreeinclude || return 1
+    git_checked "$repository" commit --quiet -m 'add source manifest' || return 1
+    git_checked "$repository" checkout --quiet -b target-base || return 1
+    write_fixture "$repository/.worktreeinclude" $'.env.target\n'
+    git_checked "$repository" add .worktreeinclude || return 1
+    git_checked "$repository" commit --quiet -m 'change target manifest' || return 1
+    git_checked "$repository" checkout --quiet main || return 1
+    git_checked "$repository" worktree add --quiet --detach "$target" target-base || return 1
+
+    run_git "$target" wt-check --source "$repository" --target "$target"
+    assert_status 0 'Source and target manifest differences should be reportable.' || return 1
+    assert_output_contains '[manifest-source] source' 'The source manifest should be identified.' || return 1
+    assert_output_contains '[manifest-source] target' 'The target manifest should be identified.' || return 1
+    assert_output_contains '[would-copy] .env.source' 'The source manifest entry should be included.' || return 1
+    assert_output_contains '[would-copy] .env.target' 'The target manifest entry should be included.' || return 1
 }
 
 case_unlisted_blocked() {
@@ -189,6 +258,20 @@ case_python_cache() {
     assert_status 0 'Python cache artifacts should not require provisioning.' || return 1
     assert_output_contains 'Decision: no-manifest-needed' 'The cache-only decision should be reported.' || return 1
     [[ "$result_output" != *'[unlisted]'* ]]
+}
+
+case_dependency_directory_present() {
+    new_repository dependency-directory-present || return 1
+    local repository=$fixture_repository
+    write_fixture "$repository/.gitignore" $'packages/\n'
+    write_fixture "$repository/packages/legacy.props" $'dependency\n'
+    write_fixture "$repository/packages.config" $'<packages />\n'
+    git_checked "$repository" add .gitignore packages.config || return 1
+    git_checked "$repository" commit --quiet -m 'add dependency marker' || return 1
+    run_git "$repository" wt-check
+    assert_status 0 'A present ignored dependency directory should remain advisory.' || return 1
+    assert_output_contains '[dependency-directory] packages/: present' 'The present dependency directory should be reported.' || return 1
+    [[ "$result_output" != *'cannot-determine-build-prerequisites'* ]]
 }
 
 case_check_empty_manifest() {
@@ -608,10 +691,14 @@ case_ecosystem_evidence() {
 }
 
 run_case 'create without manifest' case_no_manifest
+run_case 'resolve target-base manifest before creation' case_target_base_manifest
+run_case 'copy from target-base manifest when source lacks it' case_copy_target_manifest
+run_case 'report differing source and target manifests as a union' case_union_manifests
 run_case 'block unlisted ignored files without explicit override' case_unlisted_blocked
 run_case 'read-only check reports unlisted ignored files' case_check_unlisted
 run_case 'redact sensitive values from provisioning records' case_redaction
 run_case 'ignore Python cache artifacts' case_python_cache
+run_case 'report required ignored dependency directory when present' case_dependency_directory_present
 run_case 'read-only check distinguishes an empty manifest' case_check_empty_manifest
 run_case 'read-only check reports raw worktree omission and conflict' case_check_raw
 run_case 'read-only check reports required local configuration' case_check_required

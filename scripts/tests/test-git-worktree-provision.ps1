@@ -145,6 +145,88 @@ try {
         Assert-True (Test-Path -LiteralPath (Join-Path $target ".git")) "The worktree was not created."
     }
 
+    Invoke-Case "resolve target-base manifest before creation" {
+        $repo = New-FixtureRepository "target-base-manifest"
+        $target = Join-Path $testRoot "target-base-manifest-target"
+        Write-FixtureFile (Join-Path $repo ".gitignore") ".env.local`npackages/`n"
+        Write-FixtureFile (Join-Path $repo ".env.local") "source-value`n"
+        Write-FixtureFile (Join-Path $repo "packages.config") "<packages />`n"
+        Invoke-FixtureGit $repo @("add", ".gitignore", "packages.config") | Out-Null
+        Invoke-FixtureGit $repo @("commit", "--quiet", "-m", "add ignored prerequisites") | Out-Null
+        Invoke-FixtureGit $repo @("checkout", "--quiet", "-b", "target-base") | Out-Null
+        Write-FixtureFile (Join-Path $repo ".worktreeinclude") ".env.local`n"
+        Invoke-FixtureGit $repo @("add", ".worktreeinclude") | Out-Null
+        Invoke-FixtureGit $repo @("commit", "--quiet", "-m", "add target-base manifest") | Out-Null
+        Invoke-FixtureGit $repo @("checkout", "--quiet", "main") | Out-Null
+
+        $result = Invoke-FixtureGit $repo @("wt-add", "--", "--detach", $target, "target-base") -AllowFailure
+        Assert-Equal 3 $result.ExitCode "A target-base manifest and missing dependency directory must block before creation."
+        Assert-OutputContains $result "Manifest: target-base" "The target-base manifest source should be reported."
+        Assert-OutputContains $result "[matched] .env.local" "The target-base manifest entry should be evaluated."
+        Assert-OutputContains $result "[dependency-directory] packages/: missing" "The missing ignored dependency directory should be reported."
+        Assert-OutputContains $result "Provisioning verdict: cannot-determine-build-prerequisites" "The verdict should distinguish unknown build readiness."
+        Assert-True (-not (Test-Path -LiteralPath $target)) "The blocked worktree was created."
+    }
+
+    Invoke-Case "copy from target-base manifest when source lacks it" {
+        $repo = New-FixtureRepository "copy-target-manifest"
+        $target = Join-Path $testRoot "copy-target-manifest-target"
+        Write-FixtureFile (Join-Path $repo ".gitignore") ".env.local`n"
+        Write-FixtureFile (Join-Path $repo ".env.local") "source-value`n"
+        Invoke-FixtureGit $repo @("add", ".gitignore") | Out-Null
+        Invoke-FixtureGit $repo @("commit", "--quiet", "-m", "add ignored source") | Out-Null
+        Invoke-FixtureGit $repo @("checkout", "--quiet", "-b", "target-base") | Out-Null
+        Write-FixtureFile (Join-Path $repo ".worktreeinclude") ".env.local`n"
+        Invoke-FixtureGit $repo @("add", ".worktreeinclude") | Out-Null
+        Invoke-FixtureGit $repo @("commit", "--quiet", "-m", "add target manifest") | Out-Null
+        Invoke-FixtureGit $repo @("checkout", "--quiet", "main") | Out-Null
+        Invoke-FixtureGit $repo @("worktree", "add", "--quiet", "--detach", $target, "target-base") | Out-Null
+
+        $result = Invoke-FixtureGit $target @("wt-copy", "--source", $repo) -AllowFailure
+        Assert-Equal 0 $result.ExitCode "wt-copy should use the target worktree manifest."
+        Assert-OutputContains $result "Manifest: target" "The target manifest should be used for copying."
+        Assert-OutputContains $result "[copied] .env.local" "The target manifest entry should be copied."
+        Assert-Equal "source-value" ([IO.File]::ReadAllText((Join-Path $target ".env.local")).Trim()) "The target manifest file was not copied."
+    }
+
+    Invoke-Case "report differing source and target manifests as a union" {
+        $repo = New-FixtureRepository "union-manifests"
+        $target = Join-Path $testRoot "union-manifests-target"
+        Write-FixtureFile (Join-Path $repo ".gitignore") ".env.source`n.env.target`n"
+        Write-FixtureFile (Join-Path $repo ".env.source") "source`n"
+        Write-FixtureFile (Join-Path $repo ".env.target") "target`n"
+        Write-FixtureFile (Join-Path $repo ".worktreeinclude") ".env.source`n"
+        Invoke-FixtureGit $repo @("add", ".gitignore", ".worktreeinclude") | Out-Null
+        Invoke-FixtureGit $repo @("commit", "--quiet", "-m", "add source manifest") | Out-Null
+        Invoke-FixtureGit $repo @("checkout", "--quiet", "-b", "target-base") | Out-Null
+        Write-FixtureFile (Join-Path $repo ".worktreeinclude") ".env.target`n"
+        Invoke-FixtureGit $repo @("add", ".worktreeinclude") | Out-Null
+        Invoke-FixtureGit $repo @("commit", "--quiet", "-m", "change target manifest") | Out-Null
+        Invoke-FixtureGit $repo @("checkout", "--quiet", "main") | Out-Null
+        Invoke-FixtureGit $repo @("worktree", "add", "--quiet", "--detach", $target, "target-base") | Out-Null
+
+        $result = Invoke-FixtureGit $target @("wt-check", "--source", $repo, "--target", $target) -AllowFailure
+        Assert-Equal 0 $result.ExitCode "Source and target manifest differences should be reportable."
+        Assert-OutputContains $result "[manifest-source] source" "The source manifest should be identified."
+        Assert-OutputContains $result "[manifest-source] target" "The target manifest should be identified."
+        Assert-OutputContains $result "[would-copy] .env.source" "The source manifest entry should be included."
+        Assert-OutputContains $result "[would-copy] .env.target" "The target manifest entry should be included."
+    }
+
+    Invoke-Case "report required ignored dependency directory when present" {
+        $repo = New-FixtureRepository "dependency-directory-present"
+        Write-FixtureFile (Join-Path $repo ".gitignore") "packages/`n"
+        Write-FixtureFile (Join-Path $repo "packages\legacy.props") "dependency`n"
+        Write-FixtureFile (Join-Path $repo "packages.config") "<packages />`n"
+        Invoke-FixtureGit $repo @("add", ".gitignore", "packages.config") | Out-Null
+        Invoke-FixtureGit $repo @("commit", "--quiet", "-m", "add dependency marker") | Out-Null
+
+        $result = Invoke-FixtureGit $repo @("wt-check") -AllowFailure
+        Assert-Equal 0 $result.ExitCode "A present ignored dependency directory should remain advisory."
+        Assert-OutputContains $result "[dependency-directory] packages/: present" "The present ignored dependency directory should be reported."
+        Assert-True (-not $result.Output.Contains("cannot-determine-build-prerequisites")) "A present dependency directory was treated as unknown."
+    }
+
     Invoke-Case "block unlisted ignored files without explicit override" {
         $repo = New-FixtureRepository "unlisted-blocked"
         Write-FixtureFile (Join-Path $repo ".gitignore") ".env.local`n"

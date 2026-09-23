@@ -19,8 +19,12 @@ selection_tracked_manifest_files=()
 selection_tracked_instructions=()
 selection_explicit_only_files=()
 selection_explicit_only_categories=()
+selection_manifest_sources=()
+selection_dependency_directories=()
+selection_dependency_directory_statuses=()
 selection_manifest_present=false
 selection_manifest_status=absent
+selection_manifest_file=""
 setup_contract_status=absent
 setup_contract_script=""
 setup_contract_documentation=""
@@ -56,6 +60,87 @@ mapping_approval_id=""
 mapping_operation=""
 mapping_reason=""
 mapping_valid=false
+
+load_manifest_sources() {
+    local source_root=$1
+    local target_root=${2-}
+    local target_commit=${3-}
+    local source_manifest="$source_root/.worktreeinclude"
+    local target_manifest=""
+    local source_present=false source_tracked=false target_present=false
+
+    selection_manifest_file=""
+    selection_manifest_sources=()
+    selection_manifest_status=absent
+    selection_manifest_present=false
+
+    if [[ -n "$target_root" && -f "$target_root/.worktreeinclude" ]] &&
+        git -C "$target_root" ls-files --error-unmatch -- .worktreeinclude >/dev/null 2>&1; then
+        target_manifest="$target_root/.worktreeinclude"
+        target_present=true
+        selection_manifest_sources+=(target)
+    elif [[ -n "$target_commit" ]]; then
+        new_temp_file || return 1
+        if git -C "$source_root" show "$target_commit:.worktreeinclude" >"$new_temp_path" 2>/dev/null; then
+            target_manifest="$new_temp_path"
+            target_present=true
+            selection_manifest_sources+=(target-base)
+        fi
+    fi
+
+    if [[ -f "$source_manifest" ]]; then
+        if git -C "$source_root" ls-files --error-unmatch -- .worktreeinclude >/dev/null 2>&1; then
+            source_present=true
+            source_tracked=true
+            selection_manifest_sources+=(source)
+        elif [[ "$target_present" == false ]]; then
+            selection_manifest_file="$source_manifest"
+            selection_manifest_status=untracked
+            selection_manifest_sources+=(source)
+            selection_manifest_present=true
+            return 0
+        fi
+    fi
+
+    if [[ "$target_present" == true && "$source_present" == true ]]; then
+        new_temp_file || return 1
+        selection_manifest_file="$new_temp_path"
+        {
+            cat "$source_manifest"
+            cat "$target_manifest"
+        } | awk 'NF && $0 !~ /^#/ && !seen[$0]++ { print }' >"$selection_manifest_file"
+        selection_manifest_status='union(source,target)'
+    elif [[ "$target_present" == true ]]; then
+        selection_manifest_file="$target_manifest"
+        selection_manifest_status=${selection_manifest_sources[0]}
+    elif [[ "$source_present" == true ]]; then
+        selection_manifest_file="$source_manifest"
+        selection_manifest_status=tracked
+    fi
+    [[ "$source_tracked" == true && "$selection_manifest_status" == absent ]] && selection_manifest_status=tracked
+    [[ -n "$selection_manifest_file" ]] && selection_manifest_present=true
+    return 0
+}
+
+load_dependency_directories() {
+    local source_root=$1 relative_path directory status
+    selection_dependency_directories=()
+    selection_dependency_directory_statuses=()
+    if array_contains 'packages.config' "${tracked_paths[@]}"; then
+        relative_path='packages/'
+        directory="$source_root/${relative_path%/}"
+        status=missing
+        if [[ -d "$directory" ]]; then
+            if git -C "$source_root" check-ignore --no-index -q -- "$relative_path" >/dev/null 2>&1; then
+                status=present
+            else
+                status='present-not-ignored'
+            fi
+        fi
+        selection_dependency_directories+=("$relative_path")
+        selection_dependency_directory_statuses+=("$status")
+    fi
+}
 
 # A shell Git alias exports repository-local variables from the invoking worktree. They
 # must not reach nested `git -C <other-worktree>` calls because GIT_DIR wins over -C.
@@ -317,13 +402,17 @@ load_ignored_files() {
         standard_ignored=()
         while IFS= read -r -d '' value; do standard_ignored+=("$value"); done <"$output"
     elif [[ "$mode" == manifest ]]; then
-        git -C "$root" ls-files --others --ignored --exclude-from=.worktreeinclude -z -- >"$output" || return 1
+        git -C "$root" ls-files --others --ignored --exclude-standard --exclude-from=.worktreeinclude -z -- >"$output" || return 1
         manifest_matched=()
         while IFS= read -r -d '' value; do manifest_matched+=("$value"); done <"$output"
     else
         git -C "$root" ls-files --others --ignored --exclude-from="$mode" -z -- >"$output" || return 1
+        manifest_matched=()
         pattern_matched=()
-        while IFS= read -r -d '' value; do pattern_matched+=("$value"); done <"$output"
+        while IFS= read -r -d '' value; do
+            manifest_matched+=("$value")
+            pattern_matched+=("$value")
+        done <"$output"
     fi
 }
 
@@ -445,7 +534,7 @@ write_setup_contract_record() {
 }
 
 load_tracked_manifest_files() {
-    local root=$1 path status temporary_root temporary_parent
+    local root=$1 manifest_file=$2 path status temporary_root temporary_parent
     selection_tracked_manifest_files=()
     temporary_parent=$(cd "${TMPDIR:-/tmp}" 2>/dev/null && pwd -P) || {
         die 'Git could not prepare the isolated manifest matcher.'
@@ -455,7 +544,7 @@ load_tracked_manifest_files() {
         die 'Git could not prepare the isolated manifest matcher.'
         return 2
     }
-    if ! cp "$root/.worktreeinclude" "$temporary_root/.gitignore" ||
+    if ! cp "$manifest_file" "$temporary_root/.gitignore" ||
         ! git -C "$temporary_root" init --quiet; then
         case "$temporary_root" in
             "$temporary_parent"/git-worktree-provision-manifest.*) rm -rf -- "$temporary_root" ;;
@@ -487,7 +576,9 @@ load_tracked_manifest_files() {
 
 load_selection() {
     local source_root=$1
-    local manifest="$source_root/.worktreeinclude"
+    local target_root=${2-}
+    local target_commit=${3-}
+    local manifest=""
     local line pattern match pattern_file has_match source_path selected
 
     selection_manifest_present=false
@@ -502,6 +593,8 @@ load_selection() {
     selection_tracked_instructions=()
     selection_explicit_only_files=()
     selection_explicit_only_categories=()
+    selection_dependency_directories=()
+    selection_dependency_directory_statuses=()
 
     load_ignored_files "$source_root" standard || {
         die "Git could not enumerate normally ignored files."
@@ -512,6 +605,9 @@ load_selection() {
         return 2
     }
     load_setup_contract "$source_root"
+    load_manifest_sources "$source_root" "$target_root" "$target_commit" || return 2
+    manifest="$selection_manifest_file"
+    load_dependency_directories "$source_root"
     local tracked_path tracked_name
     for tracked_path in "${tracked_paths[@]}"; do
         tracked_name=${tracked_path##*/}
@@ -521,7 +617,7 @@ load_selection() {
         esac
     done
 
-    if [[ ! -f "$manifest" ]]; then
+    if [[ "$selection_manifest_present" != true ]]; then
         for match in "${standard_ignored[@]}"; do
             source_path="$source_root/$match"
             [[ -f "$source_path" ]] || continue
@@ -535,25 +631,16 @@ load_selection() {
         done
         return 0
     fi
-    selection_manifest_present=true
-    selection_manifest_status=tracked
-
-    if find_symlink "$source_root" "$manifest" true; then
+    if [[ "$selection_manifest_status" == tracked || "$selection_manifest_status" == source || "$selection_manifest_status" == 'union(source,target)' ]] && find_symlink "$source_root" "$source_root/.worktreeinclude" true; then
         die ".worktreeinclude is or traverses a symbolic link."
         return 2
     fi
-    if ! git -C "$source_root" ls-files --error-unmatch -- .worktreeinclude >/dev/null 2>&1; then
-        selection_manifest_status=untracked
+    if [[ "$selection_manifest_status" == untracked ]]; then
         for match in "${standard_ignored[@]}"; do
             source_path="$source_root/$match"
             [[ -f "$source_path" ]] || continue
             get_file_rejection_reason "$match" && continue
-            if get_explicit_only_category "$match"; then
-                selection_explicit_only_files+=("$match")
-                selection_explicit_only_categories+=("$explicit_only_category")
-            else
-                selection_unlisted+=("$match")
-            fi
+            selection_unlisted+=("$match")
         done
         return 0
     fi
@@ -568,10 +655,10 @@ load_selection() {
     done <"$manifest"
 
     if [[ ${#selection_rejected_patterns[@]} -eq 0 ]]; then
-        load_tracked_manifest_files "$source_root" || return 2
+        load_tracked_manifest_files "$source_root" "$manifest" || return 2
     fi
 
-    load_ignored_files "$source_root" manifest || {
+    load_ignored_files "$source_root" "$manifest" || {
         die "Git could not apply .worktreeinclude."
         return 2
     }
@@ -622,6 +709,9 @@ get_provision_decision() {
     if [[ "$selection_manifest_status" == untracked || ${#selection_rejected_patterns[@]} -gt 0 ||
         ${#selection_tracked_manifest_files[@]} -gt 0 ]]; then
         report_decision=invalid-manifest
+    elif [[ ${#selection_dependency_directories[@]} -gt 0 ]] &&
+        array_contains missing "${selection_dependency_directory_statuses[@]}"; then
+        report_decision=build-prerequisites-unknown
     elif [[ "$required_missing" -gt 0 ]]; then
         report_decision=required-local-config-missing
     elif [[ ${#selection_unlisted[@]} -gt 0 ]]; then
@@ -655,14 +745,37 @@ file_fingerprint() {
 get_provisioning_state() {
     case "$report_decision" in
         invalid-manifest|required-local-config-missing) printf '%s' provisioning-blocked ;;
-        eligible-ignored-files-unlisted) printf '%s' provisioning-review-required ;;
+        eligible-ignored-files-unlisted|build-prerequisites-unknown) printf '%s' provisioning-review-required ;;
         *) printf '%s' provisioning-ready ;;
+    esac
+}
+
+get_provisioning_verdict() {
+    case "$report_decision" in
+        no-manifest-needed|manifest-present-no-matches) printf '%s' nothing-to-provision ;;
+        build-prerequisites-unknown) printf '%s' cannot-determine-build-prerequisites ;;
+        *) printf '%s' provisioning-candidates-reviewed ;;
     esac
 }
 
 write_readiness_states() {
     printf 'Provisioning state: %s\n' "$(get_provisioning_state)"
+    printf 'Provisioning verdict: %s\n' "$(get_provisioning_verdict)"
     printf '%s\n' 'Runtime state: runtime-unverified'
+}
+
+write_manifest_source_records() {
+    local source
+    for source in "${selection_manifest_sources[@]}"; do
+        write_record manifest-source "$source" 'manifest content considered for this target'
+    done
+}
+
+write_dependency_directory_records() {
+    local i
+    for ((i = 0; i < ${#selection_dependency_directories[@]}; i++)); do
+        write_record dependency-directory "${selection_dependency_directories[$i]}" "${selection_dependency_directory_statuses[$i]}; dependency/build readiness is not established by provisioning"
+    done
 }
 
 load_configuration_evidence() {
@@ -1039,6 +1152,7 @@ write_readiness_report() {
     printf '%s\n' 'Worktree readiness: read-only'
     write_worktree_identity "$source_root" "$target_root" || return 2
     printf 'Manifest: %s\n' "$(display_text "$selection_manifest_status")"
+    write_manifest_source_records
     write_setup_contract_record
     for relative_path in "${selection_files[@]}"; do
         write_record authorized "$relative_path" 'ignored file authorized for provisioning'
@@ -1065,6 +1179,7 @@ write_readiness_report() {
     for relative_path in "${selection_unlisted[@]}"; do
         write_record unlisted "$relative_path" 'ignored file present but not authorized for provisioning'
     done
+    write_dependency_directory_records
     for relative_path in "${tracked_configurations[@]}"; do
         write_record tracked-config "$relative_path" 'modified tracked configuration was not copied; review only if this worktree requires the local override.'
     done
@@ -1092,6 +1207,7 @@ write_provision_report() {
     printf '%s\n' 'Provisioning check: read-only'
     printf 'Source worktree: %s\n' "$(display_text "$source_root")"
     printf 'Manifest: %s\n' "$(display_text "$selection_manifest_status")"
+    write_manifest_source_records
     write_setup_contract_record
 
     for relative_path in "${selection_files[@]}"; do
@@ -1125,6 +1241,7 @@ write_provision_report() {
     for ((i = 0; i < ${#selection_rejected_patterns[@]}; i++)); do
         write_record rejected "${selection_rejected_patterns[$i]}" "${selection_rejected_reasons[$i]}"
     done
+    write_dependency_directory_records
 
     load_configuration_readiness "$source_root" "$target_root" || return 2
     for relative_path in "${tracked_configurations[@]}"; do
@@ -1187,9 +1304,12 @@ provision_files() {
     local copied=0 conflicts=0 rejected=0 i detail
 
     assert_same_repository "$source_root" "$target_root" || return 2
-    load_selection "$source_root" || return 2
+    load_selection "$source_root" "$target_root" || return 2
+    printf 'Manifest: %s\n' "$(display_text "$selection_manifest_status")"
+    write_manifest_source_records
+    write_dependency_directory_records
     if [[ "$selection_manifest_present" == false ]]; then
-        write_record skipped .worktreeinclude "manifest not found in source worktree"
+        write_record skipped .worktreeinclude "manifest not found in source or target worktree"
         for relative_path in "${selection_unlisted[@]}"; do
             write_record unlisted "$relative_path" 'eligible Git-ignored file is not manifest-listed'
         done
@@ -1614,11 +1734,11 @@ check_command() {
         fi
     fi
 
-    load_selection "$source_root" || return 2
+    load_selection "$source_root" "$target_root" || return 2
     write_provision_report "$source_root" "$target_root" "${required_paths[@]}"
     case "$report_decision" in
         invalid-manifest|required-local-config-missing) return 2 ;;
-        eligible-ignored-files-unlisted) return 3 ;;
+        build-prerequisites-unknown|eligible-ignored-files-unlisted) return 3 ;;
         *) return 0 ;;
     esac
 }
@@ -1675,7 +1795,7 @@ readiness_command() {
         fi
     fi
 
-    load_selection "$source_root" || return 2
+    load_selection "$source_root" "$target_root" || return 2
     load_configuration_readiness "$source_root" "$target_root" || {
         die 'Git could not inspect tracked configuration references.'
         return 2
@@ -1685,7 +1805,7 @@ readiness_command() {
 
 add_command() {
     local dry_run=false skip_copy=false allow_unprovisioned=false open_code=false separator_found=false
-    local argument source_root target_root result
+    local argument source_root target_root result base_ref base_commit positional_count=0 skip_value=false
     local before_paths=() after_paths=() wrapper_args=() git_args=() added_paths=()
 
     for argument in "$@"; do
@@ -1729,10 +1849,27 @@ add_command() {
     source_root=$(canonical_directory "$source_root") || return 2
 
     [[ "$skip_copy" == true ]] && allow_unprovisioned=true
-    load_selection "$source_root" || return 2
+    base_ref=HEAD
+    for argument in "${git_args[@]}"; do
+        if [[ "$skip_value" == true ]]; then
+            skip_value=false
+            continue
+        fi
+        case "$argument" in
+            -b|-B|--reason) skip_value=true ;;
+            --*) ;;
+            *)
+                positional_count=$((positional_count + 1))
+                [[ $positional_count -ge 2 ]] && base_ref=$argument
+                ;;
+        esac
+    done
+    base_commit=$(git -C "$source_root" rev-parse --verify "$base_ref^{commit}" 2>/dev/null || true)
+    load_selection "$source_root" "" "$base_commit" || return 2
     write_provision_report "$source_root" ""
     case "$report_decision" in
         invalid-manifest) return 2 ;;
+        build-prerequisites-unknown) return 3 ;;
         eligible-ignored-files-unlisted)
             if [[ "$allow_unprovisioned" == false ]]; then
                 printf '%s\n' 'Creation blocked: eligible ignored files are not manifest-listed. Use --allow-unprovisioned only after reviewing the report.'

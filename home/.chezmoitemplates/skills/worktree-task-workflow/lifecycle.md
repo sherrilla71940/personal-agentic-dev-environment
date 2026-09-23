@@ -60,6 +60,17 @@ manual review; the generic helper reports it but never executes it or prints its
 Claude, Codex, and VS Code provisioning remains a separate path; do not route it through the
 terminal fallback or claim that its native copy result exists without checking the client result.
 
+This workflow deliberately creates the task worktree through the repository wrapper before entering
+it. The wrapper is required because the task is pinned to a named `origin/<base>` commit and the
+native client creation paths do not all accept an arbitrary base ref. After creation, enter the
+reported absolute path with the client appropriate to the current surface. External creation has a
+client-visible consequence: the conversation or transcript may remain associated with the launch
+directory rather than following the new worktree, and native worktree history or picker behavior
+may differ. Report the worktree path, branch, base commit, and client entry action explicitly; do
+not imply that external creation has the same session discoverability as a client-created
+worktree. If the client cannot enter the created path, stop and hand the exact path to the user
+rather than continuing in the wrong checkout.
+
 Settle which of those it is rather than passing the warning along. Inspect the source worktree or
 main checkout before entering Claude's isolated worktree whenever possible: that tree has been
 used and so holds the ignored files, while the same command in the freshly created worktree lists

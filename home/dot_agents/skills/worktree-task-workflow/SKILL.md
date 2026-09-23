@@ -92,6 +92,15 @@ There are two Codex entry paths:
   requested, open that path in a new VS Code window as a convenience; this does not move the
   existing Codex chat.
 
+  If this is an interactive terminal-fallback run and `open-code` was omitted, ask once before
+  creation whether to open the exact worktree path in a new VS Code window; recommend yes when the
+  user is working from an editor. Do not ask for Codex desktop's native Open control or for
+  non-interactive automation. External creation is intentionally different from native creation:
+  the current chat or transcript may remain associated with the launch directory, and session
+  picker/history behavior may not follow the new path. Report the exact path, branch, base commit,
+  and entry action, and stop if the client cannot enter the created path rather than continuing in
+  the wrong checkout.
+
 Stop if repository instructions forbid worktrees. This developer environment repository does, identifiable by
 its root `.chezmoiroot`; offer to run that task in place instead.
 

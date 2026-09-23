@@ -337,6 +337,100 @@ function Get-ManifestPatterns {
     return $patterns
 }
 
+function Get-ManifestSources {
+    param(
+        [string] $SourceRoot,
+        [AllowNull()][string] $TargetRoot,
+        [AllowNull()][string] $TargetCommit
+    )
+
+    $sourceManifest = Join-Path $SourceRoot ".worktreeinclude"
+    $targetManifest = $null
+    $temporaryManifest = $null
+    $temporaryPaths = New-Object System.Collections.Generic.List[string]
+    $sources = New-Object System.Collections.Generic.List[string]
+    $sourceTracked = $false
+    $targetPresent = $false
+
+    if ($TargetRoot -and (Test-Path -LiteralPath (Join-Path $TargetRoot ".worktreeinclude") -PathType Leaf)) {
+        $tracked = Invoke-GitCapture $TargetRoot @("ls-files", "--error-unmatch", "--", ".worktreeinclude")
+        if ($tracked.ExitCode -eq 0) {
+            $targetManifest = Join-Path $TargetRoot ".worktreeinclude"
+            $targetPresent = $true
+            [void]$sources.Add("target")
+        }
+    } elseif ($TargetCommit) {
+        $targetResult = Invoke-GitCapture $SourceRoot @("show", "$TargetCommit`:.worktreeinclude")
+        if ($targetResult.ExitCode -eq 0) {
+            $temporaryManifest = [IO.Path]::GetTempFileName()
+            [void]$temporaryPaths.Add($temporaryManifest)
+            [IO.File]::WriteAllText($temporaryManifest, $targetResult.Stdout, $script:Utf8NoBom)
+            $targetManifest = $temporaryManifest
+            $targetPresent = $true
+            [void]$sources.Add("target-base")
+        }
+    }
+
+    if (Test-Path -LiteralPath $sourceManifest -PathType Leaf) {
+        $tracked = Invoke-GitCapture $SourceRoot @("ls-files", "--error-unmatch", "--", ".worktreeinclude")
+        if ($tracked.ExitCode -eq 0) {
+            $sourceTracked = $true
+            [void]$sources.Add("source")
+        } elseif (-not $targetPresent) {
+            return [pscustomobject]@{
+                Path = $sourceManifest
+                Status = "untracked"
+                Sources = @("source")
+                TemporaryPaths = @()
+            }
+        }
+    }
+
+    if ($targetPresent -and $sourceTracked) {
+        $temporaryManifest = [IO.Path]::GetTempFileName()
+        [void]$temporaryPaths.Add($temporaryManifest)
+        $seen = New-Object System.Collections.Generic.HashSet[string] ([StringComparer]::Ordinal)
+        $lines = New-Object System.Collections.Generic.List[string]
+        foreach ($path in @($sourceManifest, $targetManifest)) {
+            foreach ($line in [IO.File]::ReadAllLines($path, $script:Utf8NoBom)) {
+                $trimmed = $line.Trim()
+                if (-not $trimmed -or $trimmed.StartsWith("#", [StringComparison]::Ordinal)) { continue }
+                if ($seen.Add($trimmed)) { [void]$lines.Add($trimmed) }
+            }
+        }
+        [IO.File]::WriteAllLines($temporaryManifest, $lines, $script:Utf8NoBom)
+        return [pscustomobject]@{
+            Path = $temporaryManifest
+            Status = "union(source,target)"
+            Sources = @($sources.ToArray())
+            TemporaryPaths = @($temporaryPaths.ToArray())
+        }
+    }
+
+    if ($targetPresent) {
+        return [pscustomobject]@{
+            Path = $targetManifest
+            Status = if ($sources[0] -eq "target-base") { "target-base" } else { "target" }
+            Sources = @($sources.ToArray())
+            TemporaryPaths = @($temporaryPaths.ToArray())
+        }
+    }
+    if ($sourceTracked) {
+        return [pscustomobject]@{
+            Path = $sourceManifest
+            Status = "tracked"
+            Sources = @($sources.ToArray())
+            TemporaryPaths = @()
+        }
+    }
+    return [pscustomobject]@{
+        Path = $null
+        Status = "absent"
+        Sources = @()
+        TemporaryPaths = @()
+    }
+}
+
 function Get-IgnoredFileSet {
     param(
         [string] $RepositoryRoot,
@@ -492,8 +586,23 @@ function Get-ProvisioningState {
     switch ($decision) {
         "invalid-manifest" { return "provisioning-blocked" }
         "required-local-config-missing" { return "provisioning-blocked" }
+        "build-prerequisites-unknown" { return "provisioning-review-required" }
         "eligible-ignored-files-unlisted" { return "provisioning-review-required" }
         default { return "provisioning-ready" }
+    }
+}
+
+function Get-ProvisioningVerdict {
+    param(
+        $Selection,
+        [int] $RequiredMissing = 0
+    )
+
+    switch (Get-ProvisionDecision $Selection $RequiredMissing) {
+        "no-manifest-needed" { return "nothing-to-provision" }
+        "manifest-present-no-matches" { return "nothing-to-provision" }
+        "build-prerequisites-unknown" { return "cannot-determine-build-prerequisites" }
+        default { return "provisioning-candidates-reviewed" }
     }
 }
 
@@ -504,6 +613,7 @@ function Write-ReadinessStates {
     )
 
     Write-Host "Provisioning state: $(Get-ProvisioningState $Selection $RequiredMissing)"
+    Write-Host "Provisioning verdict: $(Get-ProvisioningVerdict $Selection $RequiredMissing)"
     Write-Host "Runtime state: runtime-unverified"
 }
 
@@ -568,12 +678,17 @@ function Write-ConfigurationEvidenceRecords {
 }
 
 function Get-ProvisionSelection {
-    param([string] $SourceRoot)
+    param(
+        [string] $SourceRoot,
+        [AllowNull()][string] $TargetRoot,
+        [AllowNull()][string] $TargetCommit
+    )
 
-    $manifestPath = Join-Path $SourceRoot ".worktreeinclude"
     $standardIgnored = Get-IgnoredFileSet $SourceRoot @("--exclude-standard")
-    $manifestStatus = "absent"
-    $manifestTracked = $false
+    $manifest = Get-ManifestSources $SourceRoot $TargetRoot $TargetCommit
+    $manifestPath = $manifest.Path
+    $manifestStatus = $manifest.Status
+    $manifestTracked = $manifestStatus -notin @("absent", "untracked")
     $files = @()
     $missingPatterns = @()
     $rejectedPatterns = @()
@@ -585,18 +700,24 @@ function Get-ProvisionSelection {
     } | Sort-Object)
     $setupContract = Get-SetupContract $SourceRoot $trackedPaths
 
-    if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
-        $manifestStatus = "tracked"
-        $manifestReparse = Get-ReparsePoint $SourceRoot $manifestPath $true
-        if ($manifestReparse) {
-            throw ".worktreeinclude is or traverses a symbolic link or Windows reparse point."
+    if ($manifestPath) {
+        if ($manifestStatus -in @("tracked", "union(source,target)")) {
+            if ($manifest.Sources -contains "source" -and (Get-ReparsePoint $SourceRoot (Join-Path $SourceRoot ".worktreeinclude") $true)) {
+                throw ".worktreeinclude is or traverses a symbolic link or Windows reparse point."
+            }
+            if ($manifest.Sources -contains "target" -and $TargetRoot -and
+                (Get-ReparsePoint $TargetRoot (Join-Path $TargetRoot ".worktreeinclude") $true)) {
+                throw ".worktreeinclude is or traverses a symbolic link or Windows reparse point."
+            }
         }
-
-        $tracked = Invoke-GitCapture $SourceRoot @("ls-files", "--error-unmatch", "--", ".worktreeinclude")
-        if ($tracked.ExitCode -ne 0) {
-            $manifestStatus = "untracked"
+        if ($manifestStatus -eq "untracked") {
+            foreach ($path in $standardIgnored) {
+                $sourcePath = Join-Path $SourceRoot ($path.Replace('/', [IO.Path]::DirectorySeparatorChar))
+                if (Test-Path -LiteralPath $sourcePath -PathType Leaf -and -not (Get-FileRejectionReason $path)) {
+                    $unlistedFiles += $path
+                }
+            }
         } else {
-            $manifestTracked = $true
             $patterns = Get-ManifestPatterns $manifestPath
             foreach ($pattern in $patterns) {
                 $reason = Get-PatternRejectionReason $pattern
@@ -606,10 +727,10 @@ function Get-ProvisionSelection {
             }
 
             if ($rejectedPatterns.Count -eq 0) {
-                $trackedManifestFiles = @(Get-TrackedManifestFiles $SourceRoot $trackedPaths)
+                $trackedManifestFiles = @(Get-TrackedManifestFiles $SourceRoot $trackedPaths $manifestPath)
             }
 
-            $manifestMatched = Get-IgnoredFileSet $SourceRoot @("--exclude-from=.worktreeinclude")
+            $manifestMatched = Get-IgnoredFileSet $SourceRoot @("--exclude-from=$manifestPath")
             $files = @($manifestMatched | Where-Object { $standardIgnored.Contains($_) } | Sort-Object)
 
             foreach ($pattern in $patterns) {
@@ -635,6 +756,17 @@ function Get-ProvisionSelection {
         }
     }
 
+    $dependencyDirectories = @()
+    if ($trackedPaths.Contains("packages.config")) {
+        $dependencyPath = Join-Path $SourceRoot "packages"
+        $dependencyStatus = "missing"
+        if (Test-Path -LiteralPath $dependencyPath -PathType Container) {
+            $ignored = Invoke-GitCapture $SourceRoot @("check-ignore", "--no-index", "--quiet", "--", "packages/")
+            $dependencyStatus = if ($ignored.ExitCode -eq 0) { "present" } else { "present-not-ignored" }
+        }
+        $dependencyDirectories += [pscustomobject]@{ Path = "packages/"; Status = $dependencyStatus }
+    }
+
     $selected = New-Object System.Collections.Generic.HashSet[string] ([StringComparer]::Ordinal)
     foreach ($path in $files) { [void]$selected.Add($path) }
     $unlistedFiles = @()
@@ -652,10 +784,17 @@ function Get-ProvisionSelection {
         $unlistedFiles += $path
     }
 
+    foreach ($temporaryPath in $manifest.TemporaryPaths) {
+        if ($temporaryPath -and (Test-Path -LiteralPath $temporaryPath -PathType Leaf)) {
+            Remove-Item -LiteralPath $temporaryPath -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     return [pscustomobject]@{
         ManifestPresent = ($manifestStatus -ne "absent")
         ManifestTracked = $manifestTracked
         ManifestStatus = $manifestStatus
+        ManifestSources = @($manifest.Sources)
         Files = @($files)
         TrackedManifestFiles = @($trackedManifestFiles)
         TrackedInstructions = @($trackedInstructions)
@@ -663,6 +802,7 @@ function Get-ProvisionSelection {
         UnlistedFiles = @($unlistedFiles | Sort-Object)
         MissingPatterns = @($missingPatterns)
         RejectedPatterns = @($rejectedPatterns)
+        DependencyDirectories = @($dependencyDirectories)
         SetupContract = $setupContract
     }
 }
@@ -676,6 +816,7 @@ function Get-ProvisionDecision {
     if ($Selection.ManifestStatus -eq "untracked") { return "invalid-manifest" }
     if ($Selection.RejectedPatterns.Count -gt 0) { return "invalid-manifest" }
     if ($Selection.TrackedManifestFiles.Count -gt 0) { return "invalid-manifest" }
+    if ($Selection.DependencyDirectories | Where-Object { $_.Status -eq "missing" }) { return "build-prerequisites-unknown" }
     if ($RequiredMissing -gt 0) { return "required-local-config-missing" }
     if ($Selection.UnlistedFiles.Count -gt 0) { return "eligible-ignored-files-unlisted" }
     if (-not $Selection.ManifestPresent) { return "no-manifest-needed" }
@@ -808,13 +949,14 @@ function Get-TrackedPathSet {
 function Get-TrackedManifestFiles {
     param(
         [string] $SourceRoot,
-        [System.Collections.Generic.HashSet[string]] $TrackedPaths
+        [System.Collections.Generic.HashSet[string]] $TrackedPaths,
+        [string] $ManifestPath
     )
 
     $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ("git-worktree-provision-manifest-" + [guid]::NewGuid().ToString("N"))
     [IO.Directory]::CreateDirectory($temporaryRoot) | Out-Null
     try {
-        [IO.File]::Copy((Join-Path $SourceRoot ".worktreeinclude"), (Join-Path $temporaryRoot ".gitignore"), $true)
+        [IO.File]::Copy($ManifestPath, (Join-Path $temporaryRoot ".gitignore"), $true)
         Invoke-GitChecked $temporaryRoot @("init", "--quiet") "Git could not prepare the isolated manifest matcher." | Out-Null
 
         $matches = @()
@@ -1005,6 +1147,22 @@ function Write-WorktreeIdentity {
     Write-Host "Target branch: $(Format-DisplayText $targetBranch)"
 }
 
+function Write-ManifestSourceRecords {
+    param($Selection)
+
+    foreach ($source in $Selection.ManifestSources) {
+        Write-ProvisionRecord "manifest-source" $source "manifest content considered for this target"
+    }
+}
+
+function Write-DependencyDirectoryRecords {
+    param($Selection)
+
+    foreach ($entry in $Selection.DependencyDirectories) {
+        Write-ProvisionRecord "dependency-directory" $entry.Path "$($entry.Status); dependency/build readiness is not established by provisioning"
+    }
+}
+
 function Write-ReadinessReport {
     param(
         [string] $SourceRoot,
@@ -1016,6 +1174,7 @@ function Write-ReadinessReport {
     Write-Host "Worktree readiness: read-only"
     Write-WorktreeIdentity $SourceRoot $TargetRoot
     Write-Host "Manifest: $(Format-DisplayText $Selection.ManifestStatus)"
+    Write-ManifestSourceRecords $Selection
     Write-SetupContractRecord $Selection.SetupContract
 
     foreach ($relativePath in $Selection.Files) {
@@ -1038,6 +1197,7 @@ function Write-ReadinessReport {
     foreach ($relativePath in $Selection.UnlistedFiles) {
         Write-ProvisionRecord "unlisted" $relativePath "ignored file present but not authorized for provisioning"
     }
+    Write-DependencyDirectoryRecords $Selection
     foreach ($relativePath in $ConfigurationReadiness.ModifiedTrackedConfigurations) {
         Write-ProvisionRecord "tracked-config" $relativePath "modified tracked configuration was not copied; review only if this worktree requires the local override."
     }
@@ -1068,6 +1228,7 @@ function Write-ProvisionReport {
     Write-Host "Provisioning check: read-only"
     Write-Host "Source worktree: $(Format-DisplayText $SourceRoot)"
     Write-Host "Manifest: $(Format-DisplayText $Selection.ManifestStatus)"
+    Write-ManifestSourceRecords $Selection
     Write-SetupContractRecord $Selection.SetupContract
 
     foreach ($relativePath in $Selection.Files) {
@@ -1096,6 +1257,7 @@ function Write-ProvisionReport {
     foreach ($entry in $Selection.RejectedPatterns) {
         Write-ProvisionRecord "rejected" $entry.Pattern $entry.Reason
     }
+    Write-DependencyDirectoryRecords $Selection
     if ($ConfigurationReadiness) {
         foreach ($relativePath in $ConfigurationReadiness.ModifiedTrackedConfigurations) {
             Write-ProvisionRecord "tracked-config" $relativePath "modified tracked configuration was not copied; review only if this worktree requires the local override."
@@ -1160,9 +1322,12 @@ function Invoke-ProvisionFiles {
     )
 
     Assert-SameRepository $SourceRoot $TargetRoot
-    $selection = Get-ProvisionSelection $SourceRoot
+    $selection = Get-ProvisionSelection $SourceRoot $TargetRoot
+    Write-Host "Manifest: $(Format-DisplayText $selection.ManifestStatus)"
+    Write-ManifestSourceRecords $selection
+    Write-DependencyDirectoryRecords $selection
     if (-not $selection.ManifestPresent) {
-        Write-ProvisionRecord "skipped" ".worktreeinclude" "manifest not found in source worktree"
+        Write-ProvisionRecord "skipped" ".worktreeinclude" "manifest not found in source or target worktree"
         foreach ($relativePath in $selection.UnlistedFiles) {
             Write-ProvisionRecord "unlisted" $relativePath "eligible Git-ignored file is not manifest-listed"
         }
@@ -1586,10 +1751,11 @@ function Invoke-CheckCommand {
         }
     }
 
-    $selection = Get-ProvisionSelection $sourceRoot
+    $selection = Get-ProvisionSelection $sourceRoot $targetRoot
     $configurationReadiness = Get-ConfigurationReadiness $sourceRoot $targetRoot
     $report = Write-ProvisionReport $sourceRoot $selection $targetRoot $requiredPaths $configurationReadiness
-    if ($report.Decision -eq "invalid-manifest" -or $report.Decision -eq "required-local-config-missing") { return 2 }
+    if ($report.Decision -in @("invalid-manifest", "required-local-config-missing")) { return 2 }
+    if ($report.Decision -eq "build-prerequisites-unknown") { return 3 }
     if ($report.Decision -eq "eligible-ignored-files-unlisted") { return 3 }
     return 0
 }
@@ -1638,7 +1804,7 @@ function Invoke-ReadinessCommand {
         }
     }
 
-    $selection = Get-ProvisionSelection $sourceRoot
+    $selection = Get-ProvisionSelection $sourceRoot $targetRoot
     $configurationReadiness = Get-ConfigurationReadiness $sourceRoot $targetRoot
     Write-ReadinessReport $sourceRoot $selection $targetRoot $configurationReadiness
     return 0
@@ -1679,10 +1845,29 @@ function Invoke-AddCommand {
 
     $sourceRoot = Get-RepositoryRoot (Get-Location).Path
     if ($skipCopy) { $allowUnprovisioned = $true }
-    $selection = Get-ProvisionSelection $sourceRoot
+    $baseRef = "HEAD"
+    $positionalCount = 0
+    $skipValue = $false
+    foreach ($argument in $gitArguments) {
+        if ($skipValue) {
+            $skipValue = $false
+            continue
+        }
+        if ($argument -in @("-b", "-B", "--reason")) {
+            $skipValue = $true
+            continue
+        }
+        if ($argument.StartsWith("-", [StringComparison]::Ordinal)) { continue }
+        $positionalCount++
+        if ($positionalCount -ge 2) { $baseRef = $argument }
+    }
+    $baseCommitResult = Invoke-GitCapture $sourceRoot @("rev-parse", "--verify", "$baseRef`^{commit}")
+    $baseCommit = if ($baseCommitResult.ExitCode -eq 0) { $baseCommitResult.Stdout.Trim() } else { $null }
+    $selection = Get-ProvisionSelection $sourceRoot $null $baseCommit
     $configurationReadiness = Get-ConfigurationReadiness $sourceRoot $null
     $preflight = Write-ProvisionReport $sourceRoot $selection $null @() $configurationReadiness
     if ($preflight.Decision -eq "invalid-manifest") { return 2 }
+    if ($preflight.Decision -eq "build-prerequisites-unknown") { return 3 }
     if ($preflight.Decision -eq "eligible-ignored-files-unlisted" -and -not $allowUnprovisioned) {
         Write-Host "Creation blocked: eligible ignored files are not manifest-listed. Use --allow-unprovisioned only after reviewing the report."
         return 3

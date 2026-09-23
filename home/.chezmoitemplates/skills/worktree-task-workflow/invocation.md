@@ -107,6 +107,12 @@ wrapper to open the exact worktree in a new VS Code window. It does not move the
 terminal, or existing editor window. Codex desktop uses its native Handoff and Open controls
 instead; an already-entered worktree is already the user's selected workspace.
 
+When an interactive run will use the terminal fallback and `open-code` was not supplied, ask once
+before creating the worktree whether to open the exact path in a new VS Code window; recommend
+`true` when the user is working from an editor and `false` when the client already has a native
+Open or handoff control. Do not ask this question for a native client path or a non-interactive
+automation caller. Report the absolute worktree path either way.
+
 `runtime=auto` opts into the consuming repository's tracked `.worktree-runtime.json` descriptor
 and the user-level runtime helper. It is appropriate only when the task includes an application
 whose development server supports the descriptor's port injection method. `runtime=off` leaves
@@ -274,6 +280,20 @@ identity.
 
 With an explicit task, cross-check it against the materials. Stop only for a material conflict in
 subject, screen, feature, or module; wording and added detail are not conflicts.
+
+After each material resolves, record it in the active continuity state before implementation:
+record a reachable path or URL, its classification and provenance, and any extraction or access
+limitation. For a pasted block that is presented as a document—such as a labelled spec, checklist,
+requirements block, structured list, table, or content in a different register from the surrounding
+request—record it as `pasted inline, no file`, include the received date, and flag it as at risk.
+Do not summarize, translate, or silently discard pasted material; preserve the user's text verbatim
+when filing it. If a pasted block overlaps a supplied file, record the overlap and which source
+governs.
+
+At that same point, offer once to file any received reference that is not already in a stable
+location under the project-material convention. Filing is a user choice and requires confirmation;
+recording the material in continuity is unconditional. A disposable attachment or a URL already in
+a stable location does not need a filing offer.
 
 ## 7. Echo the resolved interpretation
 

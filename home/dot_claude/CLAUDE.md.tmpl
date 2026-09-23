@@ -26,6 +26,22 @@ Everything below depends on a Claude Code feature that Codex and Copilot do not 
 
 - **Verify version-sensitive Claude details before acting.** Before changing Claude Code, Claude Agent SDK, or Claude API configuration—or giving exact flags, setting keys, hook events, defaults, model IDs, or command syntax—check the built-in `claude-code-guide` agent or current official documentation. Memory and skills may guide where to look, but are not authoritative when behavior can drift.
 
+## Client surfaces
+
+- When answering about a Claude Code picker, slash command, keyboard shortcut, panel, or other UI
+  affordance, name the client surface first: terminal TUI, VS Code extension, or desktop app.
+  State when the behavior differs between surfaces or is unverified on the user's surface. In
+  particular, terminal `/resume` picker shortcuts do not describe the VS Code extension's session
+  panel picker; if a user says guidance failed, establish the surface and cause before retracting
+  guidance that may be correct elsewhere.
+- After editing user-level Claude configuration, identify the authoritative source and the rendered
+  target separately, say whether `chezmoi apply` has actually run, and state the reload boundary.
+  `settings.json` (including hooks), `skills/*/SKILL.md`, `agents/*.md`, and `keybindings.json`
+  are watched or hot-reloaded by supported Claude versions; `CLAUDE.md`, `commands/*.md`, and a
+  hand-edited `.mcp.json` require a new session. Do not tell the user to restart when the edit was
+  only made in chezmoi source and has not yet been applied; the change has not reached Claude's
+  target directory.
+
 ## Asking the user
 
 - Use an `AskUserQuestion` picker when the decision is **where work lands or whether something is
