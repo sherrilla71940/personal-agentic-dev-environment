@@ -4,7 +4,7 @@
 
 I built this as the development environment I use across machines and AI coding tools. It keeps my personal dotfiles, shared AI configuration, and workflows for Claude Code, Codex, and GitHub Copilot in one place while still respecting the native files and conventions each tool expects.
 
-For longer or parallel coding tasks, supported clients can use isolated Git worktrees. The workflow adds a shared contract around that isolation: it preserves context across sessions or AI clients, runs local automated checks, and waits for explicit manual approval before publishing a branch for review.
+For longer or parallel coding tasks, supported clients can use isolated Git worktrees. The workflow adds a shared contract around that isolation: it pins the task to an exact base, preserves context across sessions or AI clients, and provisions missing approved ignored files through the repository's tracked `.worktreeinclude` allowlist or a client-native equivalent. When a consuming project provides a runtime descriptor and the task opts into `runtime=auto`, the workflow can allocate and health-check a per-worktree port lease for parallel servers. It also runs local automated checks and waits for explicit manual approval before publishing a branch for review.
 
 Project continuity is a small per-worktree handoff record. Git records the current state of the code, branch, and commits. Continuity records the work around that state: what we were trying to accomplish, why decisions were made, what was blocked or verified, which references and inputs informed the work, and where to find them. It points to handoff notes, reference documents, and reusable test inputs when they live outside the worktree. Another session or client can reopen the same worktree and continue without reconstructing the task from chat history.
 
@@ -42,12 +42,23 @@ and records architectural trade-offs in [decision records](./docs/decisions/READ
 
 ## In practice
 
-Start a substantial task with `$worktree-task-workflow <base-branch> "<task>"`:
+Start a substantial task with a natural-language prompt, or use the explicit form when automation
+or auditability needs every field named:
+
+`$worktree-task-workflow "Implement FE-04 from the attached spec and target the MR against feat/water-fee"`
+
+`$worktree-task-workflow <base-branch> "<task>" [materials...]`
+
+The prompt intake resolves the task, supplied materials, and verified MR/PR target before the same
+workflow begins:
 
 `start → isolate → record context → implement → verify → manual approval → publish for review`
 
 The workflow keeps the task directory, branch, and handoff context together, and does not publish
-until automated checks and explicit manual approval are complete.
+until automated checks and explicit manual approval are complete. With `runtime=auto` and a project
+descriptor, it can allocate a health-checked port for a parallel server; when approved ignored files
+are missing, it can provision them from the tracked allowlist without copying tracked configuration
+or external secrets.
 
 ## System at a glance
 

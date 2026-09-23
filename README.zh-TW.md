@@ -4,7 +4,7 @@
 
 這是我平常在不同作業系統上使用，並整合多個 AI coding tools 的開發環境。它把我的個人 dotfiles、共用 AI 設定，以及 Claude Code、Codex 與 GitHub Copilot 的工作流程集中管理，同時仍保留各工具原本使用的檔案格式與慣例。
 
-對於較大型或需要平行進行的開發任務，支援的 client 可以使用隔離的 Git worktree。工作流程會在這層隔離之上建立共用契約：保留跨 session 或 AI client 的工作脈絡、執行本機自動檢查，並在發布分支供 review 前等待使用者明確完成手動驗證。
+對於較大型或需要平行進行的開發任務，支援的 client 可以使用隔離的 Git worktree。工作流程會在這層隔離之上建立共用契約：把任務固定在精確的 base、保留跨 session 或 AI client 的工作脈絡，並透過儲存庫受 Git 追蹤的 `.worktreeinclude` allowlist 或 client 原生機制，補上 worktree 缺少的已核准 ignored 檔案。如果 consuming project 提供 runtime descriptor，且任務選擇 `runtime=auto`，工作流程還能為每個 worktree 配置並 health-check port lease，讓多個 server 平行啟動。工作流程也會執行本機自動檢查，並在發布分支供 review 前等待使用者明確完成手動驗證。
 
 Project continuity 是每個 worktree 裡的一份小型交接紀錄。Git 記錄程式碼、分支與 commit 的目前狀態；continuity 記錄這個狀態背後的工作脈絡：我們要完成什麼、為什麼做出這些決定、哪些事項曾受阻或完成驗證、哪些參考資料與輸入影響了工作，以及到哪裡可以找到它們。當交接筆記、參考文件或可重用的測試輸入放在 worktree 外時，continuity 也會保留它們的位置。另一個 session 或 client 可以重新開啟同一個 worktree 後繼續工作，不必從 chat history 還原整個任務脈絡。
 
@@ -41,11 +41,18 @@ Project continuity 是每個 worktree 裡的一份小型交接紀錄。Git 記�
 
 ## 實際使用
 
-要開始一個較大型的任務，可以使用 `$worktree-task-workflow <base-branch> "<task>"`：
+較大型的任務可以直接用自然語言 prompt 開始；如果自動化或 auditability 需要明確列出每個欄位，
+也可以使用完整格式：
+
+`$worktree-task-workflow "Implement FE-04 from the attached spec and target the MR against feat/water-fee"`
+
+`$worktree-task-workflow <base-branch> "<task>" [materials...]`
+
+Prompt intake 會先解析任務、提供的材料與已驗證的 MR/PR target，再進入同一套工作流程：
 
 `開始任務 → 建立隔離 → 記錄脈絡 → 實作 → 驗證 → 手動核准 → 發布供 review`
 
-工作流程會把任務目錄、分支與交接脈絡維持在一起；自動檢查與使用者明確核准完成前，不會發布變更。
+工作流程會把任務目錄、分支與交接脈絡維持在一起；自動檢查與使用者明確核准完成前，不會發布變更。搭配 `runtime=auto` 與專案 descriptor 時，它可以為平行 server 配置通過 health check 的 port；如果 worktree 缺少已核准的 ignored 檔案，也能依 tracked allowlist 補上，但不會複製 tracked configuration 或 external secret。
 
 ## 系統總覽
 

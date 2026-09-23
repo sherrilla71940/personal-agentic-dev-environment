@@ -7,17 +7,26 @@ changing anything.
 
 ## Task identity
 
-`base` is always required. It is the user-provided existing branch on `origin`, used both as the
+The workflow accepts either an explicit invocation or one natural-language prompt. After intake
+resolution, `base` is still required. It is the existing branch on `origin`, used both as the
 starting point for the new task branch and as the eventual pull or merge request target. The
-workflow creates that task branch from `origin/<base>` in a new worktree. Task identity must come
-from exactly one source:
+workflow creates that task branch from `origin/<base>` in a new worktree.
 
-- a non-empty explicit `task`; or
-- `--infer-task` / `infer-task=true` plus at least one readable material.
+Task identity must come from exactly one source:
+
+- a non-empty explicit `task`;
+- `--infer-task` / `infer-task=true` plus at least one readable material; or
+- a non-empty `prompt` or prompt-only invocation.
+
+Prompt intake may resolve the task, materials, and base branch from the prompt. It may use an
+explicit branch name, an MR/PR URL whose target branch can be verified, or provider/host metadata
+that identifies the request target. A current branch, its upstream, or the remote default branch
+is only a candidate and must not silently become the target. If the prompt leaves the base
+ambiguous, stop before creating anything and ask for the target branch.
 
 Inference makes an explicit task unnecessary; it does not make an empty `task=` valid. Omit the
-`task` option entirely when asking for inference. Reject `task=` or `task=""` as an empty value,
-including when inference is enabled.
+`task` option when asking for inference or prompt intake. Reject `task=` or `task=""` as an empty
+value, including when inference is enabled.
 
 ## 1. Tokenize
 
@@ -27,6 +36,11 @@ token with the quotes removed, and a quote may open partway through a token, so
 
 Values containing spaces must be quoted. Reject an unclosed quote rather than guessing where a
 value ends.
+
+A single quoted natural-language token can use the prompt-only shortcut when it is the first
+non-option token, contains task-like words, and is not an existing path, URL, or branch-shaped
+value. Treat that token as `prompt`, not as `base`. Use `prompt=` when the invocation also needs
+positional materials or when a caller wants an unambiguous machine-readable form.
 
 ## 2. Classify each token
 
@@ -53,7 +67,8 @@ The accepted keys are:
 | Key | Values | Default |
 | --- | --- | --- |
 | `base` | user-provided branch on `origin`, with or without `origin/` | required |
-| `task` | non-empty task description | required unless inference is on |
+| `task` | non-empty task description | required unless inference or prompt intake is on |
+| `prompt` | one natural-language task request, optionally naming materials and an MR/PR target | none |
 | `infer-task` | `true` or `false` | `false` |
 | `materials` | one path or `http(s)` URL; repeatable | none |
 | `type` | Conventional Commit type for the branch | inferred |
@@ -88,13 +103,18 @@ enabled; an occupied explicit port is an error rather than a silent substitution
 
 ## 3. Fill positional slots
 
-Named options bind to their keys in any order. Bare tokens fill these slots in order:
+Named options bind to their keys in any order. If the prompt-only shortcut matched, its first
+quoted token is `prompt`, not positional `base`; resolve the base from the prompt or verified
+request metadata, then classify any remaining bare tokens as materials. Otherwise, bare tokens fill
+these slots in order:
 
 1. `base`, when `base=` was not supplied;
 2. `task`, when `task=` was not supplied and inference is off;
 3. materials, appended after any `materials=` values.
 
-When inference is on, the task slot is closed, so every bare token after the base branch is a material.
+When inference is on, the task slot is closed, so every bare token after the base branch is a
+material. When `prompt=` is supplied, every remaining bare token is a material. The prompt-only
+shortcut consumes its one quoted prompt token before positional materials are classified.
 
 When inference is off and neither `task=` nor `materials=` was supplied, accept the common
 unquoted form by joining all ordinary bare tokens after the base into one task. Treat a token as a
@@ -112,6 +132,8 @@ Quoted multi-word tasks and named options remain preferred when materials are pr
 {{ .invoke }} base=feat/CCTVPipiCons task="inspect the CCTV pipe record" materials="handoff.md"
 {{ .invoke }} feat/CCTVPipiCons --infer-task "handoff.md" "screens.pptx"
 {{ .invoke }} feat/CCTVPipiCons --infer-task "https://www.figma.com/design/ABC/Screens?node-id=1-2"
+{{ .invoke }} "Implement FE-04 from the attached spec and target the MR against feat/water-fee"
+{{ .invoke }} prompt="Implement FE-04 from the attached spec" base=feat/water-fee materials="spec.pdf"
 ```
 
 ## 4. Reject structural ambiguity
@@ -120,10 +142,11 @@ Stop and create nothing for any of these:
 
 | Condition | Reason |
 | --- | --- |
-| no `base` | the base branch is both the task starting point and request target, so it has no safe default |
-| neither a non-empty task nor inference | task identity is missing |
-| both a non-empty task and inference | two task sources were supplied |
+| no resolvable `base` | the base branch is both the task starting point and request target, so it has no safe default |
+| neither a non-empty task nor prompt or inference | task identity is missing |
+| both a non-empty task and prompt or inference | two task sources were supplied |
 | inference without a readable material | there is nothing from which to infer |
+| prompt with conflicting base or MR/PR target candidates | the request target is unknowable |
 | any empty option, including `task=` | an empty value is a slip, not an instruction |
 | an unknown option, flag, enum, or boolean spelling | falling back would silently change behavior |
 | the same option repeated with different values | intent is unknowable; `materials` alone is repeatable |
@@ -132,7 +155,7 @@ Stop and create nothing for any of these:
 | a material URL this host cannot fetch, or a design URL with no connected integration | same reason; say which capability is missing and ask for an exported file instead |
 | the positional task token resolves to a file, is path-like, or is a URL | the task was probably omitted; ask for a task or inference |
 | a material candidate is followed by ordinary task-like words | positional meaning is ambiguous; use `task=` and `materials=` |
-| the positional base resolves to a file or contains whitespace | it is in the wrong slot |
+| the positional base resolves to a file or contains whitespace | it is in the wrong slot; use prompt intake or `base=` |
 | `branch=` together with `type=`, `slug=`, or `suffix=` | two branch names were described |
 
 ## 4. Repository identity preflight
@@ -226,6 +249,12 @@ source of those values.
 With inference, derive one concise task in the materials' language. Ask when the materials contain
 multiple tasks, conflict, or do not support one confident task. Mark the resolved task as inferred.
 
+With prompt intake, extract one task, a finite list of supplied or explicitly referenced materials,
+and one base candidate from the prompt. Treat a branch name in a material as evidence only unless
+the prompt identifies it as the request target. An MR/PR URL must be fetched and its target branch
+verified. Mark prompt-derived fields as resolved from the prompt, and ask when multiple candidates
+remain.
+
 With an explicit task, cross-check it against the materials. Stop only for a material conflict in
 subject, screen, feature, or module; wording and added detail are not conflicts.
 
@@ -234,8 +263,10 @@ subject, screen, feature, or module; wording and added detail are not conflicts.
 Show one block after all materials are read and before the remote-base checkpoint:
 
 ```text
+input      prompt                                      (prompt intake)
 base branch feat/CCTVPipiCons
-task       inspect the CCTV pipe record            (explicit)
+base source prompt / MR metadata / explicit
+task       inspect the CCTV pipe record            (explicit or resolved)
 materials  handoff.md, screens.pptx, figma.com/design/ABC (node 1-2, fetched)
 branch     feat/cctv-pipe-inspection-record/frontend   (type and slug inferred)
 worktree   {{ .worktreeExample }}

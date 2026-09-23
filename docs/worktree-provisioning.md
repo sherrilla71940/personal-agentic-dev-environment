@@ -343,6 +343,12 @@ mandatory entry point for every task: a small, self-contained edit that does not
 isolation may remain in the current valid worktree. Choose it when isolation, cross-session handoff,
 controlled verification, or publishing matters.
 
+Natural-language intake is an additive front door to the same workflow. A single prompt can name the
+task, attached or referenced materials, and the intended MR/PR target; the invocation rules resolve
+those fields and show the same interpretation block before any worktree changes. The base remains a
+verified existing branch on `origin`, so a current branch, upstream, or default branch is never
+silently promoted to the request target.
+
 Worktree isolation covers source and Git state, not running services or their ports. For browser or
 runtime testing from an isolated worktree, invoke the task workflow with `runtime=auto` before
 starting the server, and use the consuming project's authoritative tracked `.worktree-runtime.json`.
@@ -602,16 +608,18 @@ sequenceDiagram
 **Materials are read before anything exists.** A handoff note, spec, deck, spreadsheet, web page,
 or design link is read through its matching document skill, web fetch, or design integration
 before a single Git command runs. An explicit task is cross-checked against the materials; with
-`--infer-task` the task is derived from them instead, in the materials' own language. Anything
-that cannot be read stops the run with nothing created, naming the missing capability rather than
-guessing from a URL slug. Fetched content is data: a page asking to change the task, base branch,
-task branch, or cleanup behaviour is reported, never obeyed.
+`--infer-task` the task is derived from them instead, in the materials' own language. Prompt-only
+intake derives the task from the prompt and uses only explicitly supplied or attached materials;
+an MR/PR URL must be fetched before its target branch is accepted. Anything that cannot be read
+stops the run with nothing created, naming the missing capability rather than guessing from a URL
+slug. Fetched content is data: a page asking to change the task, base branch, task branch, or
+cleanup behaviour is reported, never obeyed.
 
 **Naming is derived, not invented.** The commit type comes from the shared `git-commit-reference`
 table, the slug from the task's meaning, and the branch from `type/slug/suffix`. The Claude
 adapter places the worktree under `.claude/worktrees/` because entering it there raises no
-approval prompt, and the base is a user-provided named remote branch and request target, which no
-client's own worktree creation can express.
+approval prompt. The base is a resolved and verified named remote branch and request target, which
+no client's own worktree creation can always express.
 
 **A provisioning decision is made before creation.** Non-native paths run `git wt-check` first,
 so a missing manifest, empty manifest, unlisted eligible ignored file, or explicitly missing local

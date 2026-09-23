@@ -1,6 +1,6 @@
 ---
 name: worktree-task-workflow
-description: "Start or continue one isolated implementation task through its lifecycle in a Codex worktree, creating the task branch from a user-provided base branch and carrying it through manual testing, publishing, and branch-preserving handoff."
+description: "Start or continue one isolated implementation task through its lifecycle in a Codex worktree, using an explicit base/task invocation or a verified natural-language task prompt and carrying it through manual testing, publishing, and branch-preserving handoff."
 disable-model-invocation: true
 ---
 
@@ -35,6 +35,7 @@ Invoke this skill as either:
 ```text
 $worktree-task-workflow <base-branch> "<task>" [materials...] [options...]
 $worktree-task-workflow <base-branch> --infer-task <materials...> [options...]
+$worktree-task-workflow "<prompt>"
 ```
 
 For an application task that starts a server for browser or runtime testing in an isolated
@@ -45,11 +46,11 @@ before starting the server, and do not claim that browser/runtime results came f
 Leave runtime at its default `off` for tasks that do not need an application server; this workflow
 is not a mandatory runtime harness.
 
-`base` is required and means the user-provided existing branch on `origin`. The workflow creates
-the task branch from `origin/<base>` in a new worktree, and the eventual pull or merge request
-targets that same base branch. Task identity requires exactly one non-empty explicit task or
-requested inference from readable materials. `task=""` is invalid; omit `task` when using
-inference. Run the shared read-only repository identity preflight before reading materials; do not
+After invocation resolution, `base` means the existing branch on `origin` used to create the task
+branch and target the eventual pull or merge request. Prompt-only intake may resolve that base from
+an explicit branch, a verified MR/PR target, or provider/host metadata; it must stop when the target
+is ambiguous. Task identity requires exactly one explicit task, material inference, or natural-language
+prompt. Run the shared read-only repository identity preflight before reading materials; do not
 create or change Git state until the preflight and resolved echo pass.
 
 ## 2. Prepare the working-tree entry point
