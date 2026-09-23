@@ -4,14 +4,17 @@
 
 I built this as the development environment I use across machines and AI coding tools. It keeps my personal dotfiles, shared AI configuration, and workflows for Claude Code, Codex, and GitHub Copilot in one place while still respecting the native files and conventions each tool expects.
 
-For longer or parallel coding tasks, the workflow can give each task its own Git worktree, preserve working context across sessions or AI clients, run local automated checks, and wait for explicit manual approval before publishing a branch for review.
+For longer or parallel coding tasks, supported clients can use isolated Git worktrees. The workflow adds a shared contract around that isolation: it preserves context across sessions or AI clients, runs local automated checks, and waits for explicit manual approval before publishing a branch for review.
 
-Project continuity makes those handoffs possible. It keeps a small per-worktree record of the task’s objective, important decisions, blockers, verification state, materials, and next action, so another session can reopen the same worktree and continue without reconstructing the task from chat history. Git still remains authoritative for the actual code, branch, and commits.
+Project continuity is a small per-worktree handoff record. Git records the current state of the code, branch, and commits. Continuity records the work around that state: what we were trying to accomplish, why decisions were made, what was blocked or verified, which references and inputs informed the work, and where to find them. It points to handoff notes, reference documents, and reusable test inputs when they live outside the worktree. Another session or client can reopen the same worktree and continue without reconstructing the task from chat history.
 
-Chezmoi⁠￼ handles the configuration side: shared source is rendered into the native files used by each supported tool and operating system. The workflow side adds isolation, continuity, verification, and controlled publishing around the coding task.
+[Chezmoi](https://www.chezmoi.io/) handles configuration: one Git-tracked source tree is rendered into the native files used by each supported tool and operating system. The workflow layer adds isolation, continuity, verification, and controlled publishing around coding tasks.
+
+The design goal is bounded autonomy: AI clients can act within a defined environment, while Git, verification, and explicit approval remain authoritative boundaries.
 
 **Jump to:**
 
+- [In practice](#in-practice)
 - [System at a glance](#system-at-a-glance)
 - [Project continuity](#project-continuity)
 - [Task lifecycle and isolated worktrees](#task-lifecycle-and-isolated-worktrees)
@@ -36,6 +39,15 @@ not a separate fifth pillar.
 
 The repository also keeps application-owned preferences local, supports Windows and macOS paths,
 and records architectural trade-offs in [decision records](./docs/decisions/README.md).
+
+## In practice
+
+Start a substantial task with `$worktree-task-workflow <base-branch> "<task>"`:
+
+`start → isolate → record context → implement → verify → manual approval → publish for review`
+
+The workflow keeps the task directory, branch, and handoff context together, and does not publish
+until automated checks and explicit manual approval are complete.
 
 ## System at a glance
 
@@ -71,10 +83,10 @@ flowchart TB
 links or symlinks when a client needs a native discovery location. Client-specific sources stay in
 their native directories.
 
-The workflow uses client-native capabilities when they satisfy the contract. Repository-owned
-fallbacks cover the remaining invariants: an exact `origin/<base>` contract, portable state,
-approved ignored-file provisioning, focused verification, manual approval, optional runtime
-isolation, and explicit workflow archives. See [native-first worktree delegation](./docs/worktree-provisioning.md#native-first-delegation)
+Where supported, clients provide native worktree creation and lifecycle controls. Repository-owned
+checks and fallbacks cover the remaining shared contract: an exact `origin/<base>` contract,
+portable handoff state, approved ignored-file provisioning, focused verification, manual approval,
+optional runtime isolation, and explicit workflow archives. See [native-first worktree delegation](./docs/worktree-provisioning.md#native-first-delegation)
 for the client-specific details.
 
 ## Start here
@@ -268,8 +280,8 @@ small self-contained edit can remain in the current valid worktree. The user may
 provide materials, or give feedback at any point; the manual-test loop below is the explicit
 pre-publish gate.
 
-At a glance, the lifecycle is provision → implement → verify → publish → clean up. The sequence
-below shows the gates, actors, and recovery loop that make those phases meaningful.
+The sequence below shows how native or fallback isolation, continuity, verification, manual approval,
+publishing, and cleanup fit together.
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280", "actorBkg": "#f3e8ff", "actorBorder": "#9333ea", "actorTextColor": "#111827", "actorLineColor": "#6b7280", "signalColor": "#6b7280", "signalTextColor": "#111827", "labelBoxBkgColor": "#f3f4f6", "labelBoxBorderColor": "#6b7280", "labelTextColor": "#111827", "loopTextColor": "#111827", "noteBkgColor": "#fef3c7", "noteBorderColor": "#d97706", "noteTextColor": "#111827"}}}%%
@@ -318,39 +330,15 @@ The focused [worktree provisioning guide](./docs/worktree-provisioning.md#workfl
 the provisioning checks, native client paths, runtime isolation, and cleanup contract behind this
 sequence.
 
-The workflow pins the starting point and request target to the selected base. For an isolated task,
-it keeps the directory, branch, and continuity state together and makes a read-only provisioning
-decision before a supported repository-provided non-native worktree is created. Fallback provisioning
-handles only approved ignored files; tracked application configuration and external folders require
-project-specific setup and are never copied implicitly.
+The workflow pins the task to the selected base and keeps its directory, branch, and continuity
+state together. Native clients retain their own worktree ownership; repository fallbacks provision
+only approved ignored files and refuse implicit copies of tracked application configuration or
+external folders.
 
-Automated verification is local and reaches the browser when the project and driver support it.
-It never replaces the user's manual test. Cleanup preserves the task branch while client-native
-paths retain their own worktree ownership. The detailed [worktree lifecycle](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
-covers material handling, native Claude, Codex, and VS Code Agent Worktree paths, Copilot CLI's
-prepared-worktree protocol, provisioning readiness, runtime isolation, branch-preserving cleanup,
-and browser-driver limits.
-
-After publishing, the workflow runs the continuity completion gate separately from worktree cleanup:
-it reconciles active and parked state and asks before deleting completed continuity state.
-
-### Parallel tasks without losing state
-
-- Each isolated task gets its own physical worktree, task branch, and continuity state.
-- A client handoff reopens the same physical worktree; another unfinished task gets another
-  worktree unless the first state is deliberately parked.
-- Claude and Codex have managed adapters. VS Code's native Agent Worktree can host supported
-  harnesses, including Copilot; Copilot CLI itself has no automatic worktree adapter and uses a
-  prepared or fallback worktree.
-- Manual verification converges per task. Separate tasks keep their source changes and branches
-  independent.
-
-This repository itself stays in its primary checkout because chezmoi source resolution is tied to
-that tree. For concurrent application instances, use the optional
-[per-worktree runtime descriptor](./docs/worktree-runtime.md); `runtime=auto` is valid only when
-the consuming project provides its authoritative tracked `.worktree-runtime.json`. Browser or
-runtime testing from an isolated worktree must select `runtime=auto` before starting a server;
-otherwise the workflow reports that no per-worktree port guarantee exists.
+The focused [worktree provisioning guide](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
+carries the client paths, material handling, provisioning readiness, runtime isolation, verification,
+manual-test gate, and branch-preserving cleanup details. Separate tasks keep their worktrees,
+branches, and continuity state independent, while a client handoff reopens the same physical worktree.
 
 ## What the environment delivers
 

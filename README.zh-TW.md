@@ -4,14 +4,17 @@
 
 這是我平常在不同作業系統上使用，並整合多個 AI coding tools 的開發環境。它把我的個人 dotfiles、共用 AI 設定，以及 Claude Code、Codex 與 GitHub Copilot 的工作流程集中管理，同時仍保留各工具原本使用的檔案格式與慣例。
 
-對於較大型或需要平行進行的開發任務，這套工作流程可以讓每個任務使用自己的 Git worktree，保留跨 session 或 AI client 的工作脈絡，執行本機自動檢查，並在分支發布供 review 前等待使用者明確完成手動驗證。
+對於較大型或需要平行進行的開發任務，支援的 client 可以使用隔離的 Git worktree。工作流程會在這層隔離之上建立共用契約：保留跨 session 或 AI client 的工作脈絡、執行本機自動檢查，並在發布分支供 review 前等待使用者明確完成手動驗證。
 
-Project continuity 負責讓這些交接順利進行。它會在每個 worktree 中保留一份小型任務紀錄，包含任務目標、重要決策、阻塞事項、驗證狀態、使用的材料，以及下一步，讓另一個 session 可以重新開啟同一個 worktree 後直接繼續，而不需要重新從 chat history 還原整個任務脈絡。實際的程式碼、分支與 commit 仍然以 Git 為準。
+Project continuity 是每個 worktree 裡的一份小型交接紀錄。Git 記錄程式碼、分支與 commit 的目前狀態；continuity 記錄這個狀態背後的工作脈絡：我們要完成什麼、為什麼做出這些決定、哪些事項曾受阻或完成驗證、哪些參考資料與輸入影響了工作，以及到哪裡可以找到它們。當交接筆記、參考文件或可重用的測試輸入放在 worktree 外時，continuity 也會保留它們的位置。另一個 session 或 client 可以重新開啟同一個 worktree 後繼續工作，不必從 chat history 還原整個任務脈絡。
 
-Chezmoi⁠￼ 負責設定管理這一側：共用的 source 會被渲染成各個支援工具與作業系統實際使用的原生檔案。工作流程層則補上隔離、continuity、驗證，以及受控的發布流程。
+[Chezmoi](https://www.chezmoi.io/) 負責設定管理：一份受 Git 追蹤的 source tree 會被渲染成各個支援工具與作業系統實際使用的原生檔案。工作流程層則為 coding task 補上隔離、continuity、驗證，以及受控的發布流程。
+
+這套設計追求的是有明確界線的自主性：AI client 可以在定義清楚的環境中工作，但 Git、驗證結果與使用者明確核准仍是權威界線。
 
 **快速導覽：**
 
+- [實際使用](#實際使用)
 - [系統總覽](#系統總覽)
 - [專案連續性](#專案連續性)
 - [任務生命週期與隔離 worktree](#任務生命週期與隔離-worktree)
@@ -35,6 +38,14 @@ Chezmoi⁠￼ 負責設定管理這一側：共用的 source 會被渲染成各�
 
 這個儲存庫也會把應用程式擁有的偏好留在本機，支援 Windows 與 macOS 路徑，並在
 [架構決策紀錄](./docs/decisions/README.md)中記錄重要的設計取捨。
+
+## 實際使用
+
+要開始一個較大型的任務，可以使用 `$worktree-task-workflow <base-branch> "<task>"`：
+
+`開始任務 → 建立隔離 → 記錄脈絡 → 實作 → 驗證 → 手動核准 → 發布供 review`
+
+工作流程會把任務目錄、分支與交接脈絡維持在一起；自動檢查與使用者明確核准完成前，不會發布變更。
 
 ## 系統總覽
 
@@ -67,9 +78,9 @@ flowchart TB
 會由各 client 的薄 wrapper 組合；可攜式 skill 維持單一共用來源，必要時再透過 link 或 symlink
 交付到 client 的原生 discovery 路徑。Client 專屬 source 則留在各自的原生目錄。
 
-工作流程會優先使用 client 原生能力，只要該能力能可靠滿足既定契約。儲存庫自己的 fallback
-只處理剩餘的不變條件：精確的 `origin/<base>` 契約、可跨 client 的狀態、核准的 ignored
-檔案配置、聚焦驗證、手動核准、可選的 runtime 隔離，以及明確的 workflow archive。各
+在支援的情況下，client 會提供原生的 worktree 建立與生命週期控制。儲存庫自己的檢查與 fallback
+則補上共用契約的其餘部分：精確的 `origin/<base>` 契約、可跨 client 的交接 state、核准的
+ignored 檔案配置、聚焦驗證、手動核准、可選的 runtime 隔離，以及明確的 workflow archive。各
 client 的細節請看 [native-first worktree delegation](./docs/worktree-provisioning.md#native-first-delegation)。
 
 ## 從這裡開始
@@ -251,8 +262,7 @@ source 檔案前，先讀[來源狀態規則](./docs/chezmoi-workflow.md#source-
 可以留在目前有效的 worktree。使用者可在任何步驟釐清需求、提供材料或回饋；下方的手動測試
 流程是發布前的明確 gate。
 
-概略來看，生命週期是：佈建 → 實作 → 驗證 → 發布 → 清理。下方的 sequence 會呈現讓這些階段
-具體可執行的 gate、參與者與復原迴圈。
+下方的 sequence 會呈現原生或 fallback 隔離、continuity、驗證、手動核准、發布與清理如何串在一起。
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280", "actorBkg": "#f3e8ff", "actorBorder": "#9333ea", "actorTextColor": "#111827", "actorLineColor": "#6b7280", "signalColor": "#6b7280", "signalTextColor": "#111827", "labelBoxBkgColor": "#f3f4f6", "labelBoxBorderColor": "#6b7280", "labelTextColor": "#111827", "loopTextColor": "#111827", "noteBkgColor": "#fef3c7", "noteBorderColor": "#d97706", "noteTextColor": "#111827"}}}%%
@@ -300,37 +310,14 @@ sequenceDiagram
 詳細的 [worktree provisioning guide](./docs/worktree-provisioning.md#workflow-sequence) 會說明這個
 流程背後的佈建檢查、原生 client 路徑、runtime 隔離與清理契約。
 
-工作流程會將起點與 request target 固定在 selected base。對於採用隔離的任務，它會把目錄、分支
-與 continuity state 綁在一起，並在建立支援的 repository-provided non-native worktree 前做唯讀佈建
-決策。Fallback 佈建只會處理已核准的 ignored 檔案；tracked application configuration 與 external
-folder 必須由專案專用設定處理，絕不會被隱含複製。
+工作流程會將任務固定在 selected base，並把目錄、分支與 continuity state 綁在一起。原生 client
+保留各自的 worktree 擁有權；儲存庫的 fallback 只會配置已核准的 ignored 檔案，不會隱含複製
+tracked application configuration 或 external folder。
 
-自動驗證在本機執行；若專案與 driver 支援，也會驗證實際瀏覽器操作，但不能取代使用者的手動
-測試。清理會保留任務分支；client-native 路徑則保留各自的 worktree 擁有權。詳細的
-[worktree 生命週期](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
-說明材料處理、Claude、Codex 與 VS Code Agent Worktree 的原生路徑、Copilot CLI 的
-prepared-worktree 協定、provisioning readiness、runtime 隔離、保留分支的清理方式，以及 browser
-driver 的限制。
-
-發布後，工作流程會另外執行 continuity completion gate，不會把它和 worktree 清理混在一起：
-它會核對作用中的 state 與 parked state，並在刪除已完成的 continuity state 前先詢問。
-
-### 平行任務不遺失狀態
-
-- 每個採用隔離流程的任務都有自己的實體 worktree、任務分支與 continuity state。
-- Client 交接會重新開啟同一個實體 worktree；另一個未完成的任務則使用另一個 worktree，
-  除非刻意先把第一個 state park 起來。
-- Claude 與 Codex 有 managed adapter。VS Code 的原生 Agent Worktree 可以承載包含 Copilot
-  在內的支援 harness；Copilot CLI 本身沒有自動 worktree adapter，會使用已準備好的或
-  fallback worktree。
-- 手動驗證會在每個任務各自收斂；不同任務的原始碼變更與分支彼此獨立。
-
-這個 dotfiles 儲存庫本身會留在 primary checkout，因為 chezmoi 的 source resolution 綁定
-那個目錄。若要同時執行多個 application instance，請使用可選的
-[per-worktree runtime descriptor](./docs/worktree-runtime.md)；只有 consuming project 提供
-權威且受 Git 追蹤的 `.worktree-runtime.json` 時，`runtime=auto` 才有效。從隔離 worktree
-進行瀏覽器或 runtime 測試時，必須在啟動 server 前選擇 `runtime=auto`；否則工作流程會先
-回報沒有 per-worktree port 保證。
+詳細的 [worktree 生命週期](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
+會說明 client 路徑、材料處理、provisioning readiness、runtime 隔離、驗證、手動測試 gate 與
+保留任務分支的清理方式。不同任務各自保留 worktree、分支與 continuity state；client 交接則重新
+開啟同一個實體 worktree。
 
 ## 這個環境實際提供什麼
 
