@@ -6,6 +6,10 @@ files there, but it does not copy ignored local files such as `.env.local` or
 the original working tree. Private agent overrides and client-local settings are a separate,
 explicit-only category because copying them can change agent behavior or permissions.
 
+The future route-selection proposal for a possible in-place workflow is documented in the
+[worktree task workflow v2 plan](./worktree-task-workflow-v2-plan.md). It is not active; the
+current `worktree-task-workflow` contract remains worktree-only.
+
 ## Native-first delegation
 
 The task workflow owns the required contract, but it does not require one worktree mechanism on
