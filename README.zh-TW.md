@@ -2,15 +2,11 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-這是我平常在不同作業系統上使用，並整合多個 AI coding tools 的開發環境。它把我的個人 dotfiles、共用 AI 設定，以及 Claude Code、Codex 與 GitHub Copilot 的工作流程集中管理，同時仍保留各工具原本使用的檔案格式與慣例。
+這是我平常在不同作業系統與 AI coding tools 間使用的跨平台開發環境。它把我的個人 dotfiles、共用 AI 指示與 workflow skill，以及可跨 client 使用的任務協定集中管理，同時保留每個 client 原生的檔案、discovery path 與 scope 規則。
 
-對於較大型或需要平行進行的開發任務，支援的 client 可以使用隔離的 Git worktree。工作流程會在這層隔離之上建立共用契約：把任務固定在精確的 base、保留跨 session 或 AI client 的工作脈絡，並透過儲存庫受 Git 追蹤的 `.worktreeinclude` allowlist 或 client 原生機制，補上 worktree 缺少的已核准 ignored 檔案。如果 consuming project 提供 runtime descriptor，且任務選擇 `runtime=auto`，工作流程還能為每個 worktree 配置並 health-check port lease，讓多個 server 平行啟動。工作流程也會執行本機自動檢查，並在發布分支供 review 前等待使用者明確完成手動驗證。
+對於較大型或需要平行進行的任務，支援的 client 可以使用隔離的 Git worktree。共用工作流程補上 continuity、核准的本機檔案配置、各 worktree 的 runtime port、本機驗證，以及發布前的明確使用者核准。
 
-Project continuity 是每個 worktree 裡的一份小型交接紀錄。Git 記錄程式碼、分支與 commit 的目前狀態；continuity 記錄這個狀態背後的工作脈絡：我們要完成什麼、為什麼做出這些決定、哪些事項曾受阻或完成驗證、哪些參考資料與輸入影響了工作，以及到哪裡可以找到它們。當交接筆記、參考文件或可重用的測試輸入放在 worktree 外時，continuity 也會保留它們的位置。另一個 session 或 client 可以重新開啟同一個 worktree 後繼續工作，不必從 chat history 還原整個任務脈絡。
-
-[Chezmoi](https://www.chezmoi.io/) 負責設定管理：一份受 Git 追蹤的 source tree 會被渲染成各個支援工具與作業系統實際使用的原生檔案。工作流程層則為 coding task 補上隔離、continuity、驗證，以及受控的發布流程。
-
-這套設計追求的是有明確界線的自主性：AI client 可以在定義清楚的環境中工作，但 Git、驗證結果與使用者明確核准仍是權威界線。
+Git 記錄程式碼、分支與 commit 的目前狀態。每個 worktree 裡的小型 continuity 紀錄則保存工作的狀態：目標、決策、阻塞事項、驗證、輸入與下一步。Git 與 continuity 合在一起，提供繼續工作所需的完整工作脈絡：Git 顯示目前有什麼，continuity 說明我們要完成什麼、為什麼這樣做、哪些內容影響了工作，以及接下來如何繼續。[Chezmoi](https://www.chezmoi.io/) 會把共用 source render 成各工具原生使用的設定。
 
 **快速導覽：**
 
@@ -52,7 +48,7 @@ Prompt intake 會先解析任務、提供的材料與已驗證的 MR/PR target�
 
 `開始任務 → 建立隔離 → 記錄脈絡 → 實作 → 驗證 → 手動核准 → 發布供 review`
 
-工作流程會把任務目錄、分支與交接脈絡維持在一起；自動檢查與使用者明確核准完成前，不會發布變更。搭配 `runtime=auto` 與專案 descriptor 時，它可以為平行 server 配置通過 health check 的 port；如果 worktree 缺少已核准的 ignored 檔案，也能依 tracked allowlist 補上，但不會複製 tracked configuration 或 external secret。
+工作流程會把任務目錄、分支與交接脈絡維持在一起；自動檢查與使用者明確核准完成前，不會發布變更。詳細契約會解析精確的 base 與 MR/PR target，從 `.worktreeinclude` 或 client 原生機制補上缺少的已核准 ignored 檔案，並在搭配專案 descriptor 與 `runtime=auto` 時，配置並 health-check 每個 worktree 的 port。它不會複製 tracked configuration 或 external secret。
 
 ## 系統總覽
 
