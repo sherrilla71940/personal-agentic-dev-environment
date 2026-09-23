@@ -48,7 +48,9 @@ Prompt intake 會先解析任務、提供的材料與已驗證的 MR/PR target�
 
 `開始任務 → 建立隔離 → 記錄脈絡 → 實作 → 驗證 → 手動核准 → 發布供 review`
 
-工作流程會把任務目錄、分支與交接脈絡維持在一起；自動檢查與使用者明確核准完成前，不會發布變更。詳細契約會解析精確的 base 與 MR/PR target，從 `.worktreeinclude` 或 client 原生機制補上缺少的已核准 ignored 檔案，並在搭配專案 descriptor 與 `runtime=auto` 時，配置並 health-check 每個 worktree 的 port。它不會複製 tracked configuration 或 external secret。
+工作流程會把任務目錄、分支與交接脈絡維持在一起；自動檢查與使用者明確核准完成前，不會發布變更。詳細契約會解析精確的 base 與 MR/PR target，從 `.worktreeinclude` 或 client 原生機制補上缺少的已核准 ignored 檔案，並在搭配專案 descriptor 與 `runtime=auto` 時，配置並 health-check 每個 worktree 的 port。
+
+以問題、評估或請求閱讀材料為主的 prompt 會先停在唯讀的規劃階段；請明確說明 `proceed`，或使用 `phase=execute`，工作流程才會建立 worktree。它不會複製 tracked configuration 或 external secret。
 
 ## 系統總覽
 

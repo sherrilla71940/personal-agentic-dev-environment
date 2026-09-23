@@ -1,7 +1,7 @@
 ---
 name: worktree-task-workflow
-description: "Run one isolated implementation task through its lifecycle in a Claude Code worktree, from an explicit task or requested material inference through manual testing, publishing, and branch-preserving cleanup."
-argument-hint: '<base> ("<task>" [materials...] | --infer-task <materials...>) [options...]'
+description: "Run one isolated implementation task through its lifecycle in a Claude Code worktree, from an explicit task, natural-language prompt, or requested material inference through manual testing, publishing, and branch-preserving cleanup."
+argument-hint: '(<prompt> | <base> ("<task>" [materials...] | --infer-task <materials...>)) [options...]'
 disable-model-invocation: true
 ---
 
@@ -25,11 +25,19 @@ Read [references/invocation.md](references/invocation.md) and follow it through 
 `base` is required. Task identity requires exactly one of:
 
 - a non-empty explicit task; or
-- `--infer-task` / `infer-task=true` with readable materials.
+- `--infer-task` / `infer-task=true` with readable materials; or
+- a non-empty prompt or prompt-only invocation.
 
-An empty `task=` is always invalid. When inference is requested, omit `task` rather than passing
-an empty value. Run the shared read-only repository identity preflight before reading materials;
-do not create or change Git state until the preflight and resolved echo pass.
+Prompt intake may resolve the task, materials, verified MR/PR target, and action phase. Questions and
+assessment requests resolve to `phase=plan`; explicit requests to proceed or implement resolve to
+`phase=execute`. Ambiguous wording stops for confirmation. An empty `task=` is always invalid.
+When inference or prompt intake is requested, omit `task` rather than passing an empty value. Run
+the shared read-only repository identity preflight before reading materials; do not create or change
+Git state until the preflight and resolved echo pass.
+
+When the resolved phase is `plan`, follow the plan-phase boundary in the invocation reference and
+stop after reporting the recommendation and exact execution invocation. Do not create or enter a
+worktree in that turn.
 
 ## 2. Check repository and derive names
 

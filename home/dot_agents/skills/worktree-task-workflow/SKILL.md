@@ -50,8 +50,15 @@ After invocation resolution, `base` means the existing branch on `origin` used t
 branch and target the eventual pull or merge request. Prompt-only intake may resolve that base from
 an explicit branch, a verified MR/PR target, or provider/host metadata; it must stop when the target
 is ambiguous. Task identity requires exactly one explicit task, material inference, or natural-language
-prompt. Run the shared read-only repository identity preflight before reading materials; do not
-create or change Git state until the preflight and resolved echo pass.
+prompt. Prompt wording that asks for an assessment or recommendation resolves to `phase=plan`; an
+explicit request to proceed or implement resolves to `phase=execute`. Ambiguous wording stops for
+confirmation. A plan phase does not create a worktree, branch, continuity state, or project change.
+Run the shared read-only repository identity preflight before reading materials; do not create or
+change task-worktree state until the preflight and resolved echo pass.
+
+When the resolved phase is `plan`, follow the plan-phase boundary in the invocation reference and
+stop after reporting the recommendation and the exact execution invocation. Do not continue into
+worktree provisioning or implementation in the same turn.
 
 ## 2. Prepare the working-tree entry point
 

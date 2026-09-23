@@ -24,6 +24,12 @@ that identifies the request target. A current branch, its upstream, or the remot
 is only a candidate and must not silently become the target. If the prompt leaves the base
 ambiguous, stop before creating anything and ask for the target branch.
 
+Prompt intake also resolves an action phase. Use `phase=plan` for questions, assessments, reviews,
+comparisons, or requests to read materials and recommend a path. Use `phase=execute` only when the
+prompt explicitly asks the workflow to proceed, implement, migrate, create, or otherwise change
+the worktree. If the wording supports both interpretations, stop and ask rather than defaulting to
+execution. An explicit invocation without a prompt keeps its existing execution default.
+
 Inference makes an explicit task unnecessary; it does not make an empty `task=` valid. Omit the
 `task` option when asking for inference or prompt intake. Reject `task=` or `task=""` as an empty
 value, including when inference is enabled.
@@ -36,6 +42,11 @@ token with the quotes removed, and a quote may open partway through a token, so
 
 Values containing spaces must be quoted. Reject an unclosed quote rather than guessing where a
 value ends.
+
+In a chat or slash-command surface, the complete text after `/worktree-task-workflow` is one
+natural-language prompt, including line breaks and named file paths. Do not require the user to
+rewrite that prompt as shell syntax. CLI and automation callers should use `prompt="..."` or the
+explicit positional form so quoting and material boundaries remain machine-readable.
 
 A single quoted natural-language token can use the prompt-only shortcut when it is the first
 non-option token, contains task-like words, and is not an existing path, URL, or branch-shaped
@@ -69,6 +80,7 @@ The accepted keys are:
 | `base` | user-provided branch on `origin`, with or without `origin/` | required |
 | `task` | non-empty task description | required unless inference or prompt intake is on |
 | `prompt` | one natural-language task request, optionally naming materials and an MR/PR target | none |
+| `phase` | `plan` or `execute` | inferred for prompt intake; `execute` for explicit invocations |
 | `infer-task` | `true` or `false` | `false` |
 | `materials` | one path or `http(s)` URL; repeatable | none |
 | `type` | Conventional Commit type for the branch | inferred |
@@ -134,6 +146,7 @@ Quoted multi-word tasks and named options remain preferred when materials are pr
 {{ .invoke }} feat/CCTVPipiCons --infer-task "https://www.figma.com/design/ABC/Screens?node-id=1-2"
 {{ .invoke }} "Implement FE-04 from the attached spec and target the MR against feat/water-fee"
 {{ .invoke }} prompt="Implement FE-04 from the attached spec" base=feat/water-fee materials="spec.pdf"
+{{ .invoke }} phase=plan prompt="Read the migration notes and recommend whether to cherry-pick the feature commits"
 ```
 
 ## 4. Reject structural ambiguity
@@ -147,6 +160,7 @@ Stop and create nothing for any of these:
 | both a non-empty task and prompt or inference | two task sources were supplied |
 | inference without a readable material | there is nothing from which to infer |
 | prompt with conflicting base or MR/PR target candidates | the request target is unknowable |
+| prompt with ambiguous action phase | the workflow must not guess whether to plan or execute |
 | any empty option, including `task=` | an empty value is a slip, not an instruction |
 | an unknown option, flag, enum, or boolean spelling | falling back would silently change behavior |
 | the same option repeated with different values | intent is unknowable; `materials` alone is repeatable |
@@ -250,10 +264,13 @@ With inference, derive one concise task in the materials' language. Ask when the
 multiple tasks, conflict, or do not support one confident task. Mark the resolved task as inferred.
 
 With prompt intake, extract one task, a finite list of supplied or explicitly referenced materials,
-and one base candidate from the prompt. Treat a branch name in a material as evidence only unless
-the prompt identifies it as the request target. An MR/PR URL must be fetched and its target branch
-verified. Mark prompt-derived fields as resolved from the prompt, and ask when multiple candidates
-remain.
+one base candidate, and one action phase from the prompt. Treat a branch name in a material as
+evidence only unless the prompt identifies it as the request target. An MR/PR URL must be fetched
+and its target branch verified. Questions, assessments, reviews, and material-reading requests
+resolve to `plan`; explicit requests to proceed, implement, migrate, or create resolve to
+`execute`. Mark prompt-derived fields as resolved from the prompt, and ask when multiple candidates
+remain. `phase=` may make the action phase explicit, but it cannot resolve conflicting base or task
+identity.
 
 With an explicit task, cross-check it against the materials. Stop only for a material conflict in
 subject, screen, feature, or module; wording and added detail are not conflicts.
@@ -269,6 +286,7 @@ base source prompt / MR metadata / explicit
 task       inspect the CCTV pipe record            (explicit or resolved)
 materials  handoff.md, screens.pptx, figma.com/design/ABC (node 1-2, fetched)
 branch     feat/cctv-pipe-inspection-record/frontend   (type and slug inferred)
+phase      plan                                        (prompt asks for assessment; no worktree changes)
 worktree   {{ .worktreeExample }}
 commit     commit | batch | zhtw
 agent-test true        cleanup  {{ .cleanupDefault }}
@@ -287,3 +305,16 @@ base commit <full commit ID resolved from origin/feat/CCTVPipiCons>
 For rejection, show unresolved fields, the exact problem, and a corrected invocation when clear.
 End with `Nothing was created.` Normalize only whitespace, quote removal, boolean case, the
 `origin/` prefix, and trailing path separators; reject anything that could change meaning.
+
+## 8. Plan phase boundary
+
+When the resolved phase is `plan`, read the supplied materials, inspect the repository and Git
+history as needed, and report the recommended strategy, risks, unresolved choices, and the exact
+execution invocation. Do not create a worktree or task branch, edit project files, stage or commit
+changes, push, open a request, or initialize new continuity state. Existing continuity may be read
+when it matches the task, but do not rewrite it for a plan-only request. A remote fetch used to
+verify the named `origin/<base>` is permitted, but it is not permission to start implementation.
+
+Resume with the resolved `phase=execute` invocation only after the user approves the plan. An
+explicit execution request still passes through the resolved echo and all normal provisioning
+gates before changing the worktree.

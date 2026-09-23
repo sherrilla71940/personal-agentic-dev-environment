@@ -54,7 +54,9 @@ The workflow keeps the task directory, branch, and handoff context together, and
 until automated checks and explicit manual approval are complete. Its detailed contract resolves an
 exact base and MR/PR target, provisions missing approved ignored files from `.worktreeinclude` or a
 client-native equivalent, and uses `runtime=auto` with a project descriptor to allocate and
-health-check a per-worktree port. It never copies tracked configuration or external secrets.
+health-check a per-worktree port. Questions and assessment prompts stay in a read-only planning
+phase; say `proceed` or use `phase=execute` before the workflow creates a worktree. It never copies
+tracked configuration or external secrets.
 
 ## System at a glance
 

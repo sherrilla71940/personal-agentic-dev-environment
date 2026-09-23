@@ -349,6 +349,13 @@ those fields and show the same interpretation block before any worktree changes.
 verified existing branch on `origin`, so a current branch, upstream, or default branch is never
 silently promoted to the request target.
 
+Prompt wording also selects the first phase. Questions, assessments, reviews, and requests to read
+materials resolve to a read-only plan; explicit requests to proceed, implement, migrate, or create
+resolve to execution. A plan can inspect materials and Git history, but it does not create a task
+worktree or branch, initialize new continuity, or change project files. Ambiguous wording stops for
+confirmation. The plan reports the resolved execution invocation so the user can approve the
+strategy before provisioning begins.
+
 Worktree isolation covers source and Git state, not running services or their ports. For browser or
 runtime testing from an isolated worktree, invoke the task workflow with `runtime=auto` before
 starting the server, and use the consuming project's authoritative tracked `.worktree-runtime.json`.

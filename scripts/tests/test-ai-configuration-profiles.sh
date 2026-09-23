@@ -224,6 +224,7 @@ check_profile() {
   local lifecycle_hook="$destination/.local/share/maintain-project-continuity.sh"
   local project_continuity="$destination/.agents/skills/project-continuity/SKILL.md"
   local workflow="$destination/.agents/skills/worktree-task-workflow/SKILL.md"
+  local claude_workflow="$destination/.claude/skills/worktree-task-workflow/SKILL.md"
   local invocation="$destination/.agents/skills/worktree-task-workflow/references/invocation.md"
   local publishing="$destination/.agents/skills/worktree-task-workflow/references/publish.md"
   local codex_hooks="$destination/.codex/hooks.json"
@@ -235,6 +236,7 @@ check_profile() {
   assert_file "$commit_skill"
   assert_file "$project_continuity"
   assert_file "$workflow"
+  assert_file "$claude_workflow"
   assert_file "$invocation"
   assert_file "$publishing"
   [[ "$(head -n 1 "$codex")" != '---' ]] ||
@@ -284,9 +286,14 @@ check_profile() {
   assert_contains "$project_continuity" 'Session export: required'
   assert_contains "$workflow" 'recorded base commit'
   assert_contains "$workflow" 'natural-language task prompt'
+  assert_contains "$workflow" 'phase=plan'
+  assert_contains "$claude_workflow" 'natural-language prompt'
+  assert_contains "$claude_workflow" 'phase=plan'
   assert_contains "$invocation" 'remote-base checkpoint'
   assert_contains "$invocation" 'prompt-only shortcut'
+  assert_contains "$invocation" 'complete text after `/worktree-task-workflow`'
   assert_contains "$invocation" 'base source prompt / MR metadata / explicit'
+  assert_contains "$invocation" 'Plan phase boundary'
   assert_contains "$publishing" 'redacted identities'
   assert_contains "$publishing" 'Integrate the current base before publishing'
   assert_contains "$publishing" 'git fetch origin --prune'
