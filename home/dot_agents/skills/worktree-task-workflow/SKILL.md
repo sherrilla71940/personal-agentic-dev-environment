@@ -1,20 +1,20 @@
 ---
 name: worktree-task-workflow
-description: "Start or continue one isolated implementation task through its lifecycle in a Codex worktree, using an explicit base/task invocation or a verified natural-language task prompt and carrying it through manual testing, publishing, and branch-preserving handoff."
+description: "Start or continue one implementation task through an explicit worktree or in-place route, using an explicit task invocation or a verified natural-language task prompt and carrying it through verification, manual testing, and optional publishing."
 disable-model-invocation: true
 ---
 
-# Worktree task workflow
+# Task workflow
 
 If the current host is GitHub Copilot, stop: this adapter depends on Codex worktree behavior and
 must not be translated into Copilot operations.
 
-Start or continue one task with a Codex-managed or provisioned worktree:
+Start or continue one task through the resolved route:
 
 ```text
-validate -> read materials -> confirm isolation -> prepare/enter worktree -> branch
+validate -> read materials -> resolve route -> prepare/enter worktree or stay in place
          -> plan -> implement -> verify
-         -> USER MANUAL TEST -> commit -> push -> request -> app-owned worktree lifecycle
+         -> USER MANUAL TEST -> commit -> optional push/request -> route-specific cleanup
 ```
 
 This skill orchestrates existing global and project instructions. Use the dedicated document
@@ -22,10 +22,11 @@ skills for supplied containers, `project-continuity` for resumable state, `git-c
 commits, `git-commit-reference` for message conventions, and `natural-zhtw` for Traditional
 Chinese publishing text.
 
-This is an explicit opt-in workflow for substantial or isolation-sensitive tasks. Do not invoke it
-merely because an agent is making a change: a small, self-contained edit that does not need parallel
-isolation may stay in the current valid worktree. Use this workflow when isolation, cross-session
-handoff, controlled verification, or publishing matters.
+This is an explicit opt-in workflow for substantial, isolation-sensitive, or publishing-sensitive
+tasks. A small, self-contained edit may use `isolation=in-place`, or may stay outside this workflow
+when its diff is sufficient to recover it. Use `isolation=worktree` for parallel work, separate
+runtime processes, or independent uncommitted changes. Use `isolation=auto` only when the resolved
+echo can make a safe route choice; the workflow never guesses from the word “small.”
 
 ## 1. Resolve the invocation
 
@@ -36,6 +37,7 @@ Invoke this skill as either:
 $worktree-task-workflow <base-branch> "<task>" [materials...] [options...]
 $worktree-task-workflow <base-branch> --infer-task <materials...> [options...]
 $worktree-task-workflow "<prompt>"
+$worktree-task-workflow isolation=in-place task="<task>"
 ```
 
 For an application task that starts a server for browser or runtime testing in an isolated
@@ -46,13 +48,14 @@ before starting the server, and do not claim that browser/runtime results came f
 Leave runtime at its default `off` for tasks that do not need an application server; this workflow
 is not a mandatory runtime harness.
 
-After invocation resolution, `base` means the existing branch on `origin` used to create the task
-branch and target the eventual pull or merge request. Prompt-only intake may resolve that base from
-an explicit branch, a verified MR/PR target, or provider/host metadata; it must stop when the target
-is ambiguous. Task identity requires exactly one explicit task, material inference, or natural-language
-prompt. Prompt wording that asks for an assessment or recommendation resolves to `phase=plan`; an
-explicit request to proceed or implement resolves to `phase=execute`. Ambiguous wording stops for
-confirmation. A plan phase does not create a worktree, branch, continuity state, or project change.
+After invocation resolution, `base` is required for the worktree route. For an in-place route, the
+current branch remains the code branch and an optional `base` is only a pull or merge request target;
+the workflow never switches branches. Prompt-only intake may resolve a worktree base from an explicit
+branch, a verified MR/PR target, or provider/host metadata; it must stop when that target is ambiguous.
+Task identity requires exactly one explicit task, material inference, or natural-language prompt.
+Prompt wording that asks for an assessment or recommendation resolves to `phase=plan`; an explicit
+request to proceed or implement resolves to `phase=execute`. Ambiguous wording stops for confirmation.
+A plan phase does not create a worktree, branch, continuity state, or project change.
 Run the shared read-only repository identity preflight before reading materials; do not create or
 change task-worktree state until the preflight and resolved echo pass.
 
@@ -61,6 +64,13 @@ stop after reporting the recommendation and the exact execution invocation. Do n
 worktree provisioning or implementation in the same turn.
 
 ## 2. Prepare the working-tree entry point
+
+If the resolved route is `in-place`, do not create or enter a worktree. Verify the current Git root,
+named branch, status, and continuity state. Continue only when the branch is not detached and a new
+task has no unrelated tracked or untracked changes. A matching unfinished task may resume with its
+continuity state; a different unfinished task requires an explicit finish, park, or abandon decision.
+Do not run ignored-file provisioning, switch branches, or claim a separate runtime. Read the shared
+lifecycle and skip the worktree-only sections below.
 
 Inspect the current root and worktree registry without changing them:
 
@@ -71,10 +81,11 @@ git worktree list --porcelain
 git status --porcelain
 ```
 
-The current root may be the repository's primary checkout or a linked worktree. It must be clean
-apart from ignored files provisioned for this worktree. A new task must never edit, branch, or
-stage changes in the primary checkout; if the current root is primary, continue through the
-resolved echo and remote-base validation, then use section 4 to enter or provision a worktree.
+For the `worktree` route, the current root may be the repository's primary checkout or a linked
+worktree. It must be clean apart from ignored files provisioned for that worktree. A new task must
+never edit, branch, or stage changes in the primary checkout; if the current root is primary,
+continue through the resolved echo and remote-base validation, then use section 4 to enter or
+provision a worktree.
 
 There are two Codex entry paths:
 
@@ -101,8 +112,8 @@ There are two Codex entry paths:
   and entry action, and stop if the client cannot enter the created path rather than continuing in
   the wrong checkout.
 
-Stop if repository instructions forbid worktrees. This developer environment repository does, identifiable by
-its root `.chezmoiroot`; offer to run that task in place instead.
+Stop if repository instructions forbid worktrees. This developer environment repository does,
+identifiable by its root `.chezmoiroot`; use the explicit in-place route instead.
 
 ## 3. Establish names and the remote base branch
 

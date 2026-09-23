@@ -6,7 +6,7 @@ I use this repository as the single source for my development environment, bring
 
 Git’s built-in worktree support already provides strong source-code isolation, and AI clients such as Claude Code can build on it with native worktree creation and lifecycle support. However, several problems still appear when multiple AI-assisted tasks need to run reliably in parallel: a fresh worktree may be missing ignored local files, multiple app instances can compete for the same runtime port, and task context that Git does not capture can remain tied to a particular session or client.
 
-My workflow fills those gaps by provisioning the approved local files each task needs, giving parallel worktrees separate runtime ports when the project provides the required runtime configuration, and keeping a per-worktree continuity record. It deliberately separates code state from task state: Git remains authoritative for the current code, branch, and commits, while the continuity record preserves the story around that state — what the task is trying to accomplish, why decisions were made, what is blocked or verified, which relevant materials and references are part of the task, and what should happen next. Because that record belongs to the task rather than one conversation, the same worktree can be reopened in another session or supported AI client and resumed with a simple “continue.” Local automated checks and explicit manual approval provide separate gates before the branch is published for review.
+My workflow fills those gaps by provisioning the approved local files each task needs, giving parallel worktrees separate runtime ports when the project provides the required runtime configuration, and keeping a per-checkout continuity record. It deliberately separates code state from task state: Git remains authoritative for the current code, branch, and commits, while the continuity record preserves the story around that state — what the task is trying to accomplish, why decisions were made, what is blocked or verified, which relevant materials and references are part of the task, and what should happen next. Because that record belongs to the task rather than one conversation, the same checkout can be reopened in another session or supported AI client and resumed with a simple “continue.” Local automated checks and explicit manual approval provide separate gates before the branch is published for review.
 
 [Chezmoi](https://www.chezmoi.io/) renders the managed source into the native files expected by each supported tool and operating system. Together, the configuration and workflow layers give AI clients room to act within defined boundaries, while Git, verification, and explicit approval remain authoritative.
 
@@ -37,7 +37,7 @@ My workflow fills those gaps by provisioning the approved local files each task 
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | One source, native targets             | Shared AI instructions and reusable AI skills have one source body. Thin wrappers preserve each client's native discovery and scope rules.                                                                                                      |
 | Profiles without duplicated trees      | Machine-local selectors compose personal or company context with a managed or native AI harness, plus an independent continuity preference.                                                                                                     |
-| Continuity across sessions and clients | One `.project-continuity/state.md` stays with one physical worktree so another supported session can resume from the same objective, decisions, blockers, materials, verification state, and next action.                                       |
+| Continuity across sessions and clients | One `.project-continuity/state.md` stays with one physical checkout so another supported session can resume from the same objective, decisions, blockers, materials, verification state, and next action.                                      |
 | Isolated, reviewable tasks             | An explicit workflow pins the base, creates a task worktree and branch, provisions only approved ignored local files, runs local automated checks, then asks the user for a separate manual test before publishing without deleting the branch. |
 
 Ownership boundaries and validation support all four pillars; they are guarantees across the system,
@@ -48,25 +48,32 @@ and records architectural trade-offs in [decision records](./docs/decisions/READ
 
 ## In practice
 
-Start a substantial task with a natural-language prompt, or use the explicit form when automation
-or auditability needs every field named:
+Use the in-place route for a small task that can safely stay on the current branch:
 
-`$worktree-task-workflow "Implement the water-fee frontend changes from the attached specification, based on origin/feat/water-fee."`
+`$worktree-task-workflow isolation=in-place "Fix the README wording"`
 
-`$worktree-task-workflow <base-branch> "<task>" [materials...]`
+Use the worktree route when the task needs parallel isolation, a separate runtime, or a verified
+base branch:
 
-The prompt intake resolves the task, supplied materials, and verified MR/PR target before the same
-workflow begins:
+`$worktree-task-workflow base=feat/water-fee "Implement the water-fee frontend changes from the attached specification"`
 
-`start → isolate → record context → implement → verify → manual approval → publish for review`
+`$worktree-task-workflow "Implement the water-fee frontend changes based on origin/feat/water-fee"`
 
-The workflow keeps the task directory, branch, and handoff context together, and does not publish
-until automated checks and explicit manual approval are complete. Its detailed contract resolves an
+The prompt intake resolves the task, supplied materials, route, and verified MR/PR target before
+the same workflow begins:
+
+`start → resolve route → record context when needed → implement → verify → manual approval → publish for review`
+
+The worktree route keeps the task directory, branch, and handoff context together. It resolves an
 exact base and MR/PR target, provisions missing approved ignored files from `.worktreeinclude` or a
-client-native equivalent, and uses `runtime=auto` with a project descriptor to allocate and
-health-check a per-worktree port. Questions and assessment prompts stay in a read-only planning
-phase; say `proceed` or use `phase=execute` before the workflow creates a worktree. It never copies
-tracked configuration or external secrets.
+client-native equivalent, and can use `runtime=auto` with a project descriptor to allocate and
+health-check a per-worktree port. The in-place route keeps the current checkout and branch; it does
+not create a worktree, switch branches, provision ignored files, or claim a separate runtime port.
+Both routes keep automated checks and explicit manual approval before publishing. Questions and
+assessment prompts stay in a read-only planning phase; say `proceed` or use `phase=execute` before
+the workflow changes project state. A physical checkout has at most one active task and continuity
+state; parking preserves sequential context but does not make simultaneous tasks safe in one
+checkout. The workflow never copies tracked configuration or external secrets.
 
 ## System at a glance
 
@@ -201,16 +208,16 @@ the full composition rules.
 
 ## Project continuity
 
-Continuity belongs to one physical working tree. It is a local handoff record, not project
-documentation and not proof that work is complete. Each physical worktree has at most one active
-`.project-continuity/state.md`; a newly created worktree starts without another worktree's continuity
-state.
+Continuity belongs to one physical checkout, including the primary checkout and linked worktrees. It
+is a local handoff record, not project documentation and not proof that work is complete. Each
+physical checkout has at most one active task and one `.project-continuity/state.md`; a newly created
+worktree starts without another worktree's continuity state.
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "nodeTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280"}, "flowchart": {"useMaxWidth": true}}}%%
 flowchart TD
     stop["One session or client stops"]:::handoff
-    persist["The same physical worktree keeps<br/>.project-continuity/state.md<br/><br/>objective · decisions · blockers<br/>verification · materials · next action"]:::state
+    persist["The same physical checkout keeps<br/>.project-continuity/state.md<br/><br/>objective · decisions · blockers<br/>verification · materials · next action"]:::state
     resume["Another supported session or client<br/>opens the same worktree and resumes"]:::handoff
     reconcile["Reconcile the state with the current task<br/>and the worktree's Git status"]:::check
     git["Git remains authoritative<br/>for code · branch · commits<br/>completion still needs verification"]:::authority
@@ -294,13 +301,16 @@ project-provided descriptor and [focused guide](./docs/worktree-runtime.md).
 
 ## Task lifecycle and isolated worktrees
 
-The task workflow is an explicit opt-in for substantial, parallel, or isolation-sensitive work. A
-small self-contained edit can remain in the current valid worktree. The user may clarify the request,
+The task workflow is an explicit opt-in for substantial, parallel, isolation-sensitive, or
+publishing-sensitive work. A small self-contained edit can use `isolation=in-place`, or remain
+outside the workflow when its diff is sufficient to recover it. The user may clarify the request,
 provide materials, or give feedback at any point; the manual-test loop below is the explicit
-pre-publish gate.
+pre-publish gate. Use a separate worktree whenever two tasks need independent uncommitted changes,
+branches, runtime ports, or processes.
 
-The sequence below shows how native or fallback isolation, continuity, verification, manual approval,
-publishing, and cleanup fit together.
+The sequence below shows the worktree route: native or fallback isolation, continuity, verification,
+manual approval, publishing, and cleanup. The in-place route skips worktree creation and provisioning
+but keeps the verification and manual-approval gates.
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280", "actorBkg": "#f3e8ff", "actorBorder": "#9333ea", "actorTextColor": "#111827", "actorLineColor": "#6b7280", "signalColor": "#6b7280", "signalTextColor": "#111827", "labelBoxBkgColor": "#f3f4f6", "labelBoxBorderColor": "#6b7280", "labelTextColor": "#111827", "loopTextColor": "#111827", "noteBkgColor": "#fef3c7", "noteBorderColor": "#d97706", "noteTextColor": "#111827"}}}%%
@@ -349,10 +359,11 @@ The focused [worktree provisioning guide](./docs/worktree-provisioning.md#workfl
 the provisioning checks, native client paths, runtime isolation, and cleanup contract behind this
 sequence.
 
-The workflow pins the task to the selected base and keeps its directory, branch, and continuity
-state together. Native clients retain their own worktree ownership; repository fallbacks provision
-only approved ignored files and refuse implicit copies of tracked application configuration or
-external folders.
+The worktree route pins the task to the selected base and keeps its directory, branch, and
+continuity state together. Native clients retain their own worktree ownership; repository fallbacks
+provision only approved ignored files and refuse implicit copies of tracked application
+configuration or external folders. The in-place route keeps the current branch and uses the same
+verification and manual-approval gates without claiming worktree isolation.
 
 The focused [worktree provisioning guide](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
 carries the client paths, material handling, provisioning readiness, runtime isolation, verification,
@@ -435,6 +446,7 @@ Run the focused suites by hand when the protected behavior changes:
 | Windows worktree provisioning                  | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/tests/test-git-worktree-provision.ps1` |
 | macOS worktree provisioning                    | `bash scripts/tests/test-git-worktree-provision.sh`                                                     |
 | Continuity lifecycle and recovery              | `bash scripts/tests/test-project-continuity-hook.sh`                                                    |
+| Task workflow route contract                   | `bash scripts/tests/test-worktree-task-route.sh`                                                        |
 | AI profile composition and selectors           | `bash scripts/tests/test-ai-configuration-profiles.sh`                                                  |
 | Workflow archive, restore, and deletion        | `bash scripts/tests/test-workflow-archive.sh`                                                           |
 | Runtime descriptor, allocation, and port lease | `python scripts/tests/test-worktree-runtime.py -v`                                                      |

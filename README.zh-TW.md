@@ -6,7 +6,7 @@
 
 Git 內建的 worktree 支援已經能提供良好的程式碼隔離；Claude Code 等 AI client 也能透過原生的 worktree 建立與生命週期支援，進一步利用這層隔離。不過，當多個 AI 輔助任務需要可靠地平行執行時，仍會遇到幾個問題：新的 worktree 可能缺少被 Git 忽略的本機檔案，多個同時執行的應用程式可能搶用同一個 runtime port，而 Git 無法記錄的任務脈絡可能仍綁在特定 session 或 client 上。
 
-我的工作流程補上這些缺口：提供每個任務需要且已核准的本機檔案；當專案定義了執行方式時，為平行 worktree 分配不同 runtime port；並保留每個 worktree 的 continuity 紀錄。它刻意將程式碼狀態與任務狀態分開：Git 仍是目前程式碼、分支與 commit 的權威來源；continuity 紀錄則保留 Git 無法表達的任務脈絡——任務要完成什麼、為什麼做出這些決定、哪些事情被阻塞或已驗證、哪些相關材料與參考資料是這項工作的一部分，以及下一步要做什麼。因為這份紀錄屬於任務，而不是某一次對話，同一個 worktree 可以在另一個 session 或支援的 AI client 中重新開啟，簡單輸入 `continue` 就能接手。本機自動檢查與明確的使用者核准會形成兩道獨立的 gate，通過後才發布分支供 review。
+我的工作流程補上這些缺口：提供每個任務需要且已核准的本機檔案；當專案定義了執行方式時，為平行 worktree 分配不同 runtime port；並保留每個 checkout 的 continuity 紀錄。它刻意將程式碼狀態與任務狀態分開：Git 仍是目前程式碼、分支與 commit 的權威來源；continuity 紀錄則保留 Git 無法表達的任務脈絡——任務要完成什麼、為什麼做出這些決定、哪些事情被阻塞或已驗證、哪些相關材料與參考資料是這項工作的一部分，以及下一步要做什麼。因為這份紀錄屬於任務，而不是某一次對話，同一個 checkout 可以在另一個 session 或支援的 AI client 中重新開啟，簡單輸入 `continue` 就能接手。本機自動檢查與明確的使用者核准會形成兩道獨立的 gate，通過後才發布分支供 review。
 
 [Chezmoi](https://www.chezmoi.io/) 會將受管理的 source 渲染成各支援工具與作業系統所期待的原生檔案。設定層和工作流程層搭配運作，讓 AI client 能在定義好的界線內工作；Git、驗證與明確核准仍然是權威依據。
 
@@ -29,7 +29,7 @@ Git 內建的 worktree 支援已經能提供良好的程式碼隔離；Claude Co
 | --- | --- |
 | 單一來源、原生目標 | 共用的 AI 指示與可重用的 AI skill 都以單一來源內容維護；薄包裝保留各 client 原生的 discovery path 與 scope 規則。 |
 | 以 profile 組合設定，不重複維護整套設定 | 本機 selector 將 personal 或 company context 與 managed 或 native AI harness 組合，並另外控制 continuity 偏好。 |
-| 跨 session 與 client 的連續性 | 一個 `.project-continuity/state.md` 跟著一個實體 worktree 保存，讓其他支援的 session 從相同的目標、決策、阻塞事項、材料、驗證狀態與下一步繼續工作。 |
+| 跨 session 與 client 的連續性 | 一個 `.project-continuity/state.md` 跟著一個實體 checkout 保存，讓其他支援的 session 從相同的目標、決策、阻塞事項、材料、驗證狀態與下一步繼續工作。 |
 | 隔離且可檢視的任務 | 明確啟動的工作流程會固定 base，建立任務 worktree 與分支，只配置已核准的 ignored 本機檔案，先執行本機自動檢查，再請使用者進行獨立的手動測試，通過後才發布，而且不會刪除分支。 |
 
 權責界線與驗證支援這四項核心能力，是貫穿整個系統的保證，不是另外新增的第五項能力。
@@ -39,20 +39,32 @@ Git 內建的 worktree 支援已經能提供良好的程式碼隔離；Claude Co
 
 ## 實際使用
 
-較大型的任務可以直接用自然語言 prompt 開始；如果自動化流程或後續追蹤需要明確記錄每個欄位，
-也可以使用完整格式：
+小型、可以安全留在目前分支的任務，可以使用 in-place route：
 
-`$worktree-task-workflow "Implement the water-fee frontend changes from the attached specification, based on origin/feat/water-fee."`
+`$worktree-task-workflow isolation=in-place "修正 README 文字"`
 
-`$worktree-task-workflow <base-branch> "<task>" [materials...]`
+需要平行隔離、獨立 runtime，或必須從指定 base 開始的任務，使用 worktree route：
 
-Prompt intake 會先解析任務、提供的材料與已驗證的 MR/PR target，再進入同一套工作流程：
+`$worktree-task-workflow base=feat/water-fee "實作 water-fee 前端變更"`
 
-`開始任務 → 建立隔離 → 記錄脈絡 → 實作 → 驗證 → 手動核准 → 發布供 review`
+也可以直接用自然語言 prompt 開始：
 
-工作流程會把任務目錄、分支與交接脈絡綁在一起；在自動檢查通過並取得使用者明確核准前，不會發布變更。詳細契約會解析精確的 base 與 MR/PR target，從 `.worktreeinclude` 或 client 原生機制補上任務缺少的已核准 ignored 檔案；如果專案提供 descriptor 並選擇 `runtime=auto`，流程還會為每個 worktree 配置 port 並執行 health check。
+`$worktree-task-workflow "Implement the water-fee frontend changes based on origin/feat/water-fee"`
 
-以提問、評估或閱讀材料為主的 prompt 會先停在唯讀的規劃階段；要建立 worktree，請明確說 `proceed` 或使用 `phase=execute`。它不會複製 tracked configuration 或 external secret。
+Prompt intake 會先解析任務、提供的材料、route 與已驗證的 MR/PR target，再進入同一套工作流程：
+
+`開始任務 → 判定 route → 視需要記錄脈絡 → 實作 → 驗證 → 手動核准 → 發布供 review`
+
+Worktree route 會把任務目錄、分支與交接脈絡綁在一起，解析精確的 base 與 MR/PR target，並從
+`.worktreeinclude` 或 client 原生機制補上任務缺少的已核准 ignored 檔案；如果專案提供 descriptor
+並選擇 `runtime=auto`，流程還會為每個 worktree 配置 port 並執行 health check。In-place route
+則留在目前的 checkout 與分支，不會建立 worktree、切換分支、配置 ignored 檔案，也不會宣稱有
+獨立的 runtime port。兩種 route 都會在自動檢查通過並取得使用者明確核准前，不發布變更。
+
+以提問、評估或閱讀材料為主的 prompt 會先停在唯讀的規劃階段；要變更專案狀態，請明確說
+`proceed` 或使用 `phase=execute`。每個實體 checkout 最多只有一個作用中的任務與 continuity
+state；parking 可以保留依序切換任務時的脈絡，但不能讓同一個 checkout 同時安全承載多個任務。
+流程不會複製 tracked configuration 或 external secret。
 
 ## 系統總覽
 
@@ -178,15 +190,16 @@ Selector 變更會影響之後重新 render 的設定與新啟動的 session。�
 
 ## 專案連續性
 
-連續性屬於一個實體 working tree。它是本機交接紀錄，不是專案文件，也不是工作完成的
-證明。每個實體 worktree 最多只有一個作用中的 `.project-continuity/state.md`；新建立的
-worktree 不會帶入其他 worktree 的 continuity state。
+連續性屬於一個實體 working tree，不只適用於 linked worktree，也適用於 primary checkout。它是
+本機交接紀錄，不是專案文件，也不是工作完成的證明。每個實體 checkout 最多只有一個作用中的
+任務與 `.project-continuity/state.md`；新建立的 worktree 不會帶入其他 worktree 的 continuity
+state。
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "nodeTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280"}, "flowchart": {"useMaxWidth": true}}}%%
 flowchart TD
     stop["一個 session 或 client 停止工作"]:::handoff
-    persist["同一個實體 worktree 保留<br/>.project-continuity/state.md<br/><br/>目標 · 決策 · 阻塞事項<br/>驗證 · 材料 · 下一步"]:::state
+    persist["同一個實體 checkout 保留<br/>.project-continuity/state.md<br/><br/>目標 · 決策 · 阻塞事項<br/>驗證 · 材料 · 下一步"]:::state
     resume["另一個支援的 session 或 client<br/>開啟同一個 worktree 並繼續"]:::handoff
     reconcile["將 state 與目前任務<br/>及 worktree 的 Git 狀態重新核對"]:::check
     git["Git 仍是權威來源<br/>程式碼 · 分支 · commit<br/>完成仍需驗證"]:::authority
@@ -265,11 +278,12 @@ source 檔案前，先讀[來源狀態規則](./docs/chezmoi-workflow.md#source-
 
 ## 任務生命週期與隔離 worktree
 
-任務流程是明確啟動的機制，主要用於較大型、需要平行處理或需要隔離的工作。小型且自足的修改
-可以留在目前有效的 worktree。使用者可在任何步驟釐清需求、提供材料或回饋；下方的手動測試
-流程是發布前的明確 gate。
+任務流程是明確啟動的機制，主要用於較大型、需要平行處理、需要隔離或需要發布的工作。小型且
+自足的修改可以使用 `isolation=in-place`，也可以留在流程外，直接由 diff 恢復。使用者可在
+任何步驟釐清需求、提供材料或回饋；下方的手動測試流程是發布前的明確 gate。只要兩個任務需要
+各自的未提交變更、分支、runtime port 或程序，就應該使用不同的 worktree。
 
-下方的 sequence diagram 說明原生或 fallback 隔離、continuity、驗證、手動核准、發布與清理如何串接。
+下方的 sequence diagram 說明 worktree route 中的原生或 fallback 隔離、continuity、驗證、手動核准、發布與清理如何串接。In-place route 會跳過 worktree 建立與 provisioning，但保留驗證與手動核准 gate。
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280", "actorBkg": "#f3e8ff", "actorBorder": "#9333ea", "actorTextColor": "#111827", "actorLineColor": "#6b7280", "signalColor": "#6b7280", "signalTextColor": "#111827", "labelBoxBkgColor": "#f3f4f6", "labelBoxBorderColor": "#6b7280", "labelTextColor": "#111827", "loopTextColor": "#111827", "noteBkgColor": "#fef3c7", "noteBorderColor": "#d97706", "noteTextColor": "#111827"}}}%%
@@ -317,9 +331,10 @@ sequenceDiagram
 詳細的 [worktree provisioning guide](./docs/worktree-provisioning.md#workflow-sequence) 會說明這個
 流程背後的佈建檢查、原生 client 路徑、runtime 隔離與清理契約。
 
-工作流程會將任務固定在 selected base，並把目錄、分支與 continuity state 綁在一起。原生 client
-保留各自的 worktree 擁有權；儲存庫的 fallback 只會配置已核准的 ignored 檔案，不會隱含複製
-tracked application configuration 或 external folder。
+Worktree route 會將任務固定在 selected base，並把目錄、分支與 continuity state 綁在一起。原生
+client 保留各自的 worktree 擁有權；儲存庫的 fallback 只會配置已核准的 ignored 檔案，不會隱含
+複製 tracked application configuration 或 external folder。In-place route 則留在目前分支，使用
+相同的驗證與手動核准 gate，但不宣稱具備 worktree isolation。
 
 詳細的 [worktree 生命週期](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)
 會說明 client 路徑、材料處理、provisioning readiness、runtime 隔離、驗證、手動測試 gate 與
@@ -395,6 +410,7 @@ Pre-commit hook 會將 staged source render 到暫存目錄，不會寫入 home 
 | Windows worktree 配置 | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/tests/test-git-worktree-provision.ps1` |
 | macOS worktree 配置 | `bash scripts/tests/test-git-worktree-provision.sh` |
 | Continuity 生命週期與復原 | `bash scripts/tests/test-project-continuity-hook.sh` |
+| Task workflow route contract | `bash scripts/tests/test-worktree-task-route.sh` |
 | AI profile 組合與 selector | `bash scripts/tests/test-ai-configuration-profiles.sh` |
 | Workflow archive、restore 與 deletion | `bash scripts/tests/test-workflow-archive.sh` |
 | Runtime descriptor、allocation 與 port lease | `python scripts/tests/test-worktree-runtime.py -v` |

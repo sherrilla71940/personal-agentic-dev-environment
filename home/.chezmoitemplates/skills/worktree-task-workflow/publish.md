@@ -3,7 +3,19 @@
 Read this only after `git-commit-action` has created commits. In `mode=draft`, show the commit plan
 and stop; nothing is pushed.
 
+The publish contract depends on the resolved route:
+
+- `worktree` publishes the task branch against its recorded `base` branch after the exact-base
+  freshness and integration gate below.
+- `in-place` publishes the current branch only when the user requested publication. It does not
+  create or switch a branch, and it has no recorded worktree starting commit to integrate. Require
+  an explicit request target before opening a pull or merge request; do not infer one from the
+  current branch, its upstream, or the forge default.
+
 ## Integrate the current base before publishing
+
+Run this section for the `worktree` route. For `in-place`, verify the current branch and explicit
+request target, then continue to [Detect the forge](#detect-the-forge).
 
 The task starts from a recorded base commit, but the named base branch may advance while the task is
 in progress. Before pushing or opening a pull or merge request, run this freshness and integration

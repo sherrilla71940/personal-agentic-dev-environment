@@ -6,11 +6,19 @@ Use the materials and the existing implementation to summarize the required chan
 short plan naming likely files. Resolve genuine contradictions, missing assets, or correctness
 risks before implementing the affected part. Otherwise proceed without a separate plan approval.
 
-Enable `project-continuity` in the task worktree. Record each material — a path because it may
-live outside the worktree, a URL because a later session has to fetch it again — since the
-manual-test gate can span sessions. Enable it whatever the change's size: a
-general exemption for small self-contained edits does not reach this workflow, because what has
-to survive is the gate and the worktree path rather than the diff.
+Apply the resolved route before implementation:
+
+- For `worktree`, enter or resume the isolated task worktree and enable `project-continuity` when
+  the task is substantive or its materials, decisions, blockers, or manual-test gate would be
+  expensive to reconstruct. Record each material because a later session may need it again.
+- For `in-place`, stay in the current checkout and branch. Do not create a worktree, switch
+  branches, provision ignored files, or claim a separate runtime. Enable `project-continuity` only
+  when the task is substantive or its handoff state would be expensive to reconstruct.
+- For a trivial self-contained edit, keep the workflow lightweight and do not initialize continuity.
+
+Continuity is scoped to the physical checkout for both routes. One checkout has at most one active
+task state. Parking preserves a sequential handoff; it does not make two simultaneous tasks safe in
+the same directory.
 
 ## Implement and verify
 
@@ -187,12 +195,11 @@ Agent verification never replaces the user's manual test.
 
 ## Stop at the manual-test gate
 
-Give exact manual steps when user-facing behavior remains. Open with the absolute path of the
-task worktree and say plainly that the user's editor, terminal and running dev server are
-probably still in the main checkout on the previous branch, so the change is invisible until
-they open that directory. Repeat the path here even though isolation already reported it; this
-gate can span sessions. Then give the startup command, route or screen, preconditions and test
-data, ordered actions, and expected results. Then stop and wait.
+Give exact manual steps when user-facing behavior remains. For `worktree`, open with the absolute
+task-worktree path and say plainly that the user's editor, terminal, and running dev server may
+still be in another checkout. For `in-place`, identify the current Git root and branch instead;
+the user's current checkout is the test location. Then give the startup command, route or screen,
+preconditions and test data, ordered actions, and expected results. Then stop and wait.
 
 Do not commit, push, or open a pull or merge request until the user explicitly reports that the
 manual test passed. Plan approval, approval of a diff, or green automated checks do not open this
@@ -208,14 +215,15 @@ stop after the commit plan because there are no commits to push. Otherwise follo
 [publish.md](publish.md) and report the branch, every commit SHA and subject, the target base, and
 the request URL.
 
-The publish stage first checks whether the recorded base commit is still current. If the base
-advanced, it pauses for an explicit merge-or-rebase choice. A conflict remains in the task worktree
-for the user or an agent to resolve; after resolution, automated verification and the manual-test
-gate run again before any push or request creation.
+For `worktree`, the publish stage first checks whether the recorded base commit is still current. If
+the base advanced, it pauses for an explicit merge-or-rebase choice. For `in-place`, there is no
+recorded starting commit to integrate; keep the current branch unchanged and require an explicit
+request target before opening a pull or merge request. After either route changes during
+integration, rerun automated verification and the manual-test gate before publishing.
 
 Never merge the pull or merge request, enable auto-merge, approve the request, force-push without
-the explicit integration approval, or delete either the local or remote task branch. The branch must
-outlive the worktree for review and CI.
+the explicit integration approval, switch the in-place checkout to another branch, or delete a
+local or remote branch. A worktree task branch must outlive its worktree for review and CI.
 
 ## Finalize continuity on every workflow exit
 

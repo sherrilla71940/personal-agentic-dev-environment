@@ -1,22 +1,23 @@
 # Worktree task workflow v2 plan
 
-- Status: Proposed
+- Status: Implemented
 - Date: 2026-09-23
-- Scope: W6 design only
+- Scope: W6 route contract; the short-command rename remains deferred
 
 ## Purpose
 
-The current `worktree-task-workflow` contract is intentionally worktree-first. That contract is
-appropriate for parallel or isolation-sensitive work, but it is verbose for a small change that
-can safely remain in the current checkout. W6 proposes a future command and routing model that can
-handle both cases without weakening the existing worktree safeguards.
+The current `worktree-task-workflow` contract is worktree-first because that is the safest choice for
+parallel or isolation-sensitive work, but it is verbose for a small change that can safely remain in
+the current checkout. W6 adds a route-selection model that handles both cases without weakening the
+existing worktree safeguards.
 
-This document is a design proposal, not an implementation. The current command name, invocation
-rules, and worktree-only behavior remain unchanged until this plan is approved.
+The existing command remains the compatibility entry point. Its worktree behavior remains the
+default when `base` is supplied; `isolation=in-place` and `isolation=auto` opt into the new route
+contract. The command is not renamed in this change.
 
 ## Goals
 
-The future design should:
+The implemented route contract must:
 
 - preserve the current exact-base, material, provisioning, verification, manual-test, and publish
   gates for worktree tasks;
@@ -29,12 +30,12 @@ The design should not make in-place work appear isolated. A task running in the 
 must report that fact and must not claim a separate branch, directory, runtime port, or continuity
 scope.
 
-## Proposed interface
+## Interface
 
-Introduce a future short command only after the routing contract is approved:
+The implemented compatibility command accepts the route option:
 
 ```text
-$task-workflow [base=<branch>] [task="<task>"] [materials...] [isolation=<mode>]
+$worktree-task-workflow [base=<branch>] [task="<task>"] [materials...] [isolation=<mode>]
 ```
 
 Use these isolation values:
@@ -45,9 +46,9 @@ Use these isolation values:
 | `in-place` | Work in the current checkout. Do not create a worktree, switch branches, or copy ignored files. |
 | `auto` | Resolve the route from explicit request signals and current checkout safety. Stop when the signals conflict or are insufficient. |
 
-Keep `$worktree-task-workflow` as a compatibility entry point. During migration, it should retain
-its current worktree behavior unless the user explicitly supplies the future routing option and the
-implementation has been approved.
+The future short `$task-workflow` name remains a possible alias, but it is not required for the
+route to be useful and is intentionally deferred until migration guidance and client discovery
+behavior are available.
 
 ## Deterministic route resolution
 
@@ -58,8 +59,10 @@ implementation has been approved.
 3. If the request explicitly names parallel work, a new worktree, branch isolation, or a separate
    runtime, select `worktree`.
 4. If the current checkout is already the matching task worktree, continue there.
-5. If the current checkout is dirty, or the requested base differs from the current branch, stop
-   and ask for an explicit route or a safe checkout decision. Never switch or discard changes.
+5. If `auto` would otherwise select in-place but the current checkout is dirty, detached, or has
+   conflicting unfinished continuity, stop and ask for an explicit route or safe checkout decision.
+   A supplied base selects `worktree` under `auto`; for explicit `in-place`, a supplied base is a
+   request target only and may differ from the current branch. Never switch or discard changes.
 6. If the request contains no isolation signal and the current checkout is safe for the task,
    select `in-place` only when the resolved echo makes that choice explicit before execution.
 7. Otherwise stop with the unresolved route and show `isolation=worktree` and `isolation=in-place`
@@ -74,8 +77,9 @@ branch may be created before that echo and the normal execution approval boundar
 The in-place route reuses the current directory and therefore needs a separate safety contract:
 
 - Run the repository identity preflight before reading project files or changing anything.
-- Require the current branch to be the resolved base, or stop for an explicit user decision. Do
-  not switch branches automatically.
+- Require a named current branch and leave it unchanged. If `base` is supplied, treat it as the
+  explicit pull or merge request target; do not switch branches automatically or treat that target
+  as the task's starting commit.
 - Refuse an in-place route when unrelated uncommitted changes would be mixed with the task. The
   workflow may continue only after the user classifies the existing changes and accepts the scope.
 - Reconcile an existing matching continuity state. If the state belongs to another unfinished task,
@@ -84,8 +88,9 @@ The in-place route reuses the current directory and therefore needs a separate s
   in-place route must not copy or replace tracked configuration.
 - Treat `runtime=auto` as unsupported unless the project descriptor explicitly defines a safe
   current-checkout lease. A worktree-specific port guarantee cannot be claimed in place.
-- Keep the same automated verification, manual-test approval, current-base integration, and
-  publish gates. Publishing must identify the current branch and target explicitly.
+- Keep the same automated verification and manual-test approval gates, with route-specific
+  integration and publication rules. Publishing must identify the current branch and target
+  explicitly.
 - Keep continuity cleanup separate. Completing an in-place task must still offer cleanup of its
   active state and must never delete `state.md` automatically.
 
@@ -101,29 +106,26 @@ command. It must continue to:
 - record materials and continuity in the task worktree; and
 - stop after creation when the current client cannot enter the new path.
 
-W3 remains coupled to this route decision. Do not add a second implementation path or rename the
-workflow until the route resolution and in-place safeguards are accepted.
+W3 remains coupled to this route decision. The route contract is accepted and implemented without
+renaming the workflow; the existing worktree route and the new in-place route share the same
+materials, verification, manual-test, and continuity boundaries.
 
-## Migration sequence
+## Implementation follow-ups
 
-Implement the future change in separate, reviewable steps:
+Keep the implemented route contract maintainable through separate, reviewable follow-ups:
 
-1. Approve this route and safety contract.
-2. Add parser coverage for `isolation=auto|worktree|in-place`, the future short command, and
-   ambiguity rejection. Keep the tests failing until the parser and resolved echo exist.
-3. Add an in-place planning and execution adapter without changing the existing worktree helper.
-4. Add end-to-end scratch-repository tests for clean in-place work, dirty-checkout refusal, branch
-   mismatch refusal, matching continuity, wrong-task continuity, and unchanged worktree behavior.
-5. Add the future short command as an alias or wrapper, then document the compatibility behavior.
-6. Re-run the existing Bash, PowerShell, continuity, profile, runtime, link, and pre-commit checks.
-7. Deprecate or rename the long command only after usage and migration guidance are available.
+1. Keep parser and resolved-echo coverage for `isolation=auto|worktree|in-place` and ambiguity
+   rejection in the shared invocation contract.
+2. Keep the in-place adapter separate from the existing worktree provisioning helper.
+3. Cover clean in-place work, dirty-checkout refusal, detached-HEAD refusal, matching continuity,
+   wrong-task continuity, runtime refusal, and unchanged worktree behavior through the route contract
+   test and continuity fixtures.
+4. Re-run the Bash, PowerShell, continuity, profile, runtime, link, and pre-commit checks when the
+   protected behavior changes.
+5. Consider the future short command only after usage and migration guidance are available.
 
 ## Approval boundary
 
-This plan needs explicit approval before implementation. Until then:
-
-- W6 is a documented proposal only;
-- W3 is declined for the current pass because it depends on W6;
-- the existing worktree-only command remains authoritative; and
-- no in-place route, command rename, or compatibility alias is active.
-
+The route contract is implemented and documented. W3 remains deferred: the existing command name is
+retained, and no short-command rename or alias is active. Reconsider that migration only after the
+client discovery surfaces and user-facing invocation guidance can be updated together.

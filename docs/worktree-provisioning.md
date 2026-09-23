@@ -6,9 +6,40 @@ files there, but it does not copy ignored local files such as `.env.local` or
 the original working tree. Private agent overrides and client-local settings are a separate,
 explicit-only category because copying them can change agent behavior or permissions.
 
-The future route-selection proposal for a possible in-place workflow is documented in the
-[worktree task workflow v2 plan](./worktree-task-workflow-v2-plan.md). It is not active; the
-current `worktree-task-workflow` contract remains worktree-only.
+The `worktree-task-workflow` command now supports an explicit in-place route as well as its
+existing worktree route. Use `isolation=worktree` for parallel or isolation-sensitive work, and
+use `isolation=in-place` for a task that can safely remain on the current branch. `isolation=auto`
+is conservative and must show its selected route before changing anything. The [worktree task
+workflow v2 plan](./worktree-task-workflow-v2-plan.md) records the accepted route contract and the
+remaining command-rename follow-up.
+
+## Route selection and continuity boundary
+
+The route changes what the workflow is allowed to isolate; it does not change the task's
+verification or manual-approval gates:
+
+| Route | Use when | Guarantees and limits |
+| --- | --- | --- |
+| `worktree` | Parallel work, separate runtime processes, independent uncommitted changes, or a verified base branch is required. | Creates or resumes a separate worktree and task branch, runs the provisioning checks, and can use per-worktree runtime isolation. |
+| `in-place` | A small or sequential task can safely use the current checkout and branch. | Creates no worktree or branch, does not provision ignored files, and does not claim a separate runtime port. |
+| `auto` | The caller wants the workflow to choose from explicit request signals and checkout safety. | Selects `worktree` for isolation signals or a supplied base; selects `in-place` only for a safe current checkout; otherwise stops for a decision. |
+
+Continuity belongs to one physical checkout, whether that checkout is the primary repository or a
+linked worktree. Each physical checkout has one active task and at most one active
+`.project-continuity/state.md`. A trivial self-contained edit may remain state-free. A substantive
+in-place task can use continuity, but a different unfinished task must be finished, explicitly
+parked, or abandoned before the checkout starts another one. Parking preserves sequential context;
+it does not isolate simultaneous edits, branches, ports, or processes. Use a separate worktree for
+those cases.
+
+The in-place route also enforces these limits:
+
+- It never switches branches or creates a branch. A supplied `base` is a pull or merge request
+  target only; the current branch remains the code branch.
+- It rejects `runtime=auto` unless the consuming project documents a safe current-checkout lease.
+  Otherwise the workflow reports that no separate runtime port is guaranteed.
+- It keeps the same automated verification and user manual-test gate. Commit and publication remain
+  explicit, and request creation requires an explicit target rather than a guessed forge default.
 
 ## Native-first delegation
 

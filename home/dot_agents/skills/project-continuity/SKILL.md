@@ -85,7 +85,7 @@ One Copilot-specific caution: Copilot Memory is repository-scoped and shared wit
 
 ## Scope: the physical working tree
 
-Continuity belongs to **one working directory**, and each working tree has at most one active continuity state, describing its current unfinished task.
+Continuity belongs to **one working directory**, and each working tree has at most one active continuity state, describing its current unfinished task. The same boundary means one active task per physical checkout: a linked worktree and the primary checkout are separate scopes, but two tasks cannot safely share one checkout at the same time.
 
 - The repository's primary checkout is a working tree. Continuity does not require creating a worktree.
 - The same working tree is reused over time: finish task 1, clean up, start task 2 there.

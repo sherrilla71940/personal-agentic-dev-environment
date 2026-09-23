@@ -7,10 +7,18 @@ changing anything.
 
 ## Task identity
 
-The workflow accepts either an explicit invocation or one natural-language prompt. After intake
-resolution, `base` is still required. It is the existing branch on `origin`, used both as the
-starting point for the new task branch and as the eventual pull or merge request target. The
-workflow creates that task branch from `origin/<base>` in a new worktree.
+The workflow accepts either an explicit invocation or one natural-language prompt. It supports two
+execution routes:
+
+- `worktree` creates or resumes an isolated task worktree and branch. This is the compatibility
+  route for existing invocations and the required route for parallel or isolation-sensitive work.
+- `in-place` keeps the current checkout and branch. It is intended for a small task that does not
+  need a second checkout, ignored-file provisioning, or a separate runtime.
+
+`auto` may select either route, but the resolved route must be shown before execution. A `base`
+branch is required for the `worktree` route. It is optional for `in-place`; when supplied there, it
+is the requested pull or merge request target, not a permission to switch the current branch or a
+claim that the current checkout started from that branch.
 
 Task identity must come from exactly one source:
 
@@ -18,11 +26,13 @@ Task identity must come from exactly one source:
 - `--infer-task` / `infer-task=true` plus at least one readable material; or
 - a non-empty `prompt` or prompt-only invocation.
 
-Prompt intake may resolve the task, materials, and base branch from the prompt. It may use an
-explicit branch name, an MR/PR URL whose target branch can be verified, or provider/host metadata
-that identifies the request target. A current branch, its upstream, or the remote default branch
-is only a candidate and must not silently become the target. If the prompt leaves the base
-ambiguous, stop before creating anything and ask for the target branch.
+Prompt intake may resolve the task, materials, and route from the prompt. For a worktree route, it
+may also resolve a base branch from an explicit branch name, an MR/PR URL whose target branch can be
+verified, or provider/host metadata that identifies the request target. A current branch, its
+upstream, or the remote default branch is only a candidate and must not silently become a worktree
+base or request target. If a worktree prompt leaves the base ambiguous, stop before creating
+anything and ask for the target branch. An in-place prompt may omit a base when it only asks for
+local work.
 
 Prompt intake also resolves an action phase. Use `phase=plan` for questions, assessments, reviews,
 comparisons, or requests to read materials and recommend a path. Use `phase=execute` only when the
@@ -77,7 +87,7 @@ The accepted keys are:
 
 | Key | Values | Default |
 | --- | --- | --- |
-| `base` | user-provided branch on `origin`, with or without `origin/` | required |
+| `base` | user-provided branch on `origin`, with or without `origin/` | required for `worktree`; optional for `in-place` |
 | `task` | non-empty task description | required unless inference or prompt intake is on |
 | `prompt` | one natural-language task request, optionally naming materials and an MR/PR target | none |
 | `phase` | `plan` or `execute` | inferred for prompt intake; `execute` for explicit invocations |
@@ -95,6 +105,7 @@ The accepted keys are:
 | `open-code` | `true` or `false` | `false` |
 | `runtime` | `auto` or `off` | `off` |
 | `port` | explicit port `1024`-`65535`; only with `runtime=auto` | none |
+| `isolation` | `worktree`, `in-place`, or `auto` | `worktree` when `base` is supplied; otherwise `auto` |
 
 An explicit `en` or `zhtw` value for `lang` overrides the active context default.
 
@@ -117,16 +128,25 @@ automation caller. Report the absolute worktree path either way.
 and the user-level runtime helper. It is appropriate only when the task includes an application
 whose development server supports the descriptor's port injection method. `runtime=off` leaves
 runtime startup to the project or user. A `port=` override is rejected unless runtime isolation is
-enabled; an occupied explicit port is an error rather than a silent substitution.
+enabled; an occupied explicit port is an error rather than a silent substitution. The in-place
+route rejects `runtime=auto` unless the consuming project documents a safe current-checkout lease;
+the workflow must not claim per-worktree runtime isolation for an in-place task.
+
+`isolation`, `base`, and `runtime` are resolved before material content is read. `isolation=worktree`
+requires `base`. `isolation=in-place` never switches branches. `isolation=auto` is conservative: it
+chooses `worktree` when a base, parallel-work signal, new-worktree request, branch-isolation request,
+or separate runtime is present; otherwise it may choose `in-place` only after the current checkout
+passes its safety checks.
 
 ## 3. Fill positional slots
 
 Named options bind to their keys in any order. If the prompt-only shortcut matched, its first
 quoted token is `prompt`, not positional `base`; resolve the base from the prompt or verified
 request metadata, then classify any remaining bare tokens as materials. Otherwise, bare tokens fill
-these slots in order:
+these slots in order. The `base` slot is open only when the selected route is `worktree`; an in-place
+task can omit it or provide it by name as a request target:
 
-1. `base`, when `base=` was not supplied;
+1. `base`, when `base=` was not supplied and the selected route is `worktree`;
 2. `task`, when `task=` was not supplied and inference is off;
 3. materials, appended after any `materials=` values.
 
@@ -153,6 +173,8 @@ Quoted multi-word tasks and named options remain preferred when materials are pr
 {{ .invoke }} "Implement FE-04 from the attached spec and target the MR against feat/water-fee"
 {{ .invoke }} prompt="Implement FE-04 from the attached spec" base=feat/water-fee materials="spec.pdf"
 {{ .invoke }} phase=plan prompt="Read the migration notes and recommend whether to cherry-pick the feature commits"
+{{ .invoke }} isolation=in-place task="Fix the README typo"
+{{ .invoke }} isolation=auto prompt="Update the local validation message"
 ```
 
 ## 4. Reject structural ambiguity
@@ -161,7 +183,9 @@ Stop and create nothing for any of these:
 
 | Condition | Reason |
 | --- | --- |
-| no resolvable `base` | the base branch is both the task starting point and request target, so it has no safe default |
+| no resolvable `base` for `worktree` | the worktree route cannot safely choose a task starting point or request target |
+| `isolation=in-place` with a detached HEAD | an in-place task must not silently create or switch branches |
+| `isolation=in-place` with `runtime=auto` and no project lease | the route cannot claim a separate runtime port |
 | neither a non-empty task nor prompt or inference | task identity is missing |
 | both a non-empty task and prompt or inference | two task sources were supplied |
 | inference without a readable material | there is nothing from which to infer |
@@ -177,6 +201,7 @@ Stop and create nothing for any of these:
 | a material candidate is followed by ordinary task-like words | positional meaning is ambiguous; use `task=` and `materials=` |
 | the positional base resolves to a file or contains whitespace | it is in the wrong slot; use prompt intake or `base=` |
 | `branch=` together with `type=`, `slug=`, or `suffix=` | two branch names were described |
+| `isolation=in-place` with an explicit branch-creation request | the in-place route must not create or switch a branch |
 
 ## 4. Repository identity preflight
 
@@ -224,7 +249,9 @@ Strip an `origin/` prefix from `base` after parsing. Resolve every material afte
 path must exist and a URL must actually be fetched. Check `origin/<base>` after fetching; when it is
 absent, show near matches and create nothing.
 
-After the resolved echo and before any worktree is created, establish a remote-base checkpoint:
+After the resolved echo and before any worktree is created, establish a remote-base checkpoint for
+the `worktree` route. An `in-place` route does not fetch or pin a starting commit merely because it
+has a request target; it verifies the current branch and remote only when delivery requires it.
 
 1. Read both `git remote get-url origin` and `git remote get-url --push origin`. Treat those as
    the fetch and push identities of the named `origin` remote; do not infer the repository from
@@ -239,9 +266,46 @@ After the resolved echo and before any worktree is created, establish a remote-b
    a moved branch or push to a changed repository. Use the recorded commit ID as the worktree
    start point, not the mutable `origin/<base>` ref.
 
-The base branch name remains the request target. A later movement of that branch does not change
-the task's recorded starting commit; before publishing, verify that the same origin identities
-remain configured and that the named target branch still exists.
+For a `worktree` route, the base branch remains both the recorded starting point and request target.
+A later movement of that branch does not change the task's recorded starting commit; before
+publishing, verify that the same origin identities remain configured and that the named target
+branch still exists. For an `in-place` route, the current branch remains the code branch and the
+optional `base` is only a request target.
+
+## 5. Resolve the execution route
+
+Resolve the route after the identity preflight and before reading material content or changing Git
+state. Show it in the resolved echo. Use these rules in order:
+
+1. Honor an explicit `isolation=worktree` or `isolation=in-place` value.
+2. Keep a plan-only request read-only; it creates neither a worktree nor in-place continuity state.
+3. Select `worktree` for a supplied `base` under the compatibility default, or when the request
+   explicitly asks for parallel work, a new worktree, branch isolation, or a separate runtime.
+4. If the current checkout is already the matching task worktree and continuity identifies the same
+   task, resume that worktree route.
+5. Select `in-place` only when the current checkout has a named branch, no unrelated tracked or
+   untracked changes, no detached HEAD, and no conflicting unfinished continuity state.
+6. Stop and ask for an explicit route when the checkout is dirty for a new task, the current branch
+   is detached, or the route signals conflict. For explicit `in-place`, a supplied `base` may differ
+   from the current branch because it is only the request target. Never switch branches, discard
+   changes, or silently park another task.
+
+The in-place route has these boundaries:
+
+- Keep the current Git root and branch. Do not create, remove, or switch a worktree or branch.
+- Treat the current branch as the code and delivery branch. A supplied `base` names the request
+  target only; it does not become a starting commit.
+- Do not run ignored-file provisioning. The current checkout already owns its local files, and the
+  route must not copy or replace tracked application configuration.
+- Reject `runtime=auto` unless the consuming project explicitly documents a safe current-checkout
+  lease. Otherwise report `runtime=off` and that no separate runtime port is guaranteed.
+- Initialize continuity only when the task is substantive or its manual-test/handoff state would
+  be expensive to reconstruct. A trivial edit may remain state-free.
+- If `.project-continuity/state.md` belongs to another unfinished task, stop and ask whether to
+  finish, park, or abandon that task. Parking preserves context for a later sequential task; it
+  does not make simultaneous edits, branches, ports, or processes safe in one checkout.
+- Keep verification and the manual-test gate. Commit or publish only when the user requested it;
+  a pull or merge request target must be explicit before request creation.
 
 ## 6. Resolve from materials
 
@@ -301,17 +365,22 @@ Show one block after all materials are read and before the remote-base checkpoin
 
 ```text
 input      prompt                                      (prompt intake)
+route      in-place                                   (explicit, auto, or compatibility default)
 base branch feat/CCTVPipiCons
 base source prompt / MR metadata / explicit
 task       inspect the CCTV pipe record            (explicit or resolved)
 materials  handoff.md, screens.pptx, figma.com/design/ABC (node 1-2, fetched)
 branch     feat/cctv-pipe-inspection-record/frontend   (type and slug inferred)
 phase      plan                                        (prompt asks for assessment; no worktree changes)
-worktree   {{ .worktreeExample }}
+checkout   <current Git root>                          (in-place; no new worktree)
 commit     commit | batch | zhtw
 agent-test true        cleanup  {{ .cleanupDefault }}
 runtime    off        port     none
 ```
+
+For a `worktree` route, replace `checkout` with the exact worktree path and include the task branch
+and recorded base commit. For an `in-place` route, report the current Git root and branch, say that
+no new worktree or branch will be created, and state whether continuity is `enabled` or `not needed`.
 
 The Git preflight then adds a separate checkpoint before provisioning:
 

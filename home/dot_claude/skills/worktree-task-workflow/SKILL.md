@@ -1,17 +1,18 @@
 ---
 name: worktree-task-workflow
-description: "Run one isolated implementation task through its lifecycle in a Claude Code worktree, from an explicit task, natural-language prompt, or requested material inference through manual testing, publishing, and branch-preserving cleanup."
+description: "Run one implementation task through an explicit worktree or in-place route, from an explicit task, natural-language prompt, or requested material inference through verification, manual testing, and optional publishing."
 argument-hint: '(<prompt> | <base> ("<task>" [materials...] | --infer-task <materials...>)) [options...]'
 disable-model-invocation: true
 ---
 
-# Worktree task workflow
+# Task workflow
 
-Run one task in its own Claude Code worktree:
+Run one task through the resolved route:
 
 ```text
-identity preflight -> validate -> read materials -> isolate -> plan -> implement -> verify
-         -> USER MANUAL TEST -> commit -> push -> request -> worktree cleanup
+identity preflight -> validate -> read materials -> resolve route -> isolate or stay in place
+         -> plan -> implement -> verify -> USER MANUAL TEST
+         -> commit -> optional push/request -> route-specific cleanup
 ```
 
 This skill orchestrates existing global and project instructions. Use the dedicated document
@@ -22,7 +23,7 @@ Chinese publishing text.
 ## 1. Resolve the invocation
 
 Read [references/invocation.md](references/invocation.md) and follow it through the resolved echo.
-`base` is required. Task identity requires exactly one of:
+`base` is required for the worktree route and optional for the in-place route. Task identity requires exactly one of:
 
 - a non-empty explicit task; or
 - `--infer-task` / `infer-task=true` with readable materials; or
@@ -37,17 +38,23 @@ Git state until the preflight and resolved echo pass.
 
 When the resolved phase is `plan`, follow the plan-phase boundary in the invocation reference and
 stop after reporting the recommendation and exact execution invocation. Do not create or enter a
-worktree in that turn.
+worktree, switch branches, or initialize new continuity in that turn.
 
 ## 2. Check repository and derive names
+
+If the resolved route is `in-place`, keep the current Git root and named branch. Do not create or
+enter a worktree, switch branches, provision ignored files, or claim a separate runtime. A new
+in-place task requires no unrelated tracked or untracked changes; a matching unfinished task may
+resume its continuity state. If the state belongs to another unfinished task, stop and ask whether
+to finish, park, or abandon it. Read the shared lifecycle and skip the worktree-only sections below.
 
 ```bash
 git rev-parse --show-toplevel
 git remote get-url origin
 ```
 
-Stop if repository instructions forbid worktrees. This developer environment repository does, identifiable by
-its root `.chezmoiroot`; offer to run that task in place instead.
+Stop if repository instructions forbid worktrees. This developer environment repository does,
+identifiable by its root `.chezmoiroot`; use the explicit in-place route instead.
 
 Unless supplied, derive:
 

@@ -31,7 +31,9 @@ runtime testing from an isolated worktree must use `runtime=auto` before startin
 `runtime=off` leaves startup to the project's ordinary procedure only for tasks that do not need
 isolated runtime testing; the workflow must report that it provided no per-worktree port guarantee
 before starting that server. It must not claim that browser/runtime results came from the current
-worktree.
+worktree. An `isolation=in-place` task also cannot claim a separate runtime port unless the
+consuming project explicitly documents a safe current-checkout lease; otherwise leave
+`runtime=off`.
 
 This preserves the harness boundary: strong runtime guarantees apply when the workflow is
 explicitly chosen, without forcing every task or every project into a rigid harness.
