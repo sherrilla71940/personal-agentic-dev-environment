@@ -2,11 +2,11 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-這是我平常在不同作業系統與 AI coding tools 間使用的跨平台開發環境。它把我的個人 dotfiles、共用 AI 指示與 workflow skill，以及可跨 client 使用的任務協定集中管理，同時保留每個 client 原生的檔案、discovery path 與 scope 規則。
+這是我平常在不同作業系統與 AI coding tools 間使用的跨平台開發環境。目前支援的 AI client 是 Claude Code、Codex 與 GitHub Copilot；支援清單會隨儲存庫演進而變動。這個環境把我的個人 dotfiles、共用 AI 指示與 workflow skill，以及可跨 client 使用的任務協定集中管理，同時保留每個 client 原生的檔案、discovery path 與 scope 規則。
 
-對於較大型或需要平行進行的任務，支援的 client 可以使用隔離的 Git worktree。共用工作流程補上 continuity、核准的本機檔案配置、各 worktree 的 runtime port、本機驗證，以及發布前的明確使用者核准。
+對於較大型或需要平行進行的任務，支援的 client 可以使用隔離的 Git worktree。共用任務工作流程會在這層隔離之上建立儲存庫契約：核准的本機檔案配置、各 worktree 的 runtime port、本機驗證，以及發布前的明確使用者核准。
 
-Git 記錄程式碼、分支與 commit 的目前狀態。每個 worktree 裡的小型 continuity 紀錄則保存工作的狀態：目標、決策、阻塞事項、驗證、輸入與下一步。Git 與 continuity 合在一起，提供繼續工作所需的完整工作脈絡：Git 顯示目前有什麼，continuity 說明我們要完成什麼、為什麼這樣做、哪些內容影響了工作，以及接下來如何繼續。[Chezmoi](https://www.chezmoi.io/) 會把共用 source render 成各工具原生使用的設定。
+Git 記錄程式碼、分支與 commit 的目前狀態。每個 worktree 裡的小型 continuity 紀錄則保存工作的狀態：目標、決策、阻塞事項、驗證、輸入與下一步。當相關參考文件、測試檔案或交接筆記位於 worktree 外時，它也會記錄這些材料的位置。Git 與 continuity 合在一起，提供繼續工作所需的完整工作脈絡：Git 顯示目前有什麼，continuity 說明我們要完成什麼、為什麼這樣做、哪些內容影響了工作，以及接下來如何繼續。
 
 **快速導覽：**
 
@@ -52,8 +52,8 @@ Prompt intake 會先解析任務、提供的材料與已驗證的 MR/PR target�
 
 ## 系統總覽
 
-`home/` 是這個儲存庫管理 dotfiles 與 AI 設定的 chezmoi source state。寫入 home 目錄的檔案是
-應用程式實際讀取的原生 target。`scripts/` 與 `docs/` 同時支援設定與工作流程，提供 bootstrap、
+`home/` 是這個儲存庫管理 dotfiles 與 AI 設定的 chezmoi source state。[Chezmoi](https://www.chezmoi.io/)
+會把這些 source render 成應用程式實際讀取的原生 target。`scripts/` 與 `docs/` 同時支援設定與工作流程，提供 bootstrap、
 診斷、安裝程式、測試與決策紀錄。
 
 這張圖只呈現設定平面：tracked source state 經過組合與原生交付，流向各工具讀取的 surface。

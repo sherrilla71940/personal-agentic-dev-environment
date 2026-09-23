@@ -2,11 +2,11 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-I built this as the cross-platform development environment I use across machines and AI coding tools. It keeps my personal dotfiles, shared AI instructions and workflow skills, and cross-client task protocols in one place while preserving each client's native files, discovery paths, and scope rules.
+I built this as the cross-platform development environment I use across machines and AI coding tools. At the time of writing, the supported AI clients are Claude Code, Codex, and GitHub Copilot; that list may change as the repository evolves. The environment keeps my personal dotfiles, shared AI instructions and workflow skills, and cross-client task protocols in one place while preserving each client's native files, discovery paths, and scope rules.
 
-For longer or parallel tasks, supported clients can use isolated Git worktrees. The shared workflow adds continuity, approved local-file provisioning, per-worktree runtime ports, local verification, and explicit approval before publishing.
+For longer or parallel tasks, supported clients can use isolated Git worktrees. The shared task workflow adds the repository-level contract around that isolation: approved local-file provisioning, per-worktree runtime ports, local verification, and explicit approval before publishing.
 
-Git records the current state of the code, branch, and commits. A small per-worktree continuity record captures the state of the work: its objective, decisions, blockers, verification, inputs, and next action. Together, Git and continuity provide the working picture needed to resume: Git shows what exists, while continuity explains what we were trying to accomplish, why, what informed it, and how to continue. [Chezmoi](https://www.chezmoi.io/) renders the shared source into each tool's native configuration.
+Git records the current state of the code, branch, and commits. A small per-worktree continuity record captures the state of the work: its objective, decisions, blockers, verification, inputs, and next action. It also records pointers to relevant reference documents, test files, and handoff notes when they live outside the worktree. Together, Git and continuity provide the working picture needed to resume: Git shows what exists, while continuity explains what we were trying to accomplish, why, what informed it, and how to continue.
 
 **Jump to:**
 
@@ -58,8 +58,8 @@ health-check a per-worktree port. It never copies tracked configuration or exter
 
 ## System at a glance
 
-`home/` is the chezmoi source state for this repository's dotfiles and AI configuration. The
-home-directory files are native targets that applications read. `scripts/` and `docs/` support both
+`home/` is the chezmoi source state for this repository's dotfiles and AI configuration. [Chezmoi](https://www.chezmoi.io/)
+renders that source into native targets that applications read. `scripts/` and `docs/` support both
 the configuration and workflow planes with bootstrap, diagnostics, installers, tests, and decision
 records.
 
