@@ -2,11 +2,13 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-這是我平常在不同作業系統與 AI coding tools 間使用的跨平台開發環境。目前支援的 AI client 是 Claude Code、Codex 與 GitHub Copilot；支援清單會隨儲存庫演進而變動。這個環境把我的個人 dotfiles、共用 AI 指示與 workflow skill，以及可跨 client 使用的任務協定集中管理，同時保留每個 client 原生的檔案、discovery path 與 scope 規則。
+我每天都用這個儲存庫作為開發環境的單一來源，將個人 dotfiles 與 AI 工具集中在同一個 Git 儲存庫中。共用的 AI 指示與可重用的工作流程可以定義一次，再交付給 Claude Code、Codex 與 GitHub Copilot；只屬於單一 client 的行為則留在該 client 自己的範圍內。這讓我可以更精確地控制各 client 的行為，不必維護多份副本，也不用擔心它們彼此漂移。儲存庫也只管理我明確選擇由它負責的持久設定；容易變動的偏好、驗證資訊、session state 與其他由應用程式管理的資料則留在本機。
 
-對於較大型或需要平行進行的任務，支援的 client 可以使用隔離的 Git worktree。共用任務工作流程會在這層隔離之上建立儲存庫契約：核准的本機檔案配置、各 worktree 的 runtime port、本機驗證，以及發布前的明確使用者核准。
+Git 內建的 worktree 支援已經能提供良好的程式碼隔離；Claude Code 等 AI client 也能透過原生的 worktree 建立與生命週期支援，進一步利用這層隔離。不過，當多個 AI 輔助任務需要可靠地平行執行時，仍會遇到幾個問題：新的 worktree 可能缺少被 Git 忽略的本機檔案，多個同時執行的應用程式可能搶用同一個 runtime port，而 Git 無法記錄的任務脈絡可能仍綁在特定 session 或 client 上。
 
-Git 記錄程式碼、分支與 commit 的目前狀態。每個 worktree 裡的小型 continuity 紀錄則保存工作的狀態：目標、決策、阻塞事項、驗證、輸入與下一步。當相關參考文件、測試檔案或交接筆記位於 worktree 外時，它也會記錄這些材料的位置。Git 與 continuity 合在一起，提供繼續工作所需的完整工作脈絡：Git 顯示目前有什麼，continuity 說明我們要完成什麼、為什麼這樣做、哪些內容影響了工作，以及接下來如何繼續。
+我的工作流程補上這些缺口：提供每個任務需要且已核准的本機檔案；當專案定義了執行方式時，為平行 worktree 分配不同 runtime port；並保留每個 worktree 的 continuity 紀錄。它刻意將程式碼狀態與任務狀態分開：Git 仍是目前程式碼、分支與 commit 的權威來源；continuity 紀錄則保留 Git 無法表達的任務脈絡——任務要完成什麼、為什麼做出這些決定、哪些事情被阻塞或已驗證、哪些相關材料與參考資料是這項工作的一部分，以及下一步要做什麼。因為這份紀錄屬於任務，而不是某一次對話，同一個 worktree 可以在另一個 session 或支援的 AI client 中重新開啟，簡單輸入 `continue` 就能接手。本機自動檢查與明確的使用者核准會形成兩道獨立的 gate，通過後才發布分支供 review。
+
+[Chezmoi](https://www.chezmoi.io/) 會將受管理的 source 渲染成各支援工具與作業系統所期待的原生檔案。設定層和工作流程層搭配運作，讓 AI client 能在定義好的界線內工作；Git、驗證與明確核准仍然是權威依據。
 
 **快速導覽：**
 
@@ -25,10 +27,10 @@ Git 記錄程式碼、分支與 commit 的目前狀態。每個 worktree 裡的�
 
 | 核心能力 | 結果 |
 | --- | --- |
-| 單一來源、原生目標 | 共用的 AI 指示與可重用的 AI skill 都以單一來源內容維護；薄包裝保留各 client 原生的探索與 scope 規則。 |
-| 不複製整棵設定樹的 profile | 本機 selector 將 personal 或 company context 與 managed 或 native AI harness 組合，並另外控制 continuity 偏好。 |
+| 單一來源、原生目標 | 共用的 AI 指示與可重用的 AI skill 都以單一來源內容維護；薄包裝保留各 client 原生的 discovery path 與 scope 規則。 |
+| 以 profile 組合設定，不重複維護整套設定 | 本機 selector 將 personal 或 company context 與 managed 或 native AI harness 組合，並另外控制 continuity 偏好。 |
 | 跨 session 與 client 的連續性 | 一個 `.project-continuity/state.md` 跟著一個實體 worktree 保存，讓其他支援的 session 從相同的目標、決策、阻塞事項、材料、驗證狀態與下一步繼續工作。 |
-| 隔離且可檢視的任務 | 明確啟動的工作流程會固定 base，建立任務 worktree 與分支，只佈建核准的 ignored 本機檔案，先執行本機自動檢查，再請使用者進行獨立的手動測試，通過後才發布，而且不會刪除分支。 |
+| 隔離且可檢視的任務 | 明確啟動的工作流程會固定 base，建立任務 worktree 與分支，只配置已核准的 ignored 本機檔案，先執行本機自動檢查，再請使用者進行獨立的手動測試，通過後才發布，而且不會刪除分支。 |
 
 權責界線與驗證支援這四項核心能力，是貫穿整個系統的保證，不是另外新增的第五項能力。
 
@@ -37,10 +39,10 @@ Git 記錄程式碼、分支與 commit 的目前狀態。每個 worktree 裡的�
 
 ## 實際使用
 
-較大型的任務可以直接用自然語言 prompt 開始；如果自動化或 auditability 需要明確列出每個欄位，
+較大型的任務可以直接用自然語言 prompt 開始；如果自動化流程或後續追蹤需要明確記錄每個欄位，
 也可以使用完整格式：
 
-`$worktree-task-workflow "Implement FE-04 from the attached spec and target the MR against feat/water-fee"`
+`$worktree-task-workflow "Implement the water-fee frontend changes from the attached specification, based on origin/feat/water-fee."`
 
 `$worktree-task-workflow <base-branch> "<task>" [materials...]`
 
@@ -48,18 +50,18 @@ Prompt intake 會先解析任務、提供的材料與已驗證的 MR/PR target�
 
 `開始任務 → 建立隔離 → 記錄脈絡 → 實作 → 驗證 → 手動核准 → 發布供 review`
 
-工作流程會把任務目錄、分支與交接脈絡維持在一起；自動檢查與使用者明確核准完成前，不會發布變更。詳細契約會解析精確的 base 與 MR/PR target，從 `.worktreeinclude` 或 client 原生機制補上缺少的已核准 ignored 檔案，並在搭配專案 descriptor 與 `runtime=auto` 時，配置並 health-check 每個 worktree 的 port。
+工作流程會把任務目錄、分支與交接脈絡綁在一起；在自動檢查通過並取得使用者明確核准前，不會發布變更。詳細契約會解析精確的 base 與 MR/PR target，從 `.worktreeinclude` 或 client 原生機制補上任務缺少的已核准 ignored 檔案；如果專案提供 descriptor 並選擇 `runtime=auto`，流程還會為每個 worktree 配置 port 並執行 health check。
 
-以問題、評估或請求閱讀材料為主的 prompt 會先停在唯讀的規劃階段；請明確說明 `proceed`，或使用 `phase=execute`，工作流程才會建立 worktree。它不會複製 tracked configuration 或 external secret。
+以提問、評估或閱讀材料為主的 prompt 會先停在唯讀的規劃階段；要建立 worktree，請明確說 `proceed` 或使用 `phase=execute`。它不會複製 tracked configuration 或 external secret。
 
 ## 系統總覽
 
-`home/` 是這個儲存庫管理 dotfiles 與 AI 設定的 chezmoi source state。[Chezmoi](https://www.chezmoi.io/)
-會把這些 source render 成應用程式實際讀取的原生 target。`scripts/` 與 `docs/` 同時支援設定與工作流程，提供 bootstrap、
-診斷、安裝程式、測試與決策紀錄。
+`home/` 是這個儲存庫用來管理 dotfiles 與 AI 設定的 chezmoi source state。[Chezmoi](https://www.chezmoi.io/)
+會把這些 source render 成應用程式實際讀取的原生 target。`scripts/` 與 `docs/` 同時支援設定層與工作流程層，提供
+bootstrap、診斷、安裝工具、測試與決策紀錄。
 
-這張圖只呈現設定平面：tracked source state 經過組合與原生交付，流向各工具讀取的 surface。
-專案連續性與任務執行會在下方分別說明。完整的 client-to-surface 對應請看
+下圖只呈現設定層：tracked source state 經過組合與原生交付，流向各工具實際讀取的 surface。
+專案連續性與任務執行會在下文分別說明。完整的 client-to-surface 對應請看
 [customization support guide](./docs/customization-support.md)。
 
 ```mermaid
@@ -84,8 +86,8 @@ flowchart TB
 交付到 client 的原生 discovery 路徑。Client 專屬 source 則留在各自的原生目錄。
 
 在支援的情況下，client 會提供原生的 worktree 建立與生命週期控制。儲存庫自己的檢查與 fallback
-則補上共用契約的其餘部分：精確的 `origin/<base>` 契約、可跨 client 的交接 state、核准的
-ignored 檔案配置、聚焦驗證、手動核准、可選的 runtime 隔離，以及明確的 workflow archive。各
+則補上共用契約的其餘部分：精確的 `origin/<base>` 契約、可跨 client 的交接 state、已核准
+ignored 檔案的配置、針對性驗證、手動核准、可選的 runtime 隔離，以及明確的 workflow archive。各
 client 的細節請看 [native-first worktree delegation](./docs/worktree-provisioning.md#native-first-delegation)。
 
 ## 從這裡開始
@@ -258,16 +260,16 @@ source 檔案前，先讀[來源狀態規則](./docs/chezmoi-workflow.md#source-
 主要工作流程 skill 各自負責不同範圍：[worktree-task-workflow](./home/dot_agents/skills/worktree-task-workflow/SKILL.md)
 協調整個生命週期，[project-continuity](./home/dot_agents/skills/project-continuity/SKILL.md)
 管理交接 state，[worktree-manifest](./home/dot_agents/skills/worktree-manifest/SKILL.md) 檢視或建立
-核准的 ignored 檔案 allowlist。Runtime 隔離則由專案提供的 descriptor 與[專門指南](./docs/worktree-runtime.md)
+已核准的 ignored 檔案 allowlist。Runtime 隔離則由專案提供的 descriptor 與[專門指南](./docs/worktree-runtime.md)
 獨立處理。
 
 ## 任務生命週期與隔離 worktree
 
-任務流程是 substantial、平行或需要隔離的工作才明確啟動的 opt-in。小型且自足的修改，
+任務流程是明確啟動的機制，主要用於較大型、需要平行處理或需要隔離的工作。小型且自足的修改
 可以留在目前有效的 worktree。使用者可在任何步驟釐清需求、提供材料或回饋；下方的手動測試
 流程是發布前的明確 gate。
 
-下方的 sequence 會呈現原生或 fallback 隔離、continuity、驗證、手動核准、發布與清理如何串在一起。
+下方的 sequence diagram 說明原生或 fallback 隔離、continuity、驗證、手動核准、發布與清理如何串接。
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryTextColor": "#111827", "textColor": "#111827", "lineColor": "#6b7280", "actorBkg": "#f3e8ff", "actorBorder": "#9333ea", "actorTextColor": "#111827", "actorLineColor": "#6b7280", "signalColor": "#6b7280", "signalTextColor": "#111827", "labelBoxBkgColor": "#f3f4f6", "labelBoxBorderColor": "#6b7280", "labelTextColor": "#111827", "loopTextColor": "#111827", "noteBkgColor": "#fef3c7", "noteBorderColor": "#d97706", "noteTextColor": "#111827"}}}%%
@@ -285,7 +287,7 @@ sequenceDiagram
     Note over W: fetch 並解析確切的 origin/<base> commit
     W->>G: 執行適用的唯讀佈建檢查<br/>fallback manifest 或 client-native 規則
     W->>G: 只有通過檢查後才建立隔離的 task worktree
-    W->>G: 套用已核准的 ignored 檔案配置
+    W->>G: 套用已核准的 ignored 檔案
     Note over W: 實作範圍內的變更
     W->>C: 持續更新 continuity<br/>記錄決策、阻塞、驗證與下一步
     Note over W: 執行本機自動檢查
@@ -326,7 +328,7 @@ tracked application configuration 或 external folder。
 
 ## 這個環境實際提供什麼
 
-Landing page 只列出原生介面與支援邊界；完整矩陣與操作程序放在聚焦指南中。
+README 首頁只呈現主要的原生介面與支援邊界；完整矩陣與操作流程則放在各自的專門指南中。
 
 | 領域 | 代表內容 |
 | --- | --- |
@@ -334,7 +336,7 @@ Landing page 只列出原生介面與支援邊界；完整矩陣與操作程序�
 | Dotfile 與開發工具 | 跨平台 shell 啟動檔、Git identity 與 alias、worktree helper、Windows Terminal 值，以及 OS-specific VS Code target。 |
 | Workflow 支援 | Bootstrap script、installer、manifest、`scripts/diagnostics/dev-env-doctor.sh` 等診斷工具、回歸測試套件與 [ADR](./docs/decisions/README.md)。 |
 | 隔離與材料 provenance | 可選的每 worktree HTTP port、health check 與 lease；分類後的參考資料與測試輸入，以及記錄的路徑與 provenance。請看 [worktree runtime](./docs/worktree-runtime.md) 與 [workflow material handling](./docs/worktree-provisioning.md#what-the-task-workflow-does-at-each-step)。 |
-| Parity 與 lifecycle | Windows/macOS source body parity 與聚焦檢查。Archive 只處理明確列出的 tracked source inventory；generated target 透過 chezmoi removal 處理，continuity、secret 與 application state 留在 archive 外。請看 [workflow archives](./docs/workflow-archives.md)。 |
+| Parity 與 lifecycle | Windows/macOS source body parity 與針對性檢查。Archive 只處理明確列出的 tracked source inventory；generated target 透過 chezmoi removal 處理，continuity、secret 與 application state 留在 archive 外。請看 [workflow archives](./docs/workflow-archives.md)。 |
 
 開發者體驗層包含跨平台的 Claude status line：
 
@@ -386,7 +388,7 @@ Pre-commit hook 會將 staged source render 到暫存目錄，不會寫入 home 
 - 任一 status-line 實作變更時，Bash 與 PowerShell 版本是否 parity；以及
 - 相對 Markdown link 與 heading fragment。
 
-受保護的行為變更時，手動執行對應的聚焦測試：
+受保護的行為變更時，手動執行針對該行為的測試：
 
 | 行為 | 本機檢查 |
 | --- | --- |
@@ -438,7 +440,7 @@ docs/                              setup、workflow、customization 與 ADR 指�
 | 新增 instruction、skill、agent、prompt、MCP server 或 plugin | [docs/customization-support.md](./docs/customization-support.md) |
 | 查詢哪個 client surface 會讀取某項 customization | [support table](./docs/customization-support.md#what-the-support-table-answers) |
 | 執行隔離任務或配置 ignored 本機檔案 | [docs/worktree-provisioning.md](./docs/worktree-provisioning.md) |
-| 在不同 worktree 執行多個 application instance | [docs/worktree-runtime.md](./docs/worktree-runtime.md) |
+| 在不同 worktree 同時執行多個應用程式 | [docs/worktree-runtime.md](./docs/worktree-runtime.md) |
 | Archive、restore 或 delete 可重用 workflow | [docs/workflow-archives.md](./docs/workflow-archives.md) |
 | 了解這個儲存庫為什麼採用這種結構 | [docs/decisions/README.md](./docs/decisions/README.md) |
 | 在移除規則前了解它存在的原因 | [docs/rule-rationale.md](./docs/rule-rationale.md) |

@@ -2,11 +2,13 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-I built this as the cross-platform development environment I use across machines and AI coding tools. At the time of writing, the supported AI clients are Claude Code, Codex, and GitHub Copilot; that list may change as the repository evolves. The environment keeps my personal dotfiles, shared AI instructions and workflow skills, and cross-client task protocols in one place while preserving each client's native files, discovery paths, and scope rules.
+I use this repository as the single source for my development environment, bringing my personal dotfiles and AI tooling together in one Git-tracked repository. Shared AI instructions and reusable workflows can be defined once and delivered to Claude Code, Codex, and GitHub Copilot, while behavior that only belongs to one client can stay scoped there. This gives me fine-grained control without maintaining duplicate copies across AI clients and worrying about them drifting out of sync. The repository also manages only the durable settings I intentionally own, while volatile preferences, authentication, session state, and other application-owned data stay local.
 
-For longer or parallel tasks, supported clients can use isolated Git worktrees. The shared task workflow adds the repository-level contract around that isolation: approved local-file provisioning, per-worktree runtime ports, local verification, and explicit approval before publishing.
+Git’s built-in worktree support already provides strong source-code isolation, and AI clients such as Claude Code can build on it with native worktree creation and lifecycle support. However, several problems still appear when multiple AI-assisted tasks need to run reliably in parallel: a fresh worktree may be missing ignored local files, multiple app instances can compete for the same runtime port, and task context that Git does not capture can remain tied to a particular session or client.
 
-Git records the current state of the code, branch, and commits. A small per-worktree continuity record captures the state of the work: its objective, decisions, blockers, verification, inputs, and next action. It also records pointers to relevant reference documents, test files, and handoff notes when they live outside the worktree. Together, Git and continuity provide the working picture needed to resume: Git shows what exists, while continuity explains what we were trying to accomplish, why, what informed it, and how to continue.
+My workflow fills those gaps by provisioning the approved local files each task needs, giving parallel worktrees separate runtime ports when the project defines how to run them, and keeping a per-worktree continuity record. It deliberately separates code state from task state: Git remains authoritative for the current code, branch, and commits, while the continuity record preserves the story around that state — what the task is trying to accomplish, why decisions were made, what is blocked or verified, which relevant materials and references are part of the task, and what should happen next. Because that record belongs to the task rather than one conversation, the same worktree can be reopened in another session or supported AI client and resumed with a simple “continue.” Local automated checks and explicit manual approval provide separate gates before the branch is published for review.
+
+[Chezmoi](https://www.chezmoi.io/) renders the managed source into the native files expected by each supported tool and operating system. Together, the configuration and workflow layers give AI clients room to act within defined boundaries, while Git, verification, and explicit approval remain authoritative.
 
 **Jump to:**
 
@@ -41,7 +43,7 @@ and records architectural trade-offs in [decision records](./docs/decisions/READ
 Start a substantial task with a natural-language prompt, or use the explicit form when automation
 or auditability needs every field named:
 
-`$worktree-task-workflow "Implement FE-04 from the attached spec and target the MR against feat/water-fee"`
+`$worktree-task-workflow "Implement the water-fee frontend changes from the attached specification, based on origin/feat/water-fee."`
 
 `$worktree-task-workflow <base-branch> "<task>" [materials...]`
 
