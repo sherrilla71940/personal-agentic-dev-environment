@@ -1,108 +1,96 @@
 ---
 name: natural-zhtw
-description: "Produce natural Traditional Chinese for Taiwan (zh-TW). Load whenever drafting, translating into, substantially rewriting, or reviewing sentence-level zh-TW, including PR/MR descriptions, issues, technical documentation, comments, emails, messages, reports, UI copy, explanations, and English-to-Chinese translation. Also load when checking whether wording sounds unnatural, overly literal, overly formal, Mainland-influenced, translated, or AI-written."
+description: "Write or review natural Traditional Chinese for Taiwan (zh-TW). Use for technical writing, PR/MR descriptions, issues, comments, documentation, workplace messages, UI copy, explanations, and English-to-Chinese translation. Also use when checking whether wording sounds translated, overly formal, Mainland-influenced, or AI-written."
 user-invocable: false
 ---
 
 # Natural Taiwan Chinese
 
-Write zh-TW that reads as though a Taiwanese person wrote it for this context, not as translated
-English. Preserve semantic fidelity rather than syntactic fidelity.
+Write zh-TW the way a Taiwanese person would naturally write it in the given context.
 
-## Preserve, and adapt
+Do not translate English sentence structure directly. Keep the meaning, facts, technical behavior, scope, certainty, identifiers, filenames, official terms, and quoted text, but rewrite the sentence freely when needed.
 
-**Preserve:** meaning, facts, numbers, dates, names, code identifiers, filenames, technical
-behavior, requirements, level of certainty, causality, scope, important caveats, contractual and
-legal meaning.
+Natural wording matters more than matching the source sentence shape.
 
-**Adapt freely:** wording, grammar, sentence structure and boundaries, information order, idioms,
-emphasis, explicitness. Split one sentence into several or merge them, drop pronouns Chinese
-would omit, replace passive with active, turn abstract noun-heavy phrasing into direct verbs.
+## Tone
 
-Naturalization must never add a claim or drop a qualification.
+Use clear, direct, professional Taiwanese Chinese.
 
-## Register
+For technical writing, sound like an engineer explaining something to another engineer. Do not make it sound like a government document, academic paper, or translated product documentation unless the context actually requires that style.
 
-| Context | Register |
-| --- | --- |
-| PR/MR, issue, code comment | concise, direct, professional |
-| Internal workplace communication | natural professional Taiwanese |
-| Technical documentation | clear, precise, moderately structured |
-| Customer-facing or formal business | appropriately polished |
-| Legal, regulatory, government | keep the formality it requires |
-| Casual conversation | natural conversational Taiwan Chinese |
+Prefer normal words such as:
 
-Natural does not mean informal; professional does not mean bureaucratic. An existing style or an
-explicit request from the user outranks this table.
+- `這次` over `本次`
+- `如果` over `若`
+- `在` over `於`
+- `是` over `屬`
+- `問題` / `錯誤` over `勘誤`
 
-## Prefer the plain word
+These are not hard bans. Use the more formal wording when it genuinely fits.
 
-| Prefer | Over |
-| --- | --- |
-| `是` / `是因為` | `屬` |
-| `這次` | `本次` |
-| `在` | `於` |
-| `如果` | `若` |
-| `都` | `皆` / `全數` |
-| `原本` / `現有` | `既有` |
-| `還是會` / `仍會` | `仍照舊` |
-| `請 PM 確認` | `提交 PM 決定` |
-| `問題` / `錯誤` | `勘誤` |
-| a direct clause | a noun phrase ending in `者` |
+## Taiwan wording
 
-These are tendencies, not banned words — use the formal option when the audience or the meaning
-genuinely calls for it.
+Prefer Taiwan usage:
 
-**Warning cluster.** Any one of `屬 於 若 皆 全數 之 者 既有 勘誤 採集 刻意 仍照舊 提交……決定`
-may be natural. Several of them in ordinary workplace writing is what makes engineering Chinese
-read like a government report or AI output.
+`程式`、`專案`、`元件`、`設定`、`呼叫 API`、`回傳`、`伺服器`、`影片`、`建立`、`新增`、`資料`
 
-## Taiwan terminology
+Do not replace official names, project terms, field names, identifiers, filenames, UI strings, or quoted text.
 
-`程式` not `程序` · `專案` not `項目` · `元件` not `組件` · `設定` not `配置` · `呼叫 API` not
-`調用 API` · `回傳` not `返回` · `伺服器` not `服務器` · `影片` not `視頻` · `建立` / `新增` not
-`創建` · `資料` for data.
+## English technical terms
 
-Do not Taiwanize source-of-truth terminology: project-specific terms, official government or
-legal names, database field names, API names, identifiers, quoted UI strings. If `用戶接管` is the
-official domain term, keep it.
+Keep English technical terms when Taiwanese developers would naturally use them that way.
 
-Keep the English technical terms Taiwanese developers normally use: `rebase`, `DOM`, `API`, `DB`,
-`tsconfig`, `PM`, `BE`, `FE`.
+Examples include `API`, `DOM`, `rebase`, `worktree`, `hook`, `runtime`, `session`, `client`, `scope`, `discovery path`, `tsconfig`, `PM`, `FE`, `BE`.
 
-## Translationese
+But do not keep an English word just because the source is technical.
 
-Signals that the source language still shows through: unnecessary pronouns, repeated `我們`,
-English-style passives, long chains of `的`, nominalization where a verb belongs, English sentence
-boundaries kept despite awkward flow, literally translated idioms.
+For example:
 
-| Instead of | Write |
-| --- | --- |
-| 我們進行了對這個問題的調查。 | 我們查了一下這個問題。 |
-| 我們做出了移除該檢查的決定。 | 這次移除這項檢查。 |
-| 這是目前唯一阻擋我們的事情。 | 目前就卡在這個問題。 |
-| 該值將被靜默忽略。 | 這個值會直接被忽略，而且不會報錯。 |
-| 已確認屬先前檢查程式殘留。 | 已確認是之前的檢核邏輯沒有移除。 |
-| 唯一有資料遺失風險者 | 這項有資料被忽略的風險 |
-| 此問題純粹是外觀上的問題。 | 這個不影響功能，只是顯示上的問題。 |
-| 本次刻意不修改政府提供的範本檔。 | 這次先不修改政府提供的範本檔，等 PM 確認後再調整。 |
+- `多個應用程式 instance` → `多個同時執行的應用程式`
+- `substantial task` → `較大型的任務`
+- `auditability` → `可稽核性`
+- `Landing page` → `首頁` or `README 首頁`, depending on context
 
-Do not overcorrect into compression either. Complete, direct sentences usually read better than
-dense ones, and precision outranks brevity.
+A good rule:
 
-For a normal PR/MR, `問題` / `修改內容` / `驗證` / `待確認` are natural headings; use another
-structure when it is clearer. Do not turn an ordinary PR into an RFC or an incident report.
+> If a Taiwanese developer would probably write the sentence in Chinese from scratch, write it in Chinese.
 
-## Do not rewrite quoted material
+Keep the English only when it carries a useful technical distinction or is the natural term people actually use.
 
-Leave quotations, regulatory wording, government field labels, existing UI strings, code,
-identifiers, filenames and exact error messages exactly as they are unless the task asks to
-change them.
+## Avoid translationese
 
-## Final pass
+Watch for:
 
-Before returning substantial zh-TW prose, read it once and ask:
+- English sentence order copied too closely
+- long chains of `的`
+- unnecessary pronouns
+- passive constructions that sound unnatural in Chinese
+- abstract noun phrases where a direct verb is simpler
+- awkward Chinese-English hybrids
+- wording that is technically correct but not something people would actually say
 
-1. Would a Taiwanese person write it this way in this situation?
-2. Can I still see English structure, or wording more formal than the context needs?
-3. Are the facts, certainty, scope and identifiers unchanged?
+Rewrite freely.
+
+For example:
+
+`continuity 紀錄保留圍繞這個狀態的工作脈絡。`
+
+Prefer:
+
+`continuity 紀錄保留 Git 沒有記錄的任務脈絡。`
+
+`任務流程是 substantial、平行或需要隔離的工作才明確啟動的 opt-in。`
+
+Prefer:
+
+`這套工作流程需要明確啟動，主要用在較大型、需要平行處理或需要隔離的任務。`
+
+## Final check
+
+Before returning zh-TW prose, read it once and ask:
+
+1. 這句話台灣人真的會這樣寫嗎？
+2. 看得出英文原句的結構嗎？
+3. 有沒有不必要的英文詞留下來？
+4. 技術意思、範圍和限制有沒有被改掉？
+5. 如果我是台灣工程師，會不會用更直接的方式寫？
