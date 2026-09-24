@@ -29,7 +29,6 @@ My workflow fills those gaps by provisioning the approved local files each task 
 > On an existing machine, review `chezmoi diff` and apply only the targets you intend to change.
 > Apply the repository broadly only where replacing these personal values is acceptable.
 
-
 ## What this gives you
 
 | Pillar                                 | Result                                                                                                                                                                                                                                          |
