@@ -8,14 +8,27 @@ Git’s built-in worktree support already provides strong source-code isolation,
 
 My workflow fills those gaps by provisioning the approved local files each task needs, giving parallel worktrees separate runtime ports when the project provides the required runtime configuration, and keeping a per-working-directory continuity record. It deliberately separates code state from task state: Git remains authoritative for code, branches, and commits, while the continuity record preserves the story around that state — what the task is trying to accomplish, why decisions were made, what is blocked or verified, which relevant materials and references are part of the task, and what should happen next. Because that record belongs to the task rather than one conversation, another session or supported AI client can open the same working directory and resume with a simple “continue.” Policy-driven verification and explicit publish authorization provide separate gates before the branch is published for review.
 
+## What the workflow automates
+
+| Without the workflow — I have to                                                                                                | With the workflow — the system will                                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Reconstruct or re-explain task context when resuming work in a new session                                                      | Preserve task context across sessions. Keep per-working-directory continuity state containing the objective, phase, decisions, assumptions, blockers, verification state, task identity, and next action, so another session or supported AI client can reconcile the state with the working directory and Git and continue the task |
+| Track which specifications, screenshots, spreadsheets, test inputs, handoffs, and other materials relate to each task           | Organize and associate materials with tasks. Separate stable task materials, reusable test materials, and durable handoffs from transient task state while recording their paths and provenance                                                                                                                                      |
+| Create and prepare a separate worktree and branch each time I want to work on another task from the same repository in parallel | Prepare isolated task workspaces. Resolve the base and task branch, create or select the workspace, provision approved ignored/local files into worktrees, and keep each task's branch, working directory, and continuity state independent                                                                                          |
+| Choose and keep track of separate runtime ports so multiple task environments can run at the same time without port collisions  | Handle runtime isolation. Use project runtime configuration to allocate separate ports automatically, allowing isolated worktrees to run and test independent application instances without port collisions                                                                                                                          |
+| Decide what the agent can verify itself, what still needs my checking, and what must be rerun after a failure                   | Coordinate verification. Apply the selected verification policy across feasible automated, runtime, browser, and interactive checks, loop through fix-and-retest when needed, and request only checks or acceptance that actually require me                                                                                         |
+| Coordinate the path from completed implementation to reviewable work                                                            | Coordinate publication. Keep verification separate from publish authorization, refresh and reconcile the target base before publication, rerun affected verification when necessary, then commit, push, request review, and perform branch-preserving cleanup                                                                        |
+
 **Jump to:**
 
-- [In practice](#in-practice)
-- [System at a glance](#system-at-a-glance)
-- [Profiles and AI harness modes](#profiles-and-ai-harness-modes)
-- [Task continuity](#task-continuity)
-- [Task lifecycle and workspaces](#task-lifecycle-and-workspaces)
-- [Where to go next](#where-to-go-next)
+* [What the workflow automates](#what-the-workflow-automates)
+* [In practice](#in-practice)
+* [System at a glance](#system-at-a-glance)
+* [Profiles and AI harness modes](#profiles-and-ai-harness-modes)
+* [Task continuity](#task-continuity)
+* [Task lifecycle and workspaces](#task-lifecycle-and-workspaces)
+* [Where to go next](#where-to-go-next)
+
 
 > ⚠️ **Personal configuration:** This repository contains my preferences, not a neutral default.
 > On an existing machine, review `chezmoi diff` and apply only the targets you intend to change.
