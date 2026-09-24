@@ -40,17 +40,16 @@ and records architectural trade-offs in [decision records](./docs/decisions/READ
 
 ## In practice
 
-The workflow supports three first-class invocation styles. `/run-task-end-to-end` is Claude Code
-syntax, and `$run-task-end-to-end` is Codex syntax.
+The workflow supports three first-class invocation styles in both clients. Claude Code invokes the
+skill as `/run-task-end-to-end`; Codex invokes it as `$run-task-end-to-end`. Codex also has slash
+commands for built-in features, but its documented skill syntax uses `$skill-name` ([OpenAI skill
+documentation](https://developers.openai.com/plugins/build/skills)). The examples below use
+`<run-task>` as shorthand for the client-specific form.
 
 Start with guided mode when you want the workflow to walk you through the choices:
 
 ```text
-Claude Code:
-/run-task-end-to-end
-
-Codex:
-$run-task-end-to-end
+<run-task>
 ```
 
 No-argument mode asks for the task, workspace, base, verification policy, continuity policy, and
@@ -61,11 +60,7 @@ continuity, but guided mode still exposes those choices.
 Use the prompted form when you want to describe the task naturally:
 
 ```text
-Claude Code:
-/run-task-end-to-end Use a worktree from feat/water-fee and implement the frontend changes from the attached specification.
-
-Codex:
-$run-task-end-to-end Use a worktree from feat/water-fee and implement the frontend changes from the attached specification.
+<run-task> Use a worktree from feat/water-fee and implement the frontend changes from the attached specification.
 ```
 
 The workflow parses only clear values, such as `workspace=worktree` and
@@ -74,24 +69,18 @@ The workflow parses only clear values, such as `workspace=worktree` and
 
 Use explicit arguments for deterministic or power-user operation:
 
-`/run-task-end-to-end workspace=checkout base=main task="Fix the README wording"`
+`<run-task> workspace=checkout base=main task="Fix the README wording"`
 
-`/run-task-end-to-end workspace=worktree base=feat/water-fee task="Implement the water-fee frontend changes from the attached specification"`
-
-The Codex equivalents are:
-
-`$run-task-end-to-end workspace=checkout base=main task="Fix the README wording"`
-
-`$run-task-end-to-end workspace=worktree base=feat/water-fee task="Implement the water-fee frontend changes from the attached specification"`
+`<run-task> workspace=worktree base=feat/water-fee task="Implement the water-fee frontend changes from the attached specification"`
 
 Partial structured input is also supported. For example,
-`$run-task-end-to-end workspace=worktree task="Implement FE-04"` keeps the explicit workspace and
+`<run-task> workspace=worktree task="Implement FE-04"` keeps the explicit workspace and
 task, then asks only for the remaining required base. Explicit values bypass redundant questions.
 
 In a company-context application repository, provide a flow number whenever the applicable company
 branch policy requires one, regardless of invocation style:
 
-`/run-task-end-to-end workspace=worktree base=feat/gisgraphdraggable-modify flow=15927 task="Continue sewer layer editing"`
+`<run-task> workspace=worktree base=feat/gisgraphdraggable-modify flow=15927 task="Continue sewer layer editing"`
 
 This resolves to `flow/15927-sewer-layer-editing`. The company-flow rule applies only when the
 effective context is `company`; this dotfiles repository explicitly uses effective `personal`

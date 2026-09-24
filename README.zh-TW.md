@@ -39,17 +39,16 @@ Git 內建的 worktree 支援已經能提供良好的程式碼隔離；Claude Co
 
 ## 實際使用
 
-這套流程支援三種正式的呼叫方式。`/run-task-end-to-end` 是 Claude Code 語法，
-`$run-task-end-to-end` 是 Codex 語法。
+這套流程在兩個 client 中都支援三種正式的呼叫方式。Claude Code 使用
+`/run-task-end-to-end` 呼叫 skill；Codex 使用 `$run-task-end-to-end`。Codex 也有供內建功能使用的
+slash command，但目前 OpenAI 的 skill 文件以 `$skill-name` 作為 skill 語法（參考
+[OpenAI skill 文件](https://developers.openai.com/plugins/build/skills)）。以下範例以
+`<run-task>` 代表各 client 的對應寫法。
 
 如果希望流程一步一步帶你完成設定，請使用無參數的 guided mode：
 
 ```text
-Claude Code:
-/run-task-end-to-end
-
-Codex:
-$run-task-end-to-end
+<run-task>
 ```
 
 無參數模式會詢問任務、workspace、base、verification policy、continuity policy，以及依情境
@@ -60,11 +59,7 @@ mode 會讓你看到這些選項。
 如果想直接用自然語言描述任務，請使用 prompted form：
 
 ```text
-Claude Code:
-/run-task-end-to-end Use a worktree from feat/water-fee and implement the frontend changes from the attached specification.
-
-Codex:
-$run-task-end-to-end Use a worktree from feat/water-fee and implement the frontend changes from the attached specification.
+<run-task> Use a worktree from feat/water-fee and implement the frontend changes from the attached specification.
 ```
 
 流程只會解析明確表達的內容，例如 `workspace=worktree` 與 `base=feat/water-fee`，其餘尚未
@@ -73,23 +68,17 @@ $run-task-end-to-end Use a worktree from feat/water-fee and implement the fronte
 
 需要可重現、精確控制的操作，請使用 explicit arguments：
 
-`/run-task-end-to-end workspace=checkout base=main task="修正 README 文字"`
+`<run-task> workspace=checkout base=main task="修正 README 文字"`
 
-`/run-task-end-to-end workspace=worktree base=feat/water-fee task="實作 water-fee 前端變更"`
+`<run-task> workspace=worktree base=feat/water-fee task="實作 water-fee 前端變更"`
 
-Codex 的對應寫法是：
-
-`$run-task-end-to-end workspace=checkout base=main task="修正 README 文字"`
-
-`$run-task-end-to-end workspace=worktree base=feat/water-fee task="實作 water-fee 前端變更"`
-
-也可以只提供部分結構化參數。例如 `$run-task-end-to-end workspace=worktree task="Implement FE-04"`
+也可以只提供部分結構化參數。例如 `<run-task> workspace=worktree task="Implement FE-04"`
 會保留已明確提供的 workspace 與 task，只詢問剩下必要的 base。明確提供的值不會被重複詢問。
 
 在 company context 的應用程式儲存庫中，只要適用的 company branch policy 要求 flow number，
 不論採用哪一種呼叫方式，都必須提供：
 
-`/run-task-end-to-end workspace=worktree base=feat/gisgraphdraggable-modify flow=15927 task="Continue sewer layer editing"`
+`<run-task> workspace=worktree base=feat/gisgraphdraggable-modify flow=15927 task="Continue sewer layer editing"`
 
 這會解析成 `flow/15927-sewer-layer-editing`。只有 effective context 是 `company` 時才套用
 company-flow 規則；編輯這個 dotfiles 儲存庫本身時，根目錄指示會覆寫 machine selector，使用
