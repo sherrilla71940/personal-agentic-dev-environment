@@ -2,13 +2,11 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-這個 Git repository 是我日常使用的開發環境設定、個人 dotfiles 與 AI 工具整合的單一來源。共用的 AI 指示與可重用的工作流程可以定義一次，再交付給 Claude Code、Codex 與 GitHub Copilot；只屬於單一 client 的行為則留在該 client 自己的範圍內。這讓我可以更精確地控制各 client 的行為，不必維護多份副本，也不用擔心它們彼此漂移。這個 repository 也只管理我明確選擇由它負責的持久設定；容易變動的偏好、驗證資訊、session state 與其他由應用程式管理的資料則留在本機。
+這個 Git repository 是我日常使用的開發環境設定、個人 dotfiles 與 AI 工具整合的單一來源。[Chezmoi](https://www.chezmoi.io/) 會把這些受管理的 source 渲染成各支援工具與作業系統實際使用的原生檔案。因此，共用的 AI 指示與可重用的工作流程只需要定義一次，就能交付給 Claude Code、Codex 與 GitHub Copilot；只屬於單一 client 的行為則留在該 client 自己的範圍內。這讓我可以更精確地控制各 client 的行為，不必維護多份副本，也不用擔心它們彼此漂移。這個 repository 也只管理我明確選擇由它負責的持久設定；容易變動的偏好、驗證資訊、session state 與其他由應用程式管理的資料則留在本機。
 
 Git 內建的 worktree 支援已經能提供良好的程式碼隔離；Claude Code 等 AI client 也能透過原生的 worktree 建立與生命週期支援，進一步利用這層隔離。不過，當多個 AI 輔助任務需要可靠地平行執行時，仍會遇到幾個問題：新的 worktree 可能缺少被 Git 忽略的本機檔案，多個同時執行的應用程式可能搶用同一個 runtime port，而 Git 無法記錄的任務脈絡可能仍綁在特定 session 或 client 上。
 
-我的工作流程補上這些缺口：提供每個任務需要且已核准的本機檔案；當專案定義了執行方式時，為平行 worktree 分配不同 runtime port；並保留每個工作目錄的 continuity 紀錄。它刻意將程式碼狀態與任務狀態分開：Git 仍是目前程式碼、分支與 commit 的權威來源；continuity 紀錄則保留 Git 無法表達的任務脈絡——任務要完成什麼、為什麼做出這些決定、哪些事情被阻塞或已驗證、哪些相關材料與參考資料是這項工作的一部分，以及下一步要做什麼。因為這份紀錄屬於任務，而不是某一次對話，另一個 session 或支援的 AI client 可以開啟同一個工作目錄，簡單輸入 `continue` 就能接手。由驗證策略決定的檢查，以及明確的發布核准，會形成兩道獨立的 gate，通過後才發布分支供 review。
-
-[Chezmoi](https://www.chezmoi.io/) 會將受管理的 source 渲染成各支援工具與作業系統所期待的原生檔案。設定層和工作流程層搭配運作，讓 AI client 能在定義好的界線內工作；Git、驗證與明確的發布核准仍然是權威依據。
+我的工作流程補上這些缺口：提供每個任務需要且已核准的本機檔案；當專案提供所需的 runtime 設定時，為平行 worktree 分配不同的 runtime port；並保留每個工作目錄各自的 continuity 紀錄。它刻意將程式碼狀態與任務狀態分開：Git 仍是程式碼、分支與 commit 的權威來源；continuity 紀錄則保留 Git 無法表達的任務脈絡——任務要完成什麼、為什麼做出這些決定、哪些事情被阻塞或已驗證、哪些相關材料與參考資料屬於這項工作，以及下一步要做什麼。因為這份紀錄屬於任務，而不是某一次對話，另一個 session 或支援的 AI client 可以開啟同一個工作目錄，簡單輸入 `continue` 就能接手。由驗證策略決定的檢查，以及明確的發布核准，會形成兩道彼此獨立的 gate，通過後才發布分支供 review。
 
 **快速導覽：**
 
