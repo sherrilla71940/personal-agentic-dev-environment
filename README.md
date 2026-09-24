@@ -21,14 +21,9 @@ My workflow fills those gaps by provisioning the approved local files each task 
 
 **Jump to:**
 
-* [What the workflow automates](#what-the-workflow-automates)
-* [In practice](#in-practice)
 * [System at a glance](#system-at-a-glance)
-* [Profiles and AI harness modes](#profiles-and-ai-harness-modes)
 * [Task continuity](#task-continuity)
 * [Task lifecycle and workspaces](#task-lifecycle-and-workspaces)
-* [Where to go next](#where-to-go-next)
-
 
 > ⚠️ **Personal configuration:** This repository contains my preferences, not a neutral default.
 > On an existing machine, review `chezmoi diff` and apply only the targets you intend to change.
@@ -51,74 +46,29 @@ and records architectural trade-offs in [decision records](./docs/decisions/READ
 
 ## In practice
 
-The workflow supports three first-class invocation styles in both clients. Claude Code invokes the
-skill as `/run-task-end-to-end`; Codex invokes it as `$run-task-end-to-end`. Codex also has slash
-commands for built-in features, but its documented skill syntax uses `$skill-name` ([OpenAI skill
-documentation](https://developers.openai.com/plugins/build/skills)). The examples below use
-`<run-task>` as shorthand for the client-specific form.
+The workflow exposes one primary entry point across supported AI clients: `/run-task-end-to-end`.
 
-Start with guided mode when you want the workflow to walk you through the choices. Invoke
-`<run-task>` with no arguments.
+Start with guided mode when you want the workflow to walk you through the choices. Invoke `/run-task-end-to-end` with no arguments.
 
-No-argument mode asks for the task, workspace, base, verification policy, continuity policy, and
-any context-specific required input. It uses native choice UI when the client provides one and a
-concise text fallback otherwise. It shows `agent` and `auto` as the defaults for verification and
-continuity, but guided mode still exposes those choices.
+No-argument mode asks for the task, workspace, base, verification policy, continuity policy, and any context-specific required input. It uses native choice UI when the client provides one and a concise text fallback otherwise. It shows `agent` and `auto` as the defaults for verification and continuity, but guided mode still exposes those choices.
 
-Use the prompted form when you want to describe the task naturally. Append the request to
-`<run-task>`, for example: `<run-task> Use a worktree from feat/water-fee and implement the frontend changes from the attached specification.`
+Use the prompted form when you want to describe the task naturally. Append the request to `/run-task-end-to-end`, for example:
 
-The workflow parses only clear values, such as `workspace=worktree` and
-`base=feat/water-fee`, and asks only for unresolved choices. Prompt-derived values remain marked as
-`prompt`; confirmed answers are marked as `confirmation` in the resolved echo.
+`/run-task-end-to-end Use a worktree from feature/example and implement the changes from the attached specification.`
+
+The workflow parses only clear values, such as `workspace=worktree` and `base=feature/example`, and asks only for unresolved choices. Prompt-derived values remain marked as `prompt`; confirmed answers are marked as `confirmation` in the resolved echo.
 
 Use explicit arguments for deterministic or power-user operation:
 
-`<run-task> workspace=checkout base=main task="Fix the README wording"`
+`/run-task-end-to-end workspace=checkout base=main task="Fix the README wording"`
 
-`<run-task> workspace=worktree base=feat/water-fee task="Implement the water-fee frontend changes from the attached specification"`
+`/run-task-end-to-end workspace=worktree base=feature/example task="Implement the changes from the attached specification"`
 
-Partial structured input is also supported. For example,
-`<run-task> workspace=worktree task="Implement FE-04"` keeps the explicit workspace and
-task, then asks only for the remaining required base. Explicit values bypass redundant questions.
+Partial structured input is also supported. For example, `/run-task-end-to-end workspace=worktree task="Implement the example feature"` keeps the explicit workspace and task, then asks only for the remaining required base. Explicit values bypass redundant questions.
 
-In a company-context application repository, provide a flow number whenever the applicable company
-branch policy requires one, regardless of invocation style:
+Context-specific repository policies can require additional task or branch metadata. When they do, the workflow requires that information explicitly rather than inferring internal conventions from branch names or task text. Project-specific branch exceptions must likewise be declared in repository instructions and supplied explicitly.
 
-`<run-task> workspace=worktree base=feat/gisgraphdraggable-modify flow=15927 task="Continue sewer layer editing"`
-
-This resolves to `flow/15927-sewer-layer-editing`. The company-flow rule applies only when the
-effective context is `company`; this dotfiles repository explicitly uses effective `personal`
-context while its own source is edited. A project-specific branch exception must be declared in
-repository instructions and supplied explicitly; the workflow does not infer one from a `feat/...`
-branch name.
-
-`$task-workflow` and `$worktree-task-workflow` remain available as compatibility entry points, not
-as the primary invocation paths.
-
-If explicit arguments or a natural-language prompt do not resolve the workspace, the workflow asks
-before switching or creating a branch or worktree. True no-argument mode always exposes the
-workspace choice. The resolved echo shows whether each value came from an argument, the prompt, or
-user confirmation.
-
-The prompt intake resolves the task, supplied materials, workspace, verification policy, and verified MR/PR target before
-the same workflow begins:
-`resolve workspace/policy -> prepare workspace -> establish task branch -> record context when enabled -> implement -> review -> verify/fix/retest -> publish authorization -> publish for review`
-
-The worktree workspace keeps the task directory, branch, and handoff context together. It resolves
-an exact base and MR/PR target, provisions missing approved ignored files from `.worktreeinclude` or
-a client-native equivalent, and can use `runtime=auto` with a project descriptor to allocate and
-health-check a per-worktree port. The checkout workspace stays in the current physical checkout,
-but still establishes the task branch from the resolved base; it does not provision ignored files or
-claim a separate runtime port. `verification=agent` is the default: it runs the maximum feasible
-agent-first automated, runtime, browser, and interactive checks, then asks the user only for genuinely
-user-only checks. `verification=balanced` adds mandatory user acceptance, while `user` leaves
-browser/manual verification to the user. `continuity=auto` inherits the active `ai_continuity` profile
-setting, while `on` and `off` are task overrides. Verification never authorizes publication by itself. Questions and
-assessment prompts stay in a read-only planning phase; say `proceed` or use `phase=execute` before
-the workflow changes project state. A physical checkout has at most one active task and continuity
-state; parking preserves sequential context but does not make simultaneous tasks safe in one
-checkout. The workflow never copies tracked configuration or external secrets.
+Legacy workflow entry points remain available for compatibility, but they are not the primary invocation path.
 
 ## System at a glance
 
