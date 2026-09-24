@@ -8,6 +8,17 @@ Git’s built-in worktree support already provides strong source-code isolation,
 
 My workflow fills those gaps by provisioning the approved local files each task needs, giving parallel worktrees separate runtime ports when the project provides the required runtime configuration, and keeping a per-working-directory continuity record. It deliberately separates code state from task state: Git remains authoritative for code, branches, and commits, while the continuity record preserves the story around that state — what the task is trying to accomplish, why decisions were made, what is blocked or verified, which relevant materials and references are part of the task, and what should happen next. Because that record belongs to the task rather than one conversation, another session or supported AI client can open the same working directory and resume with a simple “continue.” Policy-driven verification and explicit publish authorization provide separate gates before the branch is published for review.
 
+**Jump to:**
+
+* [What the workflow automates](#what-the-workflow-automates)
+* [System at a glance](#system-at-a-glance)
+* [Task continuity](#task-continuity)
+* [Task lifecycle and workspaces](#task-lifecycle-and-workspaces)
+
+> ⚠️ **Personal configuration:** This repository contains my preferences, not a neutral default.
+> On an existing machine, review `chezmoi diff` and apply only the targets you intend to change.
+> Apply the repository broadly only where replacing these personal values is acceptable.
+
 ## What the workflow automates
 
 | Without the workflow — I have to                                                                                                | With the workflow — the system will                                                                                                                                                                                                                                                                                                  |
@@ -19,17 +30,7 @@ My workflow fills those gaps by provisioning the approved local files each task 
 | Decide what the agent can verify itself, what still needs my checking, and what must be rerun after a failure                   | Coordinate verification. Apply the selected verification policy across feasible automated, runtime, browser, and interactive checks, loop through fix-and-retest when needed, and request only checks or acceptance that actually require me                                                                                         |
 | Coordinate the path from completed implementation to reviewable work                                                            | Coordinate publication. Keep verification separate from publish authorization, refresh and reconcile the target base before publication, rerun affected verification when necessary, then commit, push, request review, and perform branch-preserving cleanup                                                                        |
 
-**Jump to:**
-
-* [System at a glance](#system-at-a-glance)
-* [Task continuity](#task-continuity)
-* [Task lifecycle and workspaces](#task-lifecycle-and-workspaces)
-
-> ⚠️ **Personal configuration:** This repository contains my preferences, not a neutral default.
-> On an existing machine, review `chezmoi diff` and apply only the targets you intend to change.
-> Apply the repository broadly only where replacing these personal values is acceptable.
-
-## What this gives you
+## Core Capabilities
 
 | Pillar                                 | Result                                                                                                                                                                                                                                          |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
