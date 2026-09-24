@@ -2,7 +2,7 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-這個 Git 儲存庫集中管理我每天使用的開發環境、個人 dotfiles 與 AI 工具，也是整套環境的單一來源。共用的 AI 指示與可重用的工作流程可以定義一次，再交付給 Claude Code、Codex 與 GitHub Copilot；只屬於單一 client 的行為則留在該 client 自己的範圍內。這讓我可以更精確地控制各 client 的行為，不必維護多份副本，也不用擔心它們彼此漂移。儲存庫也只管理我明確選擇由它負責的持久設定；容易變動的偏好、驗證資訊、session state 與其他由應用程式管理的資料則留在本機。
+這個 Git repository 是我日常使用的開發環境設定、個人 dotfiles 與 AI 工具整合的單一來源。共用的 AI 指示與可重用的工作流程可以定義一次，再交付給 Claude Code、Codex 與 GitHub Copilot；只屬於單一 client 的行為則留在該 client 自己的範圍內。這讓我可以更精確地控制各 client 的行為，不必維護多份副本，也不用擔心它們彼此漂移。這個 repository 也只管理我明確選擇由它負責的持久設定；容易變動的偏好、驗證資訊、session state 與其他由應用程式管理的資料則留在本機。
 
 Git 內建的 worktree 支援已經能提供良好的程式碼隔離；Claude Code 等 AI client 也能透過原生的 worktree 建立與生命週期支援，進一步利用這層隔離。不過，當多個 AI 輔助任務需要可靠地平行執行時，仍會遇到幾個問題：新的 worktree 可能缺少被 Git 忽略的本機檔案，多個同時執行的應用程式可能搶用同一個 runtime port，而 Git 無法記錄的任務脈絡可能仍綁在特定 session 或 client 上。
 
@@ -45,22 +45,14 @@ slash command，但目前 OpenAI 的 skill 文件以 `$skill-name` 作為 skill 
 [OpenAI skill 文件](https://developers.openai.com/plugins/build/skills)）。以下範例以
 `<run-task>` 代表各 client 的對應寫法。
 
-如果希望流程一步一步帶你完成設定，請使用無參數的 guided mode：
-
-```text
-<run-task>
-```
+如果希望流程一步一步帶你完成設定，請直接輸入不帶參數的 `<run-task>`。
 
 無參數模式會詢問任務、workspace、base、verification policy、continuity policy，以及依情境
 真正必要的其他輸入。client 提供原生選擇介面時會優先使用；沒有結構化輸入時，則改用簡短的
 文字問題。verification 的預設值 `agent` 與 continuity 的預設值 `auto` 仍會清楚標示，但 guided
 mode 會讓你看到這些選項。
 
-如果想直接用自然語言描述任務，請使用 prompted form：
-
-```text
-<run-task> Use a worktree from feat/water-fee and implement the frontend changes from the attached specification.
-```
+如果想直接用自然語言描述任務，請在 `<run-task>` 後接著描述任務，例如：`<run-task> Use a worktree from feat/water-fee and implement the frontend changes from the attached specification.`
 
 流程只會解析明確表達的內容，例如 `workspace=worktree` 與 `base=feat/water-fee`，其餘尚未
 確定的選項才會再詢問。解析自 prompt 的值會在 resolved echo 中標示為 `prompt`；透過問題或

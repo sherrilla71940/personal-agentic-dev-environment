@@ -46,22 +46,16 @@ commands for built-in features, but its documented skill syntax uses `$skill-nam
 documentation](https://developers.openai.com/plugins/build/skills)). The examples below use
 `<run-task>` as shorthand for the client-specific form.
 
-Start with guided mode when you want the workflow to walk you through the choices:
-
-```text
-<run-task>
-```
+Start with guided mode when you want the workflow to walk you through the choices. Invoke
+`<run-task>` with no arguments.
 
 No-argument mode asks for the task, workspace, base, verification policy, continuity policy, and
 any context-specific required input. It uses native choice UI when the client provides one and a
 concise text fallback otherwise. It shows `agent` and `auto` as the defaults for verification and
 continuity, but guided mode still exposes those choices.
 
-Use the prompted form when you want to describe the task naturally:
-
-```text
-<run-task> Use a worktree from feat/water-fee and implement the frontend changes from the attached specification.
-```
+Use the prompted form when you want to describe the task naturally. Append the request to
+`<run-task>`, for example: `<run-task> Use a worktree from feat/water-fee and implement the frontend changes from the attached specification.`
 
 The workflow parses only clear values, such as `workspace=worktree` and
 `base=feat/water-fee`, and asks only for unresolved choices. Prompt-derived values remain marked as
