@@ -21,14 +21,9 @@ Git 內建的 worktree 支援已經能提供良好的程式碼隔離；Claude Co
 
 **快速導覽：**
 
-* [工作流程會自動處理什麼](#工作流程會自動處理什麼)
-* [實際使用](#實際使用)
 * [系統總覽](#系統總覽)
-* [Profile 與 AI harness 模式](#profile-與-ai-harness-模式)
 * [Task continuity](#task-continuity)
 * [任務生命週期與 workspace](#任務生命週期與-workspace)
-* [接下來可以去哪裡](#接下來可以去哪裡)
-
 
 > ⚠️ **個人設定提醒：** 這個儲存庫包含我的個人偏好，不是通用的預設設定。既有機器請先查看
 > `chezmoi diff`，只套用你確定要變更的 target。只有在覆寫這些個人設定沒有問題的機器上，才適合
@@ -50,68 +45,29 @@ Git 內建的 worktree 支援已經能提供良好的程式碼隔離；Claude Co
 
 ## 實際使用
 
-這套流程在兩個 client 中都支援三種正式的呼叫方式。Claude Code 使用
-`/run-task-end-to-end` 呼叫 skill；Codex 使用 `$run-task-end-to-end`。Codex 也有供內建功能使用的
-slash command，但目前 OpenAI 的 skill 文件以 `$skill-name` 作為 skill 語法（參考
-[OpenAI skill 文件](https://developers.openai.com/plugins/build/skills)）。以下範例以
-`<run-task>` 代表各 client 的對應寫法。
+這套工作流程在支援的 AI client 中提供同一個主要入口：`/run-task-end-to-end`。
 
-如果希望流程一步一步帶你完成設定，請直接輸入不帶參數的 `<run-task>`。
+如果希望流程一步一步帶你完成設定，直接輸入不帶參數的 `/run-task-end-to-end`。
 
-無參數模式會詢問任務、workspace、base、verification policy、continuity policy，以及依情境
-真正必要的其他輸入。client 提供原生選擇介面時會優先使用；沒有結構化輸入時，則改用簡短的
-文字問題。verification 的預設值 `agent` 與 continuity 的預設值 `auto` 仍會清楚標示，但 guided
-mode 會讓你看到這些選項。
+無參數模式會詢問任務、workspace、base、verification policy、continuity policy，以及依情境真正必要的其他輸入。client 提供原生選擇介面時會優先使用；沒有結構化輸入時，則改用簡短的文字問題。verification 的預設值 `agent` 與 continuity 的預設值 `auto` 仍會清楚標示，但 guided mode 會讓你看到這些選項。
 
-如果想直接用自然語言描述任務，請在 `<run-task>` 後接著描述任務，例如：`<run-task> Use a worktree from feat/water-fee and implement the frontend changes from the attached specification.`
+如果想直接用自然語言描述任務，可以在 `/run-task-end-to-end` 後接著描述，例如：
 
-流程只會解析明確表達的內容，例如 `workspace=worktree` 與 `base=feat/water-fee`，其餘尚未
-確定的選項才會再詢問。解析自 prompt 的值會在 resolved echo 中標示為 `prompt`；透過問題或
-選擇介面確認的值會標示為 `confirmation`。
+`/run-task-end-to-end Use a worktree from feature/example and implement the changes from the attached specification.`
 
-需要可重現、精確控制的操作，請使用 explicit arguments：
+流程只會解析明確表達的內容，例如 `workspace=worktree` 與 `base=feature/example`，其餘尚未確定的選項才會再詢問。解析自 prompt 的值會在 resolved echo 中標示為 `prompt`；透過問題或選擇介面確認的值則標示為 `confirmation`。
 
-`<run-task> workspace=checkout base=main task="修正 README 文字"`
+需要可重現、精確控制的操作時，可以使用 explicit arguments：
 
-`<run-task> workspace=worktree base=feat/water-fee task="實作 water-fee 前端變更"`
+`/run-task-end-to-end workspace=checkout base=main task="修正 README 文字"`
 
-也可以只提供部分結構化參數。例如 `<run-task> workspace=worktree task="Implement FE-04"`
-會保留已明確提供的 workspace 與 task，只詢問剩下必要的 base。明確提供的值不會被重複詢問。
+`/run-task-end-to-end workspace=worktree base=feature/example task="實作附件規格中的變更"`
 
-在 company context 的應用程式儲存庫中，只要適用的 company branch policy 要求 flow number，
-不論採用哪一種呼叫方式，都必須提供：
+也可以只提供部分結構化參數。例如 `/run-task-end-to-end workspace=worktree task="實作範例功能"` 會保留已明確提供的 workspace 與 task，只詢問剩下必要的 base。明確提供的值不會被重複詢問。
 
-`<run-task> workspace=worktree base=feat/gisgraphdraggable-modify flow=15927 task="Continue sewer layer editing"`
+特定 context 或 repository policy 可能要求額外的任務或分支資訊。遇到這類情況時，工作流程會要求明確提供必要資訊，不會從分支名稱或任務文字自行推斷內部慣例。專案若有例外的分支規則，也必須在 repository instructions 中明確宣告並提供。
 
-這會解析成 `flow/15927-sewer-layer-editing`。只有 effective context 是 `company` 時才套用
-company-flow 規則；編輯這個 dotfiles 儲存庫本身時，根目錄指示會覆寫 machine selector，使用
-effective `personal` context。若專案要使用例外的分支格式，必須在 repository instructions 中
-明確宣告並明確提供 `branch=`；流程不會只因為分支名稱看起來像 `feat/...` 就自行推斷例外。
-
-`$task-workflow` 與 `$worktree-task-workflow` 仍保留作為相容性入口，不是主要呼叫方式。
-
-如果 explicit arguments 或自然語言 prompt 都無法解析 workspace，流程會在切換或建立分支、建立
-worktree 前先詢問。真正的無參數模式一定會顯示 workspace 選項。Resolved echo 也會顯示每個值是
-來自 argument、prompt，還是使用者確認。
-
-Prompt intake 會先解析任務、提供的材料、workspace、verification policy 與已驗證的 MR/PR target，再進入同一套工作流程：
-
-`解析 workspace/policy → 準備 workspace → 建立任務分支 → 視 continuity 設定記錄脈絡 → 實作 → review → 驗證／修正／重測 → 發布核准 → 發布供 review`
-
-Worktree workspace 會把任務目錄、分支與交接脈絡綁在一起，解析精確的 base 與 MR/PR target，並從
-`.worktreeinclude` 或 client 原生機制補上任務缺少的已核准 ignored 檔案；如果專案提供 descriptor
-並選擇 `runtime=auto`，流程還會為每個 worktree 配置 port 並執行 health check。Checkout workspace
-則留在目前的 checkout，但仍會從解析出的 base 建立任務分支；不會配置 ignored 檔案，也不會宣稱有
-獨立的 runtime port。`verification=agent` 是預設值：先執行 agent 能完成的自動化、runtime、瀏覽器與互動式
-驗證，只在確實需要使用者介入時詢問。`verification=balanced` 會再要求使用者明確接受，`user` 則只執行
-非互動式檢查，把瀏覽器與手動驗證留給使用者。`continuity=auto`
-直接沿用 active profile 的 `ai_continuity` 設定，`on` 與 `off` 則是任務層級的覆寫。驗證通過不代表
-可以直接發布。
-
-以提問、評估或閱讀材料為主的 prompt 會先停在唯讀的規劃階段；要變更專案狀態，請明確說
-`proceed` 或使用 `phase=execute`。每個實體 checkout 最多只有一個作用中的任務與 continuity
-state；parking 可以保留依序切換任務時的脈絡，但不能讓同一個 checkout 同時安全承載多個任務。
-流程不會複製 tracked configuration 或 external secret。
+舊的 workflow 入口仍保留作為相容性用途，但不是主要呼叫方式。
 
 ## 系統總覽
 
