@@ -172,9 +172,9 @@ assert_hook_behavior() {
   git -C "$fixture" add tracked.txt
   git -C "$fixture" commit -qm initial
 
-  mkdir -p "$fixture/.project-continuity"
-  state="$fixture/.project-continuity/state.md"
-  printf '# Project Continuity\n\n## Objective\n\nKeep the fixture task open.\n\n## Next actions\n\n1. Keep the task open.\n' > "$state"
+  mkdir -p "$fixture/.task-continuity"
+  state="$fixture/.task-continuity/state.md"
+  printf '# Task Continuity\n\n## Objective\n\nKeep the fixture task open.\n\n## Next actions\n\n1. Keep the task open.\n' > "$state"
   exclude="$(git -C "$fixture" rev-parse --path-format=absolute --git-path info/exclude)"
   mkdir -p "$(dirname "$exclude")"
   touch "$exclude"
@@ -221,12 +221,14 @@ check_profile() {
   local codex="$destination/.codex/AGENTS.md"
   local copilot="$destination/.copilot/instructions/core.instructions.md"
   local commit_skill="$destination/.agents/skills/git-commit-action/SKILL.md"
-  local lifecycle_hook="$destination/.local/share/maintain-project-continuity.sh"
-  local project_continuity="$destination/.agents/skills/project-continuity/SKILL.md"
-  local workflow="$destination/.agents/skills/worktree-task-workflow/SKILL.md"
-  local claude_workflow="$destination/.claude/skills/worktree-task-workflow/SKILL.md"
-  local invocation="$destination/.agents/skills/worktree-task-workflow/references/invocation.md"
-  local publishing="$destination/.agents/skills/worktree-task-workflow/references/publish.md"
+  local lifecycle_hook="$destination/.local/share/maintain-task-continuity.sh"
+  local project_continuity="$destination/.agents/skills/task-continuity/SKILL.md"
+  local workflow="$destination/.agents/skills/run-task-end-to-end/SKILL.md"
+  local claude_workflow="$destination/.claude/skills/run-task-end-to-end/SKILL.md"
+  local invocation="$destination/.agents/skills/run-task-end-to-end/references/invocation.md"
+  local publishing="$destination/.agents/skills/run-task-end-to-end/references/publish.md"
+  local legacy_workflow="$destination/.agents/skills/worktree-task-workflow/SKILL.md"
+  local legacy_claude_workflow="$destination/.claude/skills/worktree-task-workflow/SKILL.md"
   local codex_hooks="$destination/.codex/hooks.json"
   local settings
 
@@ -237,6 +239,8 @@ check_profile() {
   assert_file "$project_continuity"
   assert_file "$workflow"
   assert_file "$claude_workflow"
+  assert_file "$legacy_workflow"
+  assert_file "$legacy_claude_workflow"
   assert_file "$invocation"
   assert_file "$publishing"
   [[ "$(head -n 1 "$codex")" != '---' ]] ||
@@ -290,8 +294,12 @@ check_profile() {
   assert_contains "$claude_workflow" 'natural-language prompt'
   assert_contains "$claude_workflow" 'phase=plan'
   assert_contains "$invocation" 'remote-base checkpoint'
+  assert_contains "$invocation" 'branch_policy=company-flow'
+  assert_contains "$invocation" 'flow=<digits>'
+  assert_contains "$workflow" 'branch_policy=company-flow'
+  assert_contains "$claude_workflow" 'branch_policy=company-flow'
   assert_contains "$invocation" 'prompt-only shortcut'
-  assert_contains "$invocation" 'complete text after `/worktree-task-workflow`'
+  assert_contains "$invocation" 'complete text after `/run-task-end-to-end`'
   assert_contains "$invocation" 'base source prompt / MR metadata / explicit'
   assert_contains "$invocation" 'Plan phase boundary'
   assert_contains "$invocation" 'After each material resolves, record it in the active continuity state'
@@ -323,7 +331,7 @@ check_profile() {
   assert_contains "$publishing" 'git fetch origin --prune'
   assert_contains "$publishing" 'Do not use ambiguous `git pull`'
   assert_contains "$publishing" 'git rebase --continue'
-  assert_contains "$publishing" 'return to the manual-test gate'
+  assert_contains "$publishing" 'return to the selected verification policy'
   assert_not_contains "$commit_skill" '{{'
   assert_not_contains "$invocation" '{{'
   assert_not_contains "$publishing" '{{'
@@ -336,10 +344,17 @@ check_profile() {
   assert_jsonc_structure "$settings" 4
   assert_json "$destination/.claude/settings.json" "$destination/.codex/hooks.json"
   assert_contains "$destination/.claude/settings.json" 'statusLine'
-  assert_contains "$destination/.agents/skills/project-continuity/SKILL.md" 'disable-model-invocation: true'
+  assert_contains "$destination/.agents/skills/task-continuity/SKILL.md" 'disable-model-invocation: true'
   assert_contains "$destination/.agents/skills/worktree-manifest/SKILL.md" 'disable-model-invocation: true'
+  assert_contains "$destination/.agents/skills/run-task-end-to-end/agents/openai.yaml" 'allow_implicit_invocation: false'
   assert_contains "$destination/.agents/skills/worktree-task-workflow/agents/openai.yaml" 'allow_implicit_invocation: false'
-  assert_contains "$destination/.agents/skills/project-continuity/agents/openai.yaml" 'allow_implicit_invocation: false'
+  assert_contains "$workflow" 'name: run-task-end-to-end'
+  assert_contains "$claude_workflow" 'name: run-task-end-to-end'
+  assert_contains "$legacy_workflow" 'name: worktree-task-workflow'
+  assert_contains "$legacy_workflow" '../run-task-end-to-end/SKILL.md'
+  assert_contains "$legacy_claude_workflow" 'name: worktree-task-workflow'
+  assert_contains "$legacy_claude_workflow" '../run-task-end-to-end/SKILL.md'
+  assert_contains "$destination/.agents/skills/task-continuity/agents/openai.yaml" 'allow_implicit_invocation: false'
   assert_contains "$destination/.agents/skills/worktree-manifest/agents/openai.yaml" 'allow_implicit_invocation: false'
 
   if [[ "$harness" == managed ]]; then
@@ -347,31 +362,31 @@ check_profile() {
     assert_contains "$destination/.claude/settings.json" 'check-worktree-launch'
     assert_contains "$destination/.codex/hooks.json" 'show-agent-notification'
     if [[ "$continuity" == on ]]; then
-      assert_contains "$destination/.claude/settings.json" 'maintain-project-continuity.sh'
-      assert_contains "$destination/.codex/hooks.json" 'maintain-project-continuity.sh'
+      assert_contains "$destination/.claude/settings.json" 'maintain-task-continuity.sh'
+      assert_contains "$destination/.codex/hooks.json" 'maintain-task-continuity.sh'
       assert_contains "$destination/.claude/settings.json" 'startup|resume|clear|compact|fork'
       assert_contains "$codex_hooks" 'startup|resume|clear|compact'
       assert_not_contains "$codex_hooks" 'fork'
     else
-      assert_not_contains "$destination/.claude/settings.json" 'maintain-project-continuity.sh'
-      assert_not_contains "$destination/.codex/hooks.json" 'maintain-project-continuity.sh'
+      assert_not_contains "$destination/.claude/settings.json" 'maintain-task-continuity.sh'
+      assert_not_contains "$destination/.codex/hooks.json" 'maintain-task-continuity.sh'
     fi
   else
     assert_contains "$destination/.claude/settings.json" 'show-agent-notification'
     assert_not_contains "$destination/.claude/settings.json" 'check-worktree-launch'
-    assert_not_contains "$destination/.claude/settings.json" 'maintain-project-continuity.sh'
+    assert_not_contains "$destination/.claude/settings.json" 'maintain-task-continuity.sh'
     assert_contains "$destination/.codex/hooks.json" 'show-agent-notification'
-    assert_not_contains "$destination/.codex/hooks.json" 'maintain-project-continuity.sh'
+    assert_not_contains "$destination/.codex/hooks.json" 'maintain-task-continuity.sh'
   fi
 
   if [[ "$continuity" == on && "$harness" == managed ]]; then
-    assert_contains "$claude" '## Project continuity'
-    assert_contains "$codex" '## Project continuity'
-    assert_contains "$copilot" '## Project continuity'
+    assert_contains "$claude" '## Task continuity'
+    assert_contains "$codex" '## Task continuity'
+    assert_contains "$copilot" '## Task continuity'
   else
-    assert_not_contains "$claude" '## Project continuity'
-    assert_not_contains "$codex" '## Project continuity'
-    assert_not_contains "$copilot" '## Project continuity'
+    assert_not_contains "$claude" '## Task continuity'
+    assert_not_contains "$codex" '## Task continuity'
+    assert_not_contains "$copilot" '## Task continuity'
     assert_contains "$lifecycle_hook" 'deliberate no-op'
   fi
   if [[ "$harness" == native || "$continuity" == off ]]; then
@@ -414,13 +429,13 @@ mkdir -p "$default_destination"
 assert_contains "$default_destination/.claude/CLAUDE.md" 'The active context is `personal`.'
 assert_not_contains "$default_destination/.claude/CLAUDE.md" 'The active context is `company`.'
 assert_contains "$default_destination/.agents/skills/git-commit-action/SKILL.md" '| **Language** | `en` · `zhtw`      | `en`'
-assert_contains "$default_destination/.agents/skills/worktree-task-workflow/references/invocation.md" 'commit and request text only | `en`'
-assert_contains "$default_destination/.agents/skills/worktree-task-workflow/references/invocation.md" 'isolation=in-place'
-assert_contains "$default_destination/.claude/skills/worktree-task-workflow/references/invocation.md" 'isolation=in-place'
-assert_contains "$default_destination/.agents/skills/worktree-task-workflow/references/lifecycle.md" 'For `in-place`'
+assert_contains "$default_destination/.agents/skills/run-task-end-to-end/references/invocation.md" 'commit and request text only | `en`'
+assert_contains "$default_destination/.agents/skills/run-task-end-to-end/references/invocation.md" 'workspace=checkout'
+assert_contains "$default_destination/.claude/skills/run-task-end-to-end/references/invocation.md" 'workspace=checkout'
+assert_contains "$default_destination/.agents/skills/run-task-end-to-end/references/lifecycle.md" 'verification=agent'
 assert_contains "$repository_root/AGENTS.md" 'this repository always uses the'
 assert_contains "$repository_root/AGENTS.md" '`personal` context while work is performed here'
-assert_contains "$default_destination/.claude/CLAUDE.md" '## Project continuity'
+assert_contains "$default_destination/.claude/CLAUDE.md" '## Task continuity'
 printf 'profile tests: missing-key defaults OK\n'
 
 # The documented work-machine workflow sets ai_context only and leaves the other selectors at their
@@ -440,7 +455,8 @@ mkdir -p "$company_only_destination"
   --force >/dev/null
 assert_contains "$company_only_destination/.claude/CLAUDE.md" 'The active context is `company`.'
 assert_contains "$company_only_destination/.agents/skills/git-commit-action/SKILL.md" '| **Language** | `en` · `zhtw`      | `zhtw`'
-assert_contains "$company_only_destination/.claude/CLAUDE.md" '## Project continuity'
+assert_contains "$company_only_destination/.claude/CLAUDE.md" '## Task continuity'
+assert_contains "$company_only_destination/.agents/skills/run-task-end-to-end/references/invocation.md" 'branch_policy=company-flow'
 printf 'profile tests: explicit company with default continuity OK\n'
 
 # A native render must remove only repository-owned hook commands from an existing Claude settings
@@ -456,7 +472,7 @@ printf '%s\n' '{
     ]}],
     "SessionStart": [{"hooks": [
       {"type": "command", "command": "bash $HOME/.claude/hooks/check-worktree-launch.sh"},
-      {"type": "command", "command": "bash $HOME/.local/share/maintain-project-continuity.sh"},
+      {"type": "command", "command": "bash $HOME/.local/share/maintain-task-continuity.sh"},
       {"type": "command", "command": "bash $HOME/custom-session-start.sh"}
     ]}]
   }
@@ -472,7 +488,7 @@ assert_contains "$hook_merge_destination/.claude/settings.json" 'custom-notifica
 assert_contains "$hook_merge_destination/.claude/settings.json" 'custom-session-start.sh'
 assert_contains "$hook_merge_destination/.claude/settings.json" 'show-agent-notification'
 assert_not_contains "$hook_merge_destination/.claude/settings.json" 'check-worktree-launch'
-assert_not_contains "$hook_merge_destination/.claude/settings.json" 'maintain-project-continuity.sh'
+assert_not_contains "$hook_merge_destination/.claude/settings.json" 'maintain-task-continuity.sh'
 printf 'profile tests: native hook merge preserves unrelated settings OK\n'
 
 invalid_context="$work_directory/invalid-context.yaml"
@@ -505,7 +521,7 @@ mkdir -p "$legacy_destination"
   --destination="$legacy_destination" --exclude=scripts \
   --override-data-file="$legacy_harness" --no-tty --force >/dev/null
 assert_contains "$legacy_destination/.claude/CLAUDE.md" 'Edit source-of-truth files'
-assert_not_contains "$legacy_destination/.claude/CLAUDE.md" '## Project continuity'
+assert_not_contains "$legacy_destination/.claude/CLAUDE.md" '## Task continuity'
 printf 'profile tests: legacy ai_workflow compatibility OK\n'
 conflicting_harness="$work_directory/conflicting-harness.yaml"
 printf 'ai_harness: native\nai_workflow: managed\n' > "$conflicting_harness"

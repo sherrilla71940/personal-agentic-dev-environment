@@ -63,12 +63,12 @@ durable task registry becomes necessary for continuity across working directorie
 
 ## Related files and verification
 
-- [`home/dot_local/share/maintain-project-continuity.sh.tmpl`](../../home/dot_local/share/maintain-project-continuity.sh.tmpl) — lifecycle reporting
-- [`home/dot_agents/skills/project-continuity/SKILL.md`](../../home/dot_agents/skills/project-continuity/SKILL.md) — completion gate
-- [`home/dot_agents/skills/worktree-task-workflow/SKILL.md`](../../home/dot_agents/skills/worktree-task-workflow/SKILL.md) — task-boundary requirement
+- [`home/dot_local/share/maintain-task-continuity.sh.tmpl`](../../home/dot_local/share/maintain-task-continuity.sh.tmpl) — lifecycle reporting
+- [`home/dot_agents/skills/task-continuity/SKILL.md`](../../home/dot_agents/skills/task-continuity/SKILL.md) — completion gate
+- [`home/dot_agents/skills/task-workflow/SKILL.md`](../../home/dot_agents/skills/task-workflow/SKILL.md) — task-boundary requirement
 - [`home/.chezmoitemplates/continuity.md`](../../home/.chezmoitemplates/continuity.md) — shared continuity instruction
-- [`scripts/tests/test-project-continuity-hook.sh`](../../scripts/tests/test-project-continuity-hook.sh) — lifecycle regression coverage
+- [`scripts/tests/test-task-continuity.sh`](../../scripts/tests/test-task-continuity.sh) — lifecycle regression coverage
 - [`docs/worktree-provisioning.md`](../worktree-provisioning.md) — operational workflow boundary
 - [`docs/setup.md`](../setup.md) — rendered lifecycle hook behavior
 
-Verification: `bash scripts/tests/test-project-continuity-hook.sh`
+Verification: `bash scripts/tests/test-task-continuity.sh`

@@ -1,0 +1,1 @@
+Task A is complete. Start Task B with effective `continuity=on`; before implementation, initialize a fresh continuity state whose objective is to add a health-check endpoint. Preserve Task A's completed continuity record in the parked/history area.

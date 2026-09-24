@@ -56,8 +56,8 @@ explicit parked-task listing.
 
 ## Related files and verification
 
-- [`home/dot_agents/skills/project-continuity/SKILL.md`](../../home/dot_agents/skills/project-continuity/SKILL.md)
-- [`home/dot_agents/skills/project-continuity/references/state-format.md`](../../home/dot_agents/skills/project-continuity/references/state-format.md)
-- [`home/dot_agents/skills/project-continuity/README.md`](../../home/dot_agents/skills/project-continuity/README.md)
-- [`home/dot_local/share/maintain-project-continuity.sh.tmpl`](../../home/dot_local/share/maintain-project-continuity.sh.tmpl)
-- [`scripts/tests/test-project-continuity-hook.sh`](../../scripts/tests/test-project-continuity-hook.sh)
+- [`home/dot_agents/skills/task-continuity/SKILL.md`](../../home/dot_agents/skills/task-continuity/SKILL.md)
+- [`home/dot_agents/skills/task-continuity/references/state-format.md`](../../home/dot_agents/skills/task-continuity/references/state-format.md)
+- [`home/dot_agents/skills/task-continuity/README.md`](../../home/dot_agents/skills/task-continuity/README.md)
+- [`home/dot_local/share/maintain-task-continuity.sh.tmpl`](../../home/dot_local/share/maintain-task-continuity.sh.tmpl)
+- [`scripts/tests/test-task-continuity.sh`](../../scripts/tests/test-task-continuity.sh)

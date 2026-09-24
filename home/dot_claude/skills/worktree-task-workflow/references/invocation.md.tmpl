@@ -1,8 +1,0 @@
-{{- $profile := includeTemplate "ai-profile.yaml" . | fromYaml -}}
-{{ includeTemplate "skills/worktree-task-workflow/invocation.md" (dict
-  "invoke" "/worktree-task-workflow"
-  "worktreeExample" "<repo>/.claude/worktrees/cctv-pipe-inspection-record"
-  "cleanupValues" "`ask`, `auto`, or `keep`"
-  "cleanupDefault" "ask"
-  "langDefault" $profile.artifact_language
-) -}}

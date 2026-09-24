@@ -1,6 +1,0 @@
-interface:
-  display_name: "Workflow Archive"
-  short_description: "Archive and remove active workflow sources"
-  default_prompt: "Use $workflow-archive to discover, archive, and remove a reusable workflow's active sources."
-policy:
-  allow_implicit_invocation: false

@@ -98,7 +98,7 @@ repository explicitly configures them.
 Never eligible, whatever the user asks:
 
 - authentication files, production environment files, private keys, certificates;
-- agent history, memory, caches, `.project-continuity/**`, Codex local state;
+- agent history, memory, caches, `.task-continuity/**`, unmigrated `.project-continuity/**`, Codex local state;
 - dependencies and build output — `node_modules`, `packages`, `bin`, `obj`, `dist`, `coverage`;
 - database files, backups, and upload or temp directories holding real data.
 

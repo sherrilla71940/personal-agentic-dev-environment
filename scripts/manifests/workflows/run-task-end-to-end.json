@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "name": "run-task-end-to-end",
+  "description": "Guide or carry one implementation task through the selected checkout or worktree workspace, verification, publishing, and branch-preserving cleanup.",
+  "dependencies": [
+    "Git worktree support",
+    "chezmoi for rendering client-specific references",
+    "Claude Code or Codex worktree support",
+    "Python 3 for optional runtime isolation"
+  ],
+  "profileAssumptions": [
+    "Rendered reference files use the current ai_context, ai_continuity, and ai_harness selectors; workflow deletion never changes those selectors.",
+    "Runtime isolation is an explicit task option and uses a consuming project's authoritative .worktree-runtime.json when present.",
+    "Effective company context requires flow=<digits> for execution tasks that create a branch and uses the flow/<number>-<ascii-description> branch policy; repository instructions may declare an explicit project exception.",
+    "The task-workflow and worktree-task-workflow compatibility adapters are part of the canonical migration bundle.",
+    "Invocation supports guided no-argument, prompted natural-language, and explicit structured styles; shared semantics stay host-neutral and adapters use native structured questions only when available.",
+    "Continuity records retain Task, Branch, Base branch, Base commit, and compatibility Started from metadata; unique parked-state matches are reconciled before restoration, while legacy or ambiguous matches require explicit selection."
+  ],
+  "sharedFiles": [],
+  "targets": [
+    ".agents/skills/run-task-end-to-end",
+    ".claude/skills/run-task-end-to-end",
+    ".agents/skills/task-workflow",
+    ".claude/skills/task-workflow",
+    ".agents/skills/worktree-task-workflow",
+    ".claude/skills/worktree-task-workflow"
+  ],
+  "files": [
+    "home/dot_agents/skills/run-task-end-to-end/.codex-only",
+    "home/dot_agents/skills/run-task-end-to-end/SKILL.md",
+    "home/dot_agents/skills/run-task-end-to-end/agents/openai.yaml",
+    "home/dot_agents/skills/run-task-end-to-end/references/invocation.md.tmpl",
+    "home/dot_agents/skills/run-task-end-to-end/references/lifecycle.md.tmpl",
+    "home/dot_agents/skills/run-task-end-to-end/references/publish.md.tmpl",
+    "home/dot_claude/skills/run-task-end-to-end/SKILL.md",
+    "home/dot_claude/skills/run-task-end-to-end/references/invocation.md.tmpl",
+    "home/dot_claude/skills/run-task-end-to-end/references/lifecycle.md.tmpl",
+    "home/dot_claude/skills/run-task-end-to-end/references/publish.md.tmpl",
+    "home/dot_agents/skills/task-workflow/.codex-only",
+    "home/dot_agents/skills/task-workflow/SKILL.md",
+    "home/dot_agents/skills/task-workflow/agents/openai.yaml",
+    "home/dot_claude/skills/task-workflow/SKILL.md",
+    "home/dot_agents/skills/task-continuity/SKILL.md",
+    "home/dot_agents/skills/task-continuity/references/state-format.md",
+    "home/.chezmoitemplates/skills/run-task-end-to-end/invocation.md",
+    "home/.chezmoitemplates/skills/run-task-end-to-end/lifecycle.md",
+    "home/.chezmoitemplates/skills/run-task-end-to-end/publish.md",
+    "docs/decisions/0044-three-run-task-invocation-styles.md",
+    "docs/decisions/0045-coordinated-naming-cleanup.md",
+    "scripts/tests/test-run-task-invocation.sh",
+    "home/dot_agents/skills/worktree-task-workflow/.codex-only",
+    "home/dot_agents/skills/worktree-task-workflow/SKILL.md",
+    "home/dot_agents/skills/worktree-task-workflow/agents/openai.yaml",
+    "home/dot_claude/skills/worktree-task-workflow/SKILL.md",
+    "home/dot_local/share/maintain-task-continuity.sh.tmpl",
+    "home/dot_local/share/worktree-runtime.py",
+    "docs/worktree-provisioning.md",
+    "docs/worktree-runtime.md",
+    "scripts/tests/test-worktree-runtime.py"
+  ]
+}

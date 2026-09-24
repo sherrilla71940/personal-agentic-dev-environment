@@ -70,9 +70,9 @@ can identify required tracked overrides without inspecting their values.
 - `home/dot_local/share/git-worktree-provision.sh`
 - `home/dot_gitconfig.tmpl`
 - `docs/worktree-provisioning.md`
-- `home/.chezmoitemplates/skills/worktree-task-workflow/lifecycle.md`
-- `home/dot_agents/skills/worktree-task-workflow/SKILL.md`
-- `home/dot_claude/skills/worktree-task-workflow/SKILL.md`
+- `home/.chezmoitemplates/skills/task-workflow/lifecycle.md`
+- `home/dot_agents/skills/task-workflow/SKILL.md`
+- `home/dot_claude/skills/task-workflow/SKILL.md`
 - `home/dot_agents/skills/worktree-manifest/SKILL.md`
 - `scripts/tests/test-git-worktree-provision.ps1`
 - `scripts/tests/test-git-worktree-provision.sh`

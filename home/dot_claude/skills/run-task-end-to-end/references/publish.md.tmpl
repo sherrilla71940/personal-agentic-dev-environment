@@ -1,0 +1,2 @@
+{{- $profile := includeTemplate "ai-profile.yaml" . | fromYaml -}}
+{{ includeTemplate "skills/run-task-end-to-end/publish.md" (dict "langDefault" $profile.artifact_language) -}}

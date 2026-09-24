@@ -51,9 +51,9 @@ checkpoint, or if the project adopts a multi-remote request contract.
 
 ## Related files and verification
 
-- [`home/.chezmoitemplates/skills/worktree-task-workflow/invocation.md`](../../home/.chezmoitemplates/skills/worktree-task-workflow/invocation.md)
-- [`home/.chezmoitemplates/skills/worktree-task-workflow/publish.md`](../../home/.chezmoitemplates/skills/worktree-task-workflow/publish.md)
-- [`home/dot_claude/skills/worktree-task-workflow/SKILL.md`](../../home/dot_claude/skills/worktree-task-workflow/SKILL.md)
-- [`home/dot_agents/skills/worktree-task-workflow/SKILL.md`](../../home/dot_agents/skills/worktree-task-workflow/SKILL.md)
+- [`home/.chezmoitemplates/skills/task-workflow/invocation.md`](../../home/.chezmoitemplates/skills/task-workflow/invocation.md)
+- [`home/.chezmoitemplates/skills/task-workflow/publish.md`](../../home/.chezmoitemplates/skills/task-workflow/publish.md)
+- [`home/dot_claude/skills/task-workflow/SKILL.md`](../../home/dot_claude/skills/task-workflow/SKILL.md)
+- [`home/dot_agents/skills/task-workflow/SKILL.md`](../../home/dot_agents/skills/task-workflow/SKILL.md)
 - [`docs/worktree-provisioning.md`](../worktree-provisioning.md)
 - Render/profile checks and the worktree provisioning suites cover the affected source contracts.

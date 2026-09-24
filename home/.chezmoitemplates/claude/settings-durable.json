@@ -19,12 +19,12 @@
 
 {{- $notificationCommand := "bash \"$HOME/.local/share/show-agent-notification-macos.sh\"" -}}
 {{- $sessionStartCommand := "bash \"$HOME/.claude/hooks/check-worktree-launch.sh\"" -}}
-{{- $continuityLifecycleCommand := "bash \"$HOME/.local/share/maintain-project-continuity.sh\"" -}}
+{{- $continuityLifecycleCommand := "bash \"$HOME/.local/share/maintain-task-continuity.sh\"" -}}
 {{- $statusLineCommand := "bash \"$HOME/.claude/claude-session-statusline.sh\"" -}}
 {{- if $isWindows -}}
 {{-   $notificationCommand = printf "%s \"$HOME/.local/share/show-agent-notification.ps1\"" $pwsh -}}
 {{-   $sessionStartCommand = printf "%s \"$HOME/.claude/hooks/check-worktree-launch.ps1\"" $pwsh -}}
-{{-   $continuityLifecycleCommand = printf "\"%s\" \"$HOME/.local/share/maintain-project-continuity.sh\"" $gitBash -}}
+{{-   $continuityLifecycleCommand = printf "\"%s\" \"$HOME/.local/share/maintain-task-continuity.sh\"" $gitBash -}}
 {{-   $statusLineCommand = printf "%s \"$HOME/.claude/claude-session-statusline.ps1\"" $pwsh -}}
 {{- end -}}
 

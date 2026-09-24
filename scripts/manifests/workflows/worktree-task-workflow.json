@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "worktree-task-workflow",
-  "description": "Create and carry one implementation task through an isolated worktree, verification, manual testing, publishing, and branch-preserving cleanup.",
+  "description": "Preserve the legacy worktree-task-workflow compatibility entry point while run-task-end-to-end remains canonical.",
   "dependencies": [
     "Git worktree support",
     "chezmoi for rendering client-specific references",
@@ -9,8 +9,9 @@
     "Python 3 for optional runtime isolation"
   ],
   "profileAssumptions": [
-    "Rendered reference files use the current ai_context, ai_continuity, and ai_harness selectors; restore never changes those selectors.",
-    "Runtime isolation is an explicit task option and uses a consuming project's authoritative .worktree-runtime.json when present."
+    "Rendered reference files use the current ai_context, ai_continuity, and ai_harness selectors; workflow deletion never changes those selectors.",
+    "Runtime isolation is an explicit task option and uses a consuming project's authoritative .worktree-runtime.json when present.",
+    "Effective company context requires flow=<digits> for execution tasks that create a branch and uses the flow/<number>-<ascii-description> branch policy; repository instructions may declare an explicit project exception."
   ],
   "sharedFiles": [],
   "targets": [
@@ -21,19 +22,6 @@
     "home/dot_agents/skills/worktree-task-workflow/.codex-only",
     "home/dot_agents/skills/worktree-task-workflow/SKILL.md",
     "home/dot_agents/skills/worktree-task-workflow/agents/openai.yaml",
-    "home/dot_agents/skills/worktree-task-workflow/references/invocation.md.tmpl",
-    "home/dot_agents/skills/worktree-task-workflow/references/lifecycle.md.tmpl",
-    "home/dot_agents/skills/worktree-task-workflow/references/publish.md.tmpl",
-    "home/dot_claude/skills/worktree-task-workflow/SKILL.md",
-    "home/dot_claude/skills/worktree-task-workflow/references/invocation.md.tmpl",
-    "home/dot_claude/skills/worktree-task-workflow/references/lifecycle.md.tmpl",
-    "home/dot_claude/skills/worktree-task-workflow/references/publish.md.tmpl",
-    "home/.chezmoitemplates/skills/worktree-task-workflow/invocation.md",
-    "home/.chezmoitemplates/skills/worktree-task-workflow/lifecycle.md",
-    "home/.chezmoitemplates/skills/worktree-task-workflow/publish.md",
-    "home/dot_local/share/worktree-runtime.py",
-    "docs/worktree-provisioning.md",
-    "docs/worktree-runtime.md",
-    "scripts/tests/test-worktree-runtime.py"
+    "home/dot_claude/skills/worktree-task-workflow/SKILL.md"
   ]
 }

@@ -85,9 +85,9 @@ health protocol.
 - `home/dot_local/share/worktree-runtime.py`
 - `docs/worktree-provisioning.md`
 - `docs/worktree-runtime.md`
-- `home/.chezmoitemplates/skills/worktree-task-workflow/lifecycle.md`
-- `home/dot_agents/skills/worktree-task-workflow/SKILL.md`
-- `home/dot_claude/skills/worktree-task-workflow/SKILL.md`
+- `home/.chezmoitemplates/skills/task-workflow/lifecycle.md`
+- `home/dot_agents/skills/task-workflow/SKILL.md`
+- `home/dot_claude/skills/task-workflow/SKILL.md`
 - `home/dot_agents/skills/worktree-manifest/SKILL.md`
 - `scripts/tests/test-git-worktree-provision.ps1`
 - `scripts/tests/test-git-worktree-provision.sh`

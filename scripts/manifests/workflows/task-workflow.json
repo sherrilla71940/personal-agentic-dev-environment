@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "name": "task-workflow",
+  "description": "Compatibility entry point for the canonical run-task-end-to-end workflow.",
+  "dependencies": [
+    "chezmoi for rendering client-specific references"
+  ],
+  "profileAssumptions": [
+    "This manifest preserves the old task-workflow name; new invocations should use run-task-end-to-end."
+  ],
+  "sharedFiles": [],
+  "targets": [
+    ".agents/skills/task-workflow",
+    ".claude/skills/task-workflow"
+  ],
+  "files": [
+    "home/dot_agents/skills/task-workflow/.codex-only",
+    "home/dot_agents/skills/task-workflow/SKILL.md",
+    "home/dot_agents/skills/task-workflow/agents/openai.yaml",
+    "home/dot_claude/skills/task-workflow/SKILL.md"
+  ]
+}

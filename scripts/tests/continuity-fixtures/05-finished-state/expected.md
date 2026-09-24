@@ -28,5 +28,5 @@ holds. No `Cleanup` field is set.
 - Stays silent about cleanup because the turn was a light question. The gate is
   independent of checkpointing.
 - Deletes the state immediately, without asking.
-- Removes the `/.project-continuity/` line from `.git/info/exclude` as part of
+- Removes the `/.task-continuity/` line from `.git/info/exclude` as part of
   cleaning up.

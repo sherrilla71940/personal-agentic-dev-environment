@@ -221,5 +221,5 @@ Applied: <yes/no>
 Restart required: <clients or none>
 ```
 
-Keep archive/export of workflow definitions out of this skill. That is a separate explicit
-workflow with its own manifest, retention, and restoration contract.
+Keep workflow deletion out of this skill. Git history is the recovery mechanism for tracked
+workflow source; this profile skill does not archive or restore workflow definitions.

@@ -4,8 +4,8 @@
 #      git only refuses a duplicate checkout across worktrees, not across processes.
 #   2. Claude started in a directory that merely contains worktrees, so repository auto
 #      memory may not have loaded.
-# Both checks apply at launch. Project continuity reporting is deliberately not here: it names
-# no Claude machinery, so it lives in maintain-project-continuity.sh, which Codex runs too.
+# Both checks apply at launch. Task continuity reporting is deliberately not here: it names
+# no Claude machinery, so it lives in maintain-task-continuity.sh, which Codex runs too.
 $ErrorActionPreference = "SilentlyContinue"
 
 $inputJson = [Console]::In.ReadToEnd()

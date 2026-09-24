@@ -1,0 +1,9 @@
+{{- $profile := includeTemplate "ai-profile.yaml" . | fromYaml -}}
+{{ includeTemplate "skills/run-task-end-to-end/invocation.md" (dict
+  "invoke" "$run-task-end-to-end"
+  "worktreeExample" "<Codex-managed or provisioned worktree>"
+  "cleanupValues" "`ask` or `keep`"
+  "cleanupDefault" "keep"
+  "langDefault" $profile.artifact_language
+  "aiContinuityDefault" $profile.ai_continuity
+) -}}

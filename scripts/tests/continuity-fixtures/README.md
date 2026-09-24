@@ -1,9 +1,9 @@
 # Continuity and evidence behavior fixtures
 
-`test-project-continuity-hook.sh` covers the parts of continuity a shell script can
+`test-task-continuity.sh` covers the parts of continuity a shell script can
 decide: does the hook find the state file, does it compute drift, does it emit the
 cleanup notice. What it cannot cover is the part that actually carries risk — whether
-an agent reading [the skill](../../../home/dot_agents/skills/project-continuity/SKILL.md)
+an agent reading [the skill](../../../home/dot_agents/skills/task-continuity/SKILL.md)
 takes the branch the skill mandates when the situation is a judgment call.
 
 These fixtures are that test. Each case is the prompt to give a fresh session, the branch the
@@ -32,6 +32,8 @@ equal measure.
 | `13-codex-override-to-claude` | Codex-only override instructions are not in the handoff | Report the missing portable procedure; do not create a local mirror |
 | `14-deferred-follow-up` | Implementation intentionally omits artifact fields because an API dependency is unresolved | Classify the discrepancy, create or update durable follow-up tracking, and keep only a pointer in continuity state |
 | `15-repository-identity-mismatch` | IDE active file belongs to a different repository than the execution workspace | Run the read-only identity preflight, stop before inspection, and ask whether to switch or continue |
+| `16-completed-state-to-new-task` | Completed active state followed by a new continuity-enabled task | Park the completed state without deletion, then initialize a fresh state for Task B |
+| `17-branch-aware-parked-resume` | One parked task matches the current branch, task label, and reachable start commit | Select and restore the unique candidate, remove `Parked`, then reconcile before implementation |
 
 Cases 02, 03 and 04 are the same three-way classification that has no oracle, and
 they are deliberately adjacent: 02 and 04 look like 03 and must not be treated as it.
@@ -44,6 +46,12 @@ and full closure when an artifact/API discrepancy is intentionally deferred. Cas
 repository boundary before continuity or material inspection. Cases 01-07 and
 11-14 start with continuity present; cases
 08-10 start without it and test whether the session invents or overstates context.
+
+Case 16 is the positive counterpart to 05: a completed active state is preserved in `parked/`
+without deletion confirmation, and the new task receives a fresh state rather than inheriting or
+overwriting Task A's record. Case 17 covers the return path: one strong parked record can be found
+from the current branch plus task and Git identity metadata; branch-only, legacy, or ambiguous
+candidates must remain manual.
 
 ## Running one
 
@@ -68,9 +76,10 @@ directory is printed in both forms, so the Windows one is there to `cd` into.
 Never stage a case in this repository. 03 replaces state and 04 is built to tempt a
 session into destroying it, and both would do that to the real tree.
 
-The script rewrites the recorded branch, HEAD and working-tree path to match the throwaway
-repository. Without that the Stop hook reports drift on every case, and the session is then
-reacting to a drift notice rather than to the situation under test. A case that needs the
+The script rewrites the recorded branch, HEAD, base-commit fields, and working-tree path to match
+the throwaway repository. It also aligns parked records and can stage a case with no active state
+but a `parked/` directory. Without that the Stop hook reports drift on every case, and the session
+is then reacting to a drift notice rather than to the situation under test. A case that needs the
 mismatch carries a `skip-align` marker file and sets the repository up itself.
 
 Every case seeds its repository through its own `setup.sh`, which runs before alignment, so a

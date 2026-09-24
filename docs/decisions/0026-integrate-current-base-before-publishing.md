@@ -56,9 +56,9 @@ adopts a different branch publication policy.
 
 ## Related files and verification
 
-- [`home/.chezmoitemplates/skills/worktree-task-workflow/publish.md`](../../home/.chezmoitemplates/skills/worktree-task-workflow/publish.md)
-- [`home/.chezmoitemplates/skills/worktree-task-workflow/lifecycle.md`](../../home/.chezmoitemplates/skills/worktree-task-workflow/lifecycle.md)
-- [`home/dot_claude/skills/worktree-task-workflow/SKILL.md`](../../home/dot_claude/skills/worktree-task-workflow/SKILL.md)
-- [`home/dot_agents/skills/worktree-task-workflow/SKILL.md`](../../home/dot_agents/skills/worktree-task-workflow/SKILL.md)
+- [`home/.chezmoitemplates/skills/task-workflow/publish.md`](../../home/.chezmoitemplates/skills/task-workflow/publish.md)
+- [`home/.chezmoitemplates/skills/task-workflow/lifecycle.md`](../../home/.chezmoitemplates/skills/task-workflow/lifecycle.md)
+- [`home/dot_claude/skills/task-workflow/SKILL.md`](../../home/dot_claude/skills/task-workflow/SKILL.md)
+- [`home/dot_agents/skills/task-workflow/SKILL.md`](../../home/dot_agents/skills/task-workflow/SKILL.md)
 - [`docs/worktree-provisioning.md`](../worktree-provisioning.md)
 - [`scripts/tests/test-ai-configuration-profiles.sh`](../../scripts/tests/test-ai-configuration-profiles.sh)

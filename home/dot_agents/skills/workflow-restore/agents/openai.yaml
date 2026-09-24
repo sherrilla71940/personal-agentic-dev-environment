@@ -1,6 +1,0 @@
-interface:
-  display_name: "Workflow Restore"
-  short_description: "Restore a workflow archive safely"
-  default_prompt: "Use $workflow-restore to dry-run and safely restore a workflow archive."
-policy:
-  allow_implicit_invocation: false

@@ -109,7 +109,7 @@ report that the explicit opt-in and bounded failure behavior is too burdensome f
 
 - [Per-worktree runtime guide](../worktree-runtime.md)
 - [Worktree provisioning guide](../worktree-provisioning.md)
-- [Shared workflow lifecycle](../../home/.chezmoitemplates/skills/worktree-task-workflow/lifecycle.md)
+- [Shared workflow lifecycle](../../home/.chezmoitemplates/skills/task-workflow/lifecycle.md)
 - `home/dot_local/share/worktree-runtime.py`
 - `scripts/tests/test-worktree-runtime.py`
 - `scripts/manifests/workflows/worktree-task-workflow.json`

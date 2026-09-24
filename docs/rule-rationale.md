@@ -51,9 +51,9 @@ keeps personal files consistent with their surrounding ecosystem.
 Reconsider if the preferred language changes for either repository category; do not collapse
 the distinction accidentally while editing the global rule.
 
-### Project continuity alongside native memory
+### Task continuity alongside native memory
 
-The bootstrap rule that invokes `project-continuity` survives even though Claude Code and Codex
+The bootstrap rule that invokes `task-continuity` survives even though Claude Code and Codex
 both ship memory of their own, because neither crosses the boundary the skill exists for.
 Claude Code's auto memory is per-repository but stored under `~/.claude/`, machine-local and
 readable only by Claude. Codex Memories is Codex-only, globally scoped rather than
@@ -68,7 +68,7 @@ in-repository store the other can read, or if handoffs between Claude Code and C
 repository stop happening in practice.
 
 The activation decision is visible for work with concrete complexity signals because the
-absence of `.project-continuity/state.md` otherwise leaves no observable event for the client
+absence of `.task-continuity/state.md` otherwise leaves no observable event for the client
 to react to. A task can grow through investigation until it is expensive to reconstruct while
 the agent remains focused on its immediate implementation steps.
 

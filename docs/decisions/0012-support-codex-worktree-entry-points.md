@@ -66,7 +66,7 @@ the task session enters it.
 
 ## Related files and verification
 
-- [`home/dot_agents/skills/worktree-task-workflow/SKILL.md`](../../home/dot_agents/skills/worktree-task-workflow/SKILL.md)
-- [`home/.chezmoitemplates/skills/worktree-task-workflow/`](../../home/.chezmoitemplates/skills/worktree-task-workflow/)
+- [`home/dot_agents/skills/task-workflow/SKILL.md`](../../home/dot_agents/skills/task-workflow/SKILL.md)
+- [`home/.chezmoitemplates/skills/task-workflow/`](../../home/.chezmoitemplates/skills/task-workflow/)
 - [`docs/worktree-provisioning.md`](../worktree-provisioning.md#codex-worktree-task-workflow)
 - Run `scripts/git-hooks/pre-commit` and the platform-specific worktree provisioning fixtures.

@@ -12,7 +12,7 @@ a broader test suite even when a cross-cutting change warranted one. Continuity 
 activation signal without clearly separating the decision to reassess from the decision to create
 state, and mismatched completed state could be described as something to park.
 
-The project-material policy identified handoff, reference, and test-file roots but did not give
+The project-material policy identified handoff, reference, and test-material roots but did not give
 each category a retrieval-oriented layout or enough timestamp precision for multiple handoffs in one
 day.
 
@@ -31,10 +31,11 @@ day.
   task. When it is complete, use the completion and cleanup procedure instead of parking it.
 - Permit another client to inspect a private client-local instruction file when the user or handoff
   explicitly identifies it, but never discover and adopt it automatically as active instructions.
-- File authored handoffs under `handoff/{repo}/YYYY-MM-DD/{HH-mm}-{slug}.md` with minute-precision,
-  timezone-aware creation and update metadata plus a commit or state pin. Organize references by
-  source or topic, adding version/date subdivisions only for multiple snapshots. Organize reusable
-  test inputs by task or fixture rather than by date unless the date is intrinsic to the input.
+- File authored handoffs under `handoffs/{repo}/YYYY-MM-DD/{HH-mm}-{slug}.md` with minute-precision,
+  timezone-aware creation and update metadata plus a commit or state pin. Organize stable reference
+  inputs under `task-materials/{repo}/` by source or topic, adding version/date subdivisions only
+  for multiple snapshots. Organize reusable test inputs under `test-materials/{repo}/` by task or
+  fixture rather than by date unless the date is intrinsic to the input.
 
 ## Alternatives considered
 
@@ -75,8 +76,8 @@ the repository adopts a canonical external material-management system.
 
 - `home/.chezmoitemplates/core.md`
 - `home/.chezmoitemplates/continuity.md`
-- `home/dot_agents/skills/project-continuity/SKILL.md`
-- `home/dot_local/share/maintain-project-continuity.sh.tmpl`
+- `home/dot_agents/skills/task-continuity/SKILL.md`
+- `home/dot_local/share/maintain-task-continuity.sh.tmpl`
 - `README.md` and `README.zh-TW.md`
 - `scripts/tests/continuity-fixtures/09-unverified-material-attribution/expected.md`
 
@@ -84,5 +85,5 @@ Verify with:
 
 ```bash
 bash scripts/tests/test-ai-configuration-profiles.sh
-bash scripts/tests/test-project-continuity-hook.sh
+bash scripts/tests/test-task-continuity.sh
 ```

@@ -6,8 +6,9 @@
 #
 # A case is a directory holding prompt.txt, expected.md, and optionally:
 #
-#   state.md   fixture continuity state, copied into .project-continuity/. Absent for a
+#   state.md   fixture continuity state, copied into .task-continuity/. Absent for a
 #              case that tests what happens when no continuity exists.
+#   parked/    optional parked continuity records, copied into .task-continuity/parked/.
 #   setup.sh   repository setup, run inside the throwaway repo. Replaces the default
 #              alignment below, for a case that needs a particular shape.
 #
@@ -34,8 +35,12 @@ git commit -q --allow-empty -m "init"
 target_windows="$(pwd -W 2>/dev/null || true)"
 
 if [[ -f "$case_dir/state.md" ]]; then
-  mkdir -p .project-continuity
-  cp "$case_dir/state.md" .project-continuity/state.md
+  mkdir -p .task-continuity
+  cp "$case_dir/state.md" .task-continuity/state.md
+fi
+if [[ -d "$case_dir/parked" ]]; then
+  mkdir -p .task-continuity/parked
+  cp "$case_dir"/parked/*.md .task-continuity/parked/
 fi
 
 # A case seeds its repository with setup.sh when the prompt needs something real to work
@@ -45,21 +50,38 @@ if [[ -f "$case_dir/setup.sh" ]]; then
   bash "$case_dir/setup.sh"
 fi
 
-if [[ -f .project-continuity/state.md && ! -f "$case_dir/skip-align" ]]; then
-  recorded_branch="$(sed -n 's/^- Branch: `\(.*\)`$/\1/p' .project-continuity/state.md)"
+if [[ ! -f "$case_dir/skip-align" ]]; then
+  recorded_branch=""
+  if [[ -f .task-continuity/state.md ]]; then
+    recorded_branch="$(sed -n 's/^- Branch: `\(.*\)`$/\1/p' .task-continuity/state.md)"
+  fi
+  if [[ -z "$recorded_branch" ]]; then
+    for parked_file in .task-continuity/parked/*.md; do
+      [[ -f "$parked_file" ]] || continue
+      recorded_branch="$(sed -n 's/^- Branch: `\(.*\)`$/\1/p' "$parked_file")"
+      [[ -n "$recorded_branch" ]] && break
+    done
+  fi
   if [[ -n "$recorded_branch" && "$(git branch --show-current)" != "$recorded_branch" ]]; then
     git switch -q -c "$recorded_branch"
   fi
-  sed -i "s|^- HEAD: \`.*\`\$|- HEAD: \`$(git rev-parse --short HEAD)\`|" .project-continuity/state.md
-  sed -i "s|^- Working tree: \`.*\`\$|- Working tree: \`$target\`|" .project-continuity/state.md
+  for continuity_file in .task-continuity/state.md .task-continuity/parked/*.md; do
+    [[ -f "$continuity_file" ]] || continue
+    sed -i "s|^- HEAD: \`.*\`\$|- HEAD: \`$(git rev-parse --short HEAD)\`|" "$continuity_file"
+    sed -i "s|^- Base commit: \`.*\`\$|- Base commit: \`$(git rev-parse HEAD)\`|" "$continuity_file"
+    sed -i "s|^- Started from: \`.*\`\$|- Started from: \`$(git rev-parse HEAD)\`|" "$continuity_file"
+    sed -i "s|^- Working tree: \`.*\`\$|- Working tree: \`$target\`|" "$continuity_file"
+  done
 fi
 
 printf '\nStaged %s in %s\n' "$(basename "$case_dir")" "$target"
 if [[ -n "$target_windows" && "$target_windows" != "$target" ]]; then
   printf 'From PowerShell or cmd: %s\n' "$target_windows"
 fi
-if [[ -f .project-continuity/state.md ]]; then
+if [[ -f .task-continuity/state.md ]]; then
   printf 'Continuity state is in place.\n\n'
+elif compgen -G '.task-continuity/parked/*.md' >/dev/null; then
+  printf 'Parked continuity state is in place; no active state exists by design for this case.\n\n'
 else
   printf 'No continuity state, by design for this case.\n\n'
 fi

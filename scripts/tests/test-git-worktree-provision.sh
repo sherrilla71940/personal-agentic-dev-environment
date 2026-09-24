@@ -519,11 +519,11 @@ case_native_failure() {
 case_blocked_file() {
     new_repository blocked || return 1
     local repository=$fixture_repository target="$test_root/blocked-target"
-    add_manifest "$repository" $'.project-continuity/\n' $'.project-continuity/\n' || return 1
-    write_fixture "$repository/.project-continuity/state.md" $'fixture state\n'
+    add_manifest "$repository" $'.task-continuity/\n' $'.task-continuity/\n' || return 1
+    write_fixture "$repository/.task-continuity/state.md" $'fixture state\n'
     run_git "$repository" wt-add -- --detach "$target" HEAD
     assert_status 2 'A blocked source should fail provisioning.' || return 1
-    assert_output_contains '[rejected] .project-continuity/state.md' 'The blocked file should be reported.' || return 1
+    assert_output_contains '[rejected] .task-continuity/state.md' 'The blocked file should be reported.' || return 1
     [[ -f "$target/.git" ]]
 }
 
@@ -589,7 +589,7 @@ case_branch_forwarding() {
     assert_status 0 'Native branch and start-point arguments should succeed.' || return 1
     assert_output_contains 'Handoff reminder: continuity and uncommitted changes stay in this worktree.' 'The handoff reminder should be printed.' || return 1
     assert_output_contains 'Open this exact path in Claude Code, Codex, or Copilot:' 'The exact-path instruction should be printed.' || return 1
-    assert_output_contains 'Then say: Continue from project continuity.' 'The continuation prompt should be printed.' || return 1
+    assert_output_contains 'Then say: Continue from task continuity.' 'The continuation prompt should be printed.' || return 1
     assert_output_contains 'Use a separate worktree for another unfinished task.' 'The task-isolation reminder should be printed.' || return 1
     git_checked "$target" branch --show-current || return 1
     [[ "$result_output" == feat/from-develop && -f "$target/develop.txt" ]]

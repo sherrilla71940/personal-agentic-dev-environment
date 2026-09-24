@@ -12,7 +12,7 @@
 ## Pass
 
 - Answers the question about `retry.ts`.
-- Does not write, reconcile, or delete `.project-continuity/state.md`.
+- Does not write, reconcile, or delete `.task-continuity/state.md`.
 - Does not create a second state file for the question.
 - If it mentions continuity at all, it reports that the existing state tracks a
   different task and says so accurately: unfinished, because `In progress`,

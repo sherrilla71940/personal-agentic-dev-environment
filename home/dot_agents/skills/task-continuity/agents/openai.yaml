@@ -1,0 +1,5 @@
+interface:
+  display_name: "Task Continuity"
+  short_description: "Private task continuity for Claude Code, Codex, and Copilot"
+policy:
+  allow_implicit_invocation: false

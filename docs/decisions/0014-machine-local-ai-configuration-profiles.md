@@ -149,7 +149,7 @@ the test on a structural error that balanced delimiters alone would not catch.
 - `home/.chezmoitemplates/ai-profile.yaml` resolves and validates the selectors.
 - `home/.chezmoitemplates/core.md`, `profiles/`, and `continuity.md` compose the instruction layers.
 - Claude, Codex, and VS Code wrappers pass the root template data explicitly.
-- `home/dot_local/share/maintain-project-continuity.sh.tmpl` carries the continuity-off no-op guard.
+- `home/dot_local/share/maintain-task-continuity.sh.tmpl` carries the continuity-off no-op guard.
 - `scripts/tests/test-ai-configuration-profiles.sh` renders all combinations defined by the current
   schema, defaults, and invalid values without changing live targets. It asserts harness-specific
   hook registration and runs the rendered helper against a throwaway repository to prove that

@@ -1,6 +1,6 @@
 # ADR-0019: Discover workflow boundaries and retire sources explicitly
 
-- Status: Superseded by ADR-0020
+- Status: Superseded by ADR-0020 and ADR-0046
 - Date: 2026-09-17
 
 ## Context
@@ -70,15 +70,6 @@ change. This is intentional lifecycle state and requires a later cleanup commit.
 
 ## Related files and verification
 
-- [`docs/workflow-archives.md`](../workflow-archives.md) — archive, restore, and retirement procedure
-- [`scripts/workflows/workflow-archive.py`](../../scripts/workflows/workflow-archive.py) — shared engine
-- [`home/dot_agents/skills/workflow-archive/SKILL.md`](../../home/dot_agents/skills/workflow-archive/SKILL.md) — archive skill
-- [`home/dot_agents/skills/workflow-delete/SKILL.md`](../../home/dot_agents/skills/workflow-delete/SKILL.md) — delete skill
-- [`scripts/tests/test-workflow-archive.sh`](../../scripts/tests/test-workflow-archive.sh) — focused suite
-
-Verify with:
-
-```bash
-bash scripts/tests/test-workflow-archive.sh
-python -m py_compile scripts/workflows/workflow-archive.py
-```
+This decision is historical and is superseded by
+[ADR-0046](./0046-retire-tracked-workflow-archives.md). The current deletion and Git-recovery
+procedure is documented in [`docs/workflow-deletion.md`](../workflow-deletion.md).

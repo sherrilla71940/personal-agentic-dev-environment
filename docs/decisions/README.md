@@ -34,16 +34,16 @@ agent session.
 | [0008](./0008-manage-windows-terminal-settings-by-key.md) | Accepted | Manage durable Windows Terminal settings while preserving generated profiles |
 | [0009](./0009-own-windows-terminal-actions-and-keybindings.md) | Accepted | Own the Windows Terminal actions and keybindings arrays for a Shift+Enter newline |
 | [0010](./0010-normalize-the-working-tree-to-lf.md) | Accepted | Normalize the whole working tree to LF so chezmoi diff shows only real changes |
-| [0011](./0011-fix-the-continuity-state-path.md) | Accepted | Fix the continuity state path at `.project-continuity/` and keep both privacy layers |
+| [0011](./0011-fix-the-continuity-state-path.md) | Accepted | Fix the continuity state path at `.task-continuity/` and keep both privacy layers |
 | [0012](./0012-support-codex-worktree-entry-points.md) | Accepted | Support native Codex Handoff and safe CLI/IDE worktree provisioning |
 | [0013](./0013-ignore-personal-ai-instructions-globally.md) | Accepted | Ignore personal Claude and Codex instruction files globally |
 | [0014](./0014-machine-local-ai-configuration-profiles.md) | Accepted | Compose machine-local context and continuity profiles without duplicating skills; extended by 0022 |
 | [0015](./0015-organize-repository-tooling-by-purpose.md) | Superseded by 0016 | Organize repository tooling by purpose and expose one diagnostic entry point |
 | [0016](./0016-rename-the-project-facing-tooling-command.md) | Accepted | Rename the project-facing diagnostic command to `dev-env` while retaining chezmoi and local-path compatibility |
 | [0017](./0017-review-completed-parked-continuity-state.md) | Accepted | Review parked continuity state for completion and require confirmation before closure |
-| [0018](./0018-track-explicit-workflow-archives.md) | Superseded by 0020 | Track explicit workflow archives outside active source and discovery paths |
-| [0019](./0019-discover-and-retire-workflows-safely.md) | Superseded by 0020 | Discover workflow boundaries by outcome and retire sources with explicit target cleanup |
-| [0020](./0020-archive-or-delete-workflow-lifecycle.md) | Accepted | Make archive a recoverable copy plus source deletion, with an explicit no-archive delete path |
+| [0018](./0018-track-explicit-workflow-archives.md) | Superseded by 0020 and 0046 | Track explicit workflow archives outside active source and discovery paths |
+| [0019](./0019-discover-and-retire-workflows-safely.md) | Superseded by 0020 and 0046 | Discover workflow boundaries by outcome and retire sources with explicit target cleanup |
+| [0020](./0020-archive-or-delete-workflow-lifecycle.md) | Superseded by 0046 | Make archive a recoverable copy plus source deletion, with an explicit no-archive delete path |
 | [0021](./0021-add-native-workflow-profile-mode.md) | Superseded by 0022 | First, narrower native mode; retained as historical context |
 | [0022](./0022-define-native-and-managed-ai-harness-modes.md) | Accepted | Define `ai_harness` native and managed boundaries, including retained notifications and conditional lifecycle hooks |
 | [0023](./0023-optional-per-worktree-runtime-isolation.md) | Accepted | Add explicit, descriptor-driven per-worktree HTTP port isolation without coupling it to AI profiles |
@@ -60,7 +60,16 @@ agent session.
 | [0034](./0034-require-explicit-runtime-isolation-for-browser-tests.md) | Accepted | Require explicit per-worktree runtime isolation for isolated browser/runtime testing |
 | [0035](./0035-add-report-only-worktree-setup-contract.md) | Accepted | Add a report-only tracked contract for project-specific worktree setup |
 | [0036](./0036-deterministic-worktree-mapping-and-runtime-states.md) | Accepted | Make external worktree mappings deterministic and separate provisioning from runtime states |
-| [0037](./0037-add-in-place-task-route.md) | Accepted | Add an explicit in-place task route while preserving worktree safeguards |
+| [0037](./0037-add-in-place-task-route.md) | Superseded by 0038 | Add an explicit in-place task route while preserving worktree safeguards |
+| [0038](./0038-generalize-task-workspace-and-verification-policy.md) | Superseded by 0039 | Separate workspace, verification, continuity, and publish-authorization policy |
+| [0039](./0039-canonicalize-task-workflow-skill-name.md) | Superseded by 0041 | Make `task-workflow` canonical while retaining `worktree-task-workflow` compatibility |
+| [0040](./0040-require-company-flow-branch-identifiers.md) | Accepted | Require explicit flow identifiers for company-context task branches while preserving explicit project exceptions |
+| [0041](./0041-rename-task-workflow-and-project-continuity.md) | Superseded by 0045 | Make `run-task-end-to-end` and `task-continuity` canonical while preserving the initial migration window |
+| [0042](./0042-preserve-completed-continuity-by-parking.md) | Accepted | Preserve completed active continuity by parking it before a new continuity-enabled task starts |
+| [0043](./0043-restore-parked-continuity-by-git-identity.md) | Accepted | Restore a unique parked task by matching task and immutable Git identity while keeping legacy and ambiguous matches manual |
+| [0044](./0044-three-run-task-invocation-styles.md) | Accepted | Support guided, prompted natural-language, and explicit run-task-end-to-end invocation styles with client-native question presentation |
+| [0045](./0045-coordinated-naming-cleanup.md) | Accepted | Complete the task-continuity and material-directory naming migration while retaining only useful workflow aliases |
+| [0046](./0046-retire-tracked-workflow-archives.md) | Accepted | Retire tracked workflow archives and use Git history for source recovery |
 
 ## Template
 

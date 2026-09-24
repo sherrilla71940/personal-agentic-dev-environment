@@ -1,8 +1,14 @@
 # Worktree task workflow v2 plan
 
-- Status: Implemented
+- Status: Superseded by ADR-0038
 - Date: 2026-09-23
-- Scope: W6 route contract; the short-command rename remains deferred
+- Scope: W6 route contract; the short-command rename is recorded by ADR-0039
+
+This document records the earlier W6 route proposal and implementation. The current contract is
+defined by [ADR-0038](./decisions/0038-generalize-task-workspace-and-verification-policy.md) and
+the [worktree provisioning guide](./worktree-provisioning.md). ADR-0039 records the later
+canonical `run-task-end-to-end` name and the retained compatibility entry point. The older `isolation`
+route names remain only as deprecated compatibility aliases.
 
 ## Purpose
 
@@ -46,9 +52,8 @@ Use these isolation values:
 | `in-place` | Work in the current checkout. Do not create a worktree, switch branches, or copy ignored files. |
 | `auto` | Resolve the route from explicit request signals and current checkout safety. Stop when the signals conflict or are insufficient. |
 
-The future short `$task-workflow` name remains a possible alias, but it is not required for the
-route to be useful and is intentionally deferred until migration guidance and client discovery
-behavior are available.
+The short `$run-task-end-to-end` name is now the canonical entry point. `$worktree-task-workflow` remains
+available as a compatibility alias while existing prompts and client discovery migrate.
 
 ## Deterministic route resolution
 
@@ -122,10 +127,10 @@ Keep the implemented route contract maintainable through separate, reviewable fo
    test and continuity fixtures.
 4. Re-run the Bash, PowerShell, continuity, profile, runtime, link, and pre-commit checks when the
    protected behavior changes.
-5. Consider the future short command only after usage and migration guidance are available.
+5. Keep the canonical and compatibility adapters aligned while usage and migration guidance settle.
 
 ## Approval boundary
 
-The route contract is implemented and documented. W3 remains deferred: the existing command name is
-retained, and no short-command rename or alias is active. Reconsider that migration only after the
-client discovery surfaces and user-facing invocation guidance can be updated together.
+The route contract is implemented and documented. The short-command migration is implemented by
+ADR-0039: new invocations use `run-task-end-to-end`, while the existing command name remains available as
+a compatibility entry point.

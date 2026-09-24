@@ -1,0 +1,697 @@
+#!/usr/bin/env bash
+# Report what a hook can establish about continuity state: whether state exists and what task it
+# says it tracks, a recorded branch or HEAD that no longer matches the checkout, an explicitly
+# structured progress/verification contradiction, a task whose tracking sections hold nothing,
+# and completed parked-state candidates. Broader semantic reconciliation belongs to the
+# task-continuity skill.
+#
+# Deliberately client-neutral. Claude Code and Codex send the same fields and accept the same
+# output, so both run this one script; anything naming a specific client belongs in that
+# client's own hook instead.
+set -euo pipefail
+{{ $profile := includeTemplate "ai-profile.yaml" . | fromYaml -}}
+{{ if ne $profile.continuity_automation "on" }}
+# The machine-local AI profile disables automatic continuity reporting unless continuity is on and
+# the AI harness is managed, so this hook is a deliberate no-op: it prints nothing and writes
+# nothing, which keeps both clients quiet and leaves state and .git/info/exclude untouched.
+# Draining stdin first stops the client seeing a broken pipe while it writes the event payload. The
+# task-continuity skill stays installed, so an explicit request to start, resume, checkpoint,
+# hand off or clean up continuity still works.
+cat >/dev/null 2>&1 || true
+exit 0
+{{ end }}
+input="$(cat)"
+
+# `source` is read last on purpose. Tab is an IFS whitespace character, so a run of tabs collapses
+# into one delimiter and shifts later fields left; that corrupts the split only when an empty
+# field sits in the middle, and `source` is the one that is empty (on Stop). Keep this to a single
+# @tsv line, because jq on Windows writes CRLF and command substitution strips only a trailing
+# newline, so a multi-line form would leave a stray CR on every field but the last.
+common_fields="$(printf '%s' "$input" | jq -r '[.hook_event_name // "", .cwd // "", .source // ""] | @tsv' 2>/dev/null || true)"
+event_name=""
+working_directory=""
+session_source=""
+IFS=$'\t' read -r event_name working_directory session_source <<< "$common_fields" || true
+
+if [[ -z "$event_name" ]]; then
+  exit 0
+fi
+
+# Locate continuity state without paying for git when the session is already at the working
+# tree root, which is the ordinary case. Stop runs after every response, so the path taken
+# when no continuity exists must stay a shell builtin.
+continuity_directory_for() {
+  local root="$1"
+
+  if [[ -d "$root/.task-continuity" ]]; then
+    printf '%s\n' "$root/.task-continuity"
+  elif [[ -d "$root/.project-continuity" ]]; then
+    # Legacy state remains readable until the user or the task-continuity skill migrates it.
+    printf '%s\n' "$root/.project-continuity"
+  else
+    printf '%s\n' "$root/.task-continuity"
+  fi
+}
+
+find_state_file() {
+  local root
+
+  if [[ -z "$working_directory" || ! -d "$working_directory" ]]; then
+    return 1
+  fi
+  if [[ -f "$working_directory/.task-continuity/state.md" ]]; then
+    printf '%s\n' "$working_directory/.task-continuity/state.md"
+    return 0
+  fi
+  if [[ -f "$working_directory/.project-continuity/state.md" ]]; then
+    printf '%s\n' "$working_directory/.project-continuity/state.md"
+    return 0
+  fi
+  root="$(git -C "$working_directory" rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -n "$root" && -f "$root/.task-continuity/state.md" ]]; then
+    printf '%s\n' "$root/.task-continuity/state.md"
+    return 0
+  fi
+  if [[ -n "$root" && -f "$root/.project-continuity/state.md" ]]; then
+    printf '%s\n' "$root/.project-continuity/state.md"
+    return 0
+  fi
+  return 1
+}
+
+# A legacy and canonical directory may both exist after an interrupted migration. Selecting one
+# based on directory order would make the hook silently report or update the wrong task, so callers
+# stop and surface the collision before any state is reconciled.
+report_continuity_directory_collision() {
+  local root="$1"
+
+  if [[ ! -d "$root/.task-continuity" || ! -d "$root/.project-continuity" ]]; then
+    return 0
+  fi
+
+  local message="Task continuity has both .task-continuity/ and legacy .project-continuity/ in '$root'."
+  message="$message Stop before reconciling, parking, overwriting, or deleting state. Migrate or remove"
+  message="$message exactly one directory through the task-continuity procedure, then retry. Do not merge"
+  message="$message the two directories silently."
+  jq -cn --arg message "$message" '{systemMessage:$message}'
+}
+
+# Read one `- Field: `value`` line out of the Verification block. Match the FIRST code
+# span, not a greedy run to the last one: a Branch line often carries a parenthetical of
+# its own, and reading its last span reported a branch the file never recorded, which
+# made the hook cry drift on every response.
+recorded_field() {
+  local state_file="$1" field="$2" line
+  line="$(grep -m1 -E "^- $field:" "$state_file" 2>/dev/null || true)"
+  printf '%s' "$line" | sed -n 's/^[^`]*`\([^`]*\)`.*/\1/p'
+}
+
+# Apply the same structural finished-state test to active and parked state. The skill still
+# reconciles the result against Git and decides whether anything belongs elsewhere.
+count_open_items() {
+  local state_file="$1"
+
+  awk '
+    BEGIN {
+      tracked["In progress"] = 1
+      tracked["Next actions"] = 1
+      tracked["Blockers"] = 1
+      tracked["TODO / deferred"] = 1
+    }
+    /^## / {
+      section = substr($0, 4)
+      sub(/[[:space:]]+$/, "", section)
+      tracking = (section in tracked)
+      next
+    }
+    tracking && /^[[:space:]]*([-*]|[0-9]+[.])[[:space:]]+[^[:space:]]/ {
+      lower = tolower($0)
+      # Cleanup is a completion-gate decision, not unfinished task work. Ignore the common
+      # placeholder wording here so a parked file cannot suppress its own closure notice.
+      if (index(lower, "offer cleanup") || index(lower, "confirm deletion") ||
+          index(lower, "delete it only after") || index(lower, "ask before deleting state")) {
+        next
+      }
+      count++
+    }
+    END { print count + 0 }
+  ' "$state_file" 2>/dev/null || printf '1'
+}
+
+# The Verification block records a branch and a HEAD, and git can answer both. Leaving that to
+# discipline is what lets a state file quietly describe a commit that is no longer current, so
+# the divergence is reported instead of waited for. Everything else in the file - the objective,
+# the decisions, whether a TODO is really done - has no such oracle and is left to the skill.
+report_stale_verification() {
+  local state_file="$1" directory="$2"
+  local recorded_head actual_head recorded_branch actual_branch
+  local head_drift="" branch_drift="" message=""
+  local head_reason="" commits_behind=""
+
+  recorded_head="$(recorded_field "$state_file" "HEAD")"
+  recorded_branch="$(recorded_field "$state_file" "Branch")"
+  if [[ -z "$recorded_head" && -z "$recorded_branch" ]]; then
+    return 0
+  fi
+
+  actual_head="$(git -C "$directory" rev-parse --short HEAD 2>/dev/null || true)"
+  actual_branch="$(git -C "$directory" branch --show-current 2>/dev/null || true)"
+
+  # Two different things can be wrong with a recorded HEAD, and they need different messages.
+  #
+  # The recorded commit has left this history - rebased, reset, or state from another line of
+  # work. The recorded starting point cannot be trusted at all.
+  #
+  # Or it is still an ancestor, and the work has simply moved on. Reporting that after every
+  # commit is what taught readers to ignore this notice, so it is only raised once the file is
+  # more than one commit behind: one commit ahead of the last checkpoint is work in flight, two
+  # or more means a checkpoint opportunity passed without the file being rewritten, which is
+  # when its claims start being overtaken by the work.
+  if [[ -n "$recorded_head" && "$recorded_head" != "unknown" && -n "$actual_head" \
+        && "$recorded_head" != "$actual_head" ]]; then
+    if ! git -C "$directory" merge-base --is-ancestor "$recorded_head" HEAD 2>/dev/null; then
+      head_drift="continuity records HEAD $recorded_head, which is no longer in this history"
+      head_drift="$head_drift (HEAD is $actual_head)"
+      head_reason="gone"
+    else
+      commits_behind="$(git -C "$directory" rev-list --count "$recorded_head..HEAD" 2>/dev/null || printf '0')"
+      if [[ "$commits_behind" =~ ^[0-9]+$ ]] && (( commits_behind > 1 )); then
+        head_drift="continuity was last reconciled $commits_behind commits ago"
+        head_drift="$head_drift (records HEAD $recorded_head, HEAD is $actual_head)"
+        head_reason="behind"
+      fi
+    fi
+  fi
+  # An empty actual_branch means a detached HEAD, which is how the Codex app runs its managed
+  # worktrees. That is not branch drift, so the -n guard keeps it out of the warning below.
+  if [[ -n "$recorded_branch" && "$recorded_branch" != "unknown" && -n "$actual_branch" \
+        && "$recorded_branch" != "$actual_branch" ]]; then
+    branch_drift="continuity records branch $recorded_branch, but the branch is $actual_branch"
+  fi
+
+  if [[ -z "$head_drift" && -z "$branch_drift" ]]; then
+    return 0
+  fi
+
+  # The two kinds of drift call for opposite actions, so they must not share one message. A HEAD
+  # that has left the history means the recorded starting point can no longer be trusted at all.
+  # A different branch may mean a different task, and there the damaging move is folding the new
+  # branch's work into state that belongs to the old one - so that message says leave it alone.
+  if [[ -n "$branch_drift" ]]; then
+    message="Task continuity: $branch_drift."
+    message="$message A branch switch is not by itself a new task, and branch is supporting"
+    message="$message evidence rather than task identity. Do not merge work from"
+    message="$message $actual_branch into .task-continuity/state.md, and do not replace that"
+    message="$message state while it still holds useful unfinished work. If this is the same task,"
+    message="$message reconcile at the next checkpoint. If it is a separate substantive task that"
+    message="$message must stay resumable and the recorded task is unfinished, leave that state untouched and park it instead."
+    message="$message If the recorded task is complete, use the completion and cleanup procedure instead; do not park completed state."
+    if [[ -n "$head_drift" ]]; then
+      message="$message Separately, $head_drift."
+    fi
+  elif [[ "$head_reason" == "gone" ]]; then
+    message="Task continuity is out of date: $head_drift."
+    message="$message The branch may have been rebased or reset, or this state may belong to a"
+    message="$message different line of work. Establish which before trusting what it records,"
+    message="$message then reconcile .task-continuity/state.md against Git and prune anything"
+    message="$message in it that the repository can already answer."
+  else
+    message="Task continuity is behind the work: $head_drift."
+    message="$message Rewrite .task-continuity/state.md whole against current Git state before"
+    message="$message the next substantive action - do not patch one section, because the claims"
+    message="$message that go stale are the ones you are not currently thinking about. Check in"
+    message="$message particular for work still listed as outstanding that has since landed, and"
+    message="$message for anything recorded as unverified that has since been checked."
+  fi
+
+  jq -cn --arg message "$message" '{systemMessage:$message}'
+}
+
+# State remains human-readable, so this is deliberately narrow rather than an NLP pass. When a
+# writer uses the documented `Feature: `name` - status` form, an explicit completion outside the
+# Verification section must not coexist with a pending/unverified/failed verification line for the
+# same feature. The notice is advisory; the skill still reconciles against Git and actual checks.
+report_progress_verification_contradictions() {
+  local state_file="$1"
+  local contradiction
+
+  contradiction="$(awk '
+    function feature_name(line, value) {
+      value = line
+      sub(/^[[:space:]-]*Feature:[[:space:]]*`/, "", value)
+      sub(/`.*/, "", value)
+      return value
+    }
+    /^## / {
+      section = substr($0, 4)
+      sub(/[[:space:]]+$/, "", section)
+      verification = (tolower(section) == "verification")
+      next
+    }
+    /^[[:space:]-]*Feature:[[:space:]]*`[^`]+`[[:space:]]*-[[:space:]]*/ {
+      name = feature_name($0)
+      status = tolower($0)
+      key = tolower(name)
+      if (!verification && status ~ /(complete|completed|done|finished)/) {
+        completed[key] = name
+      }
+      if (verification && status ~ /(pending|unverified|not verified|failed)/) {
+        pending[key] = name
+      }
+    }
+    END {
+      for (key in completed) {
+        if (key in pending) {
+          print completed[key]
+        }
+      }
+    }
+  ' "$state_file" 2>/dev/null || true)"
+
+  [[ -n "$contradiction" ]] || return 0
+
+  contradiction="$(printf '%s' "$contradiction" | paste -sd ', ' -)"
+  local message="Task continuity may contain a progress/verification contradiction for feature(s): $contradiction."
+  message="$message A feature is marked complete outside Verification while its Verification line"
+  message="$message is still pending, unverified, or failed. Reconcile .task-continuity/state.md"
+  message="$message against Git and the actual checks before claiming completion."
+  jq -cn --arg message "$message" '{systemMessage:$message}'
+}
+
+# The skill's trigger for offering cleanup sat inside its checkpoint step, and a finished task
+# removes the reason to checkpoint, so a completed task's state file could sit in the tree
+# indefinitely. Whether these four sections hold any open item is the one part of that judgment a
+# hook can decide, so it is checked here for active and parked state; the semantic call is left to
+# the skill.
+report_finished_state() {
+  local state_file="$1"
+  local open_items message
+
+  # A user who declined cleanup should not be asked again for the rest of the task.
+  if [[ "$(recorded_field "$state_file" "Cleanup")" == "declined" ]]; then
+    return 0
+  fi
+
+  open_items="$(count_open_items "$state_file")"
+
+  if [[ "$open_items" != "0" ]]; then
+    return 0
+  fi
+
+  message="TASK CONTINUITY COMPLETION GATE REQUIRED: .task-continuity/state.md records no unfinished work:"
+  message="$message In progress, Next actions, Blockers and TODO / deferred are all empty or absent."
+  message="$message Before ending this response, invoke the task-continuity skill and reconcile"
+  message="$message the state against Git. If the tracked task is complete, ask the user to confirm"
+  message="$message deletion of this named state file after moving any durable information to its"
+  message="$message canonical home. If work remains, record a concrete next action instead. If the"
+  message="$message user declines cleanup, record Cleanup: \`declined\` in the Verification block."
+
+  jq -cn --arg message "$message" '{systemMessage:$message}'
+}
+
+# A cleanup reminder left under Next actions is not unfinished task work. Flag it so the skill can
+# reconcile the file and let the completion gate raise the real cleanup offer instead of carrying
+# the reminder forward as a fake task action.
+report_cleanup_placeholders() {
+  local root="$1"
+  local continuity_directory
+  continuity_directory="$(continuity_directory_for "$root")"
+  local active_file="$continuity_directory/state.md"
+  local parked_directory="$continuity_directory/parked"
+  local candidate placeholder_files="" message
+
+  cleanup_placeholder_present() {
+    awk '
+      BEGIN {
+        tracked["In progress"] = 1
+        tracked["Next actions"] = 1
+        tracked["Blockers"] = 1
+        tracked["TODO / deferred"] = 1
+      }
+      /^## / {
+        section = substr($0, 4)
+        sub(/[[:space:]]+$/, "", section)
+        tracking = (section in tracked)
+        next
+      }
+      tracking && /^[[:space:]]*([-*]|[0-9]+[.])[[:space:]]+[^[:space:]]/ {
+        lower = tolower($0)
+        if (index(lower, "offer cleanup") || index(lower, "confirm deletion") ||
+            index(lower, "delete it only after") || index(lower, "ask before deleting state")) {
+          found = 1
+          exit
+        }
+      }
+      END { exit(found ? 0 : 1) }
+    ' "$1" >/dev/null 2>&1
+  }
+
+  for candidate in "$active_file" "$parked_directory"/*.md; do
+    [[ -f "$candidate" ]] || continue
+    if cleanup_placeholder_present "$candidate"; then
+      if [[ -n "$placeholder_files" ]]; then
+        placeholder_files="$placeholder_files, "
+      fi
+      placeholder_files="${placeholder_files}${candidate#"$root"/}"
+    fi
+  done
+
+  [[ -n "$placeholder_files" ]] || return 0
+
+  message="Continuity cleanup wording appears in unfinished-task sections: $placeholder_files."
+  message="$message Reconcile the file against Git and remove the cleanup reminder from In progress,
+Next actions, Blockers, or TODO / deferred; if the task is complete, leave those sections empty and
+let the completion gate ask for cleanup. Do not delete state automatically."
+
+  jq -cn --arg message "$message" '{systemMessage:$message}'
+}
+
+# A parked file is not active, so the ordinary active-state completion offer never reaches it.
+# Report structurally finished parked files as candidates; the skill requires confirmation before
+# any one is deleted.
+report_finished_parked_states() {
+  local root="$1"
+  local continuity_directory
+  continuity_directory="$(continuity_directory_for "$root")"
+  local parked_directory="$continuity_directory/parked"
+  local parked_file open_items message candidates=""
+
+  [[ -d "$parked_directory" ]] || return 0
+
+  for parked_file in "$parked_directory"/*.md; do
+    [[ -f "$parked_file" ]] || continue
+    if [[ "$(recorded_field "$parked_file" "Cleanup")" == "declined" ]]; then
+      continue
+    fi
+
+    open_items="$(count_open_items "$parked_file")"
+    [[ "$open_items" == "0" ]] || continue
+
+    if [[ -n "$candidates" ]]; then
+      candidates="$candidates, "
+    fi
+    candidates="${candidates}${parked_file#"$root"/}"
+  done
+
+  [[ -n "$candidates" ]] || return 0
+
+  message="CONTINUITY CLEANUP REVIEW REQUIRED: Completed parked continuity files are closure candidates: $candidates."
+  message="$message Do not delete them automatically. Ask the user to confirm each named file's"
+  message="$message deletion. If the user declines, record Cleanup: \`declined\` in that file's"
+  message="$message Verification block."
+
+  jq -cn --arg message "$message" '{systemMessage:$message}'
+}
+
+# Parking requires a timestamp because file-system mtimes are not a reliable cross-platform task
+# history. Report legacy or malformed entries instead of silently making age-based review
+# impossible. This check validates shape only; timestamp provenance is established by the
+# continuity skill from the current clock immediately before parking. The continuity skill decides
+# how to reconcile the file; this helper never edits it.
+report_parked_metadata() {
+  local root="$1"
+  local continuity_directory
+  continuity_directory="$(continuity_directory_for "$root")"
+  local parked_directory="$continuity_directory/parked"
+  local parked_file parked_timestamp invalid_files="" message
+
+  [[ -d "$parked_directory" ]] || return 0
+
+  for parked_file in "$parked_directory"/*.md; do
+    [[ -f "$parked_file" ]] || continue
+    parked_timestamp="$(recorded_field "$parked_file" "Parked")"
+    if [[ ! "$parked_timestamp" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2})$ ]]; then
+      if [[ -n "$invalid_files" ]]; then
+        invalid_files="$invalid_files, "
+      fi
+      invalid_files="${invalid_files}${parked_file#"$root"/}"
+    fi
+  done
+
+  [[ -n "$invalid_files" ]] || return 0
+
+  message="Parked continuity metadata is incomplete; age is unknown for: $invalid_files."
+  message="$message Reconcile each file and add the required \`Parked: <ISO 8601 timestamp"
+  message="$message with timezone>\` line before using age-based stale review. Do not infer age"
+  message="$message from file timestamps or delete these files automatically."
+
+  jq -cn --arg message "$message" '{systemMessage:$message}'
+}
+
+# A branch match is useful discovery evidence only when the parked record also carries the task and
+# immutable start-commit metadata. The hook reports a unique candidate for the skill to reconcile;
+# it never moves, rewrites, or deletes state. Legacy and ambiguous matches stay manual because a
+# reused or renamed branch must not select another task by itself.
+report_parked_branch_candidates() {
+  local root="$1"
+  local continuity_directory
+  continuity_directory="$(continuity_directory_for "$root")"
+  local parked_directory="$continuity_directory/parked"
+  local current_branch parked_file recorded_branch recorded_task recorded_base
+  local strong_candidates="" legacy_candidates="" strong_count=0 legacy_count=0 message
+
+  [[ -d "$parked_directory" ]] || return 0
+  current_branch="$(git -C "$root" branch --show-current 2>/dev/null || true)"
+  [[ -n "$current_branch" ]] || return 0
+
+  for parked_file in "$parked_directory"/*.md; do
+    [[ -f "$parked_file" ]] || continue
+    recorded_branch="$(recorded_field "$parked_file" "Branch")"
+    [[ "$recorded_branch" == "$current_branch" ]] || continue
+    recorded_task="$(recorded_field "$parked_file" "Task")"
+    recorded_base="$(recorded_field "$parked_file" "Base commit")"
+    [[ -n "$recorded_base" ]] || recorded_base="$(recorded_field "$parked_file" "Started from")"
+
+    if [[ -n "$recorded_task" && "$recorded_task" != "unknown" && "$recorded_task" != *'<'* \
+          && -n "$recorded_base" && "$recorded_base" != "unknown" && "$recorded_base" != *'<'* ]] \
+          && git -C "$root" merge-base --is-ancestor "$recorded_base" HEAD 2>/dev/null; then
+      if [[ -n "$strong_candidates" ]]; then
+        strong_candidates="$strong_candidates, "
+      fi
+      strong_candidates="${strong_candidates}${parked_file#"$root"/}"
+      ((strong_count += 1))
+    else
+      if [[ -n "$legacy_candidates" ]]; then
+        legacy_candidates="$legacy_candidates, "
+      fi
+      legacy_candidates="${legacy_candidates}${parked_file#"$root"/}"
+      ((legacy_count += 1))
+    fi
+  done
+
+  if (( strong_count == 1 && legacy_count == 0 )); then
+    message="PARKED CONTINUITY MATCH: $strong_candidates is the only parked state matching current branch $current_branch with Task and reachable Base commit/Started from metadata."
+    message="$message Use task-continuity to compare its Task, Objective, base branch, and start commit with the current request, then restore that exact file and reconcile it. Do not select by filename alone."
+  elif (( strong_count > 0 || legacy_count > 0 )); then
+    message="PARKED CONTINUITY MATCHES REQUIRE DISAMBIGUATION: current branch is $current_branch."
+    if [[ -n "$strong_candidates" ]]; then
+      message="$message Strong candidates: $strong_candidates."
+    fi
+    if [[ -n "$legacy_candidates" ]]; then
+      message="$message Legacy or incomplete candidates: $legacy_candidates."
+    fi
+    message="$message Compare Task, Objective, Branch, Base commit or Started from, and current Git history. Branch alone never selects a parked state; require an explicit file choice or confirmation."
+  else
+    return 0
+  fi
+
+  jq -cn --arg message "$message" '{systemMessage:$message}'
+}
+
+combine_notices() {
+  local first="$1" second="$2"
+  local first_message second_message
+
+  [[ -n "$first" || -n "$second" ]] || return 0
+  if [[ -z "$first" ]]; then
+    printf '%s\n' "$second"
+    return 0
+  fi
+  if [[ -z "$second" ]]; then
+    printf '%s\n' "$first"
+    return 0
+  fi
+
+  first_message="$(printf '%s' "$first" | jq -r '.systemMessage // ""')"
+  second_message="$(printf '%s' "$second" | jq -r '.systemMessage // ""')"
+  jq -cn --arg first "$first_message" --arg second "$second_message" \
+    '{systemMessage:($first + " " + $second)}'
+}
+
+# A response carries at most one system message. Drift comes first because a state file describing
+# the wrong commit or branch actively misleads the next reader, but the completion and metadata
+# notices still accompany it so reconciliation cannot permanently hide cleanup work.
+report_continuity_notice() {
+  local state_file="$1"
+  local directory notice semantic_notice finished_notice placeholder_notice parked_notice metadata_notice parked_branch_notice
+
+  # Avoid spawning dirname for every Stop event. On Windows Git Bash, repeated short-lived
+  # dirname processes can leave the hook waiting at the client boundary even though the state
+  # checks themselves are complete. The state path is always <root>/.task-continuity/state.md or
+  # <root>/.project-continuity/state.md, so two POSIX-style parameter trims recover the root.
+  directory="${state_file%/*}"
+  directory="${directory%/*}"
+  notice="$(report_stale_verification "$state_file" "$directory")"
+  semantic_notice="$(report_progress_verification_contradictions "$state_file")"
+  finished_notice="$(report_finished_state "$state_file")"
+  placeholder_notice="$(report_cleanup_placeholders "$directory")"
+  parked_notice="$(report_finished_parked_states "$directory")"
+  metadata_notice="$(report_parked_metadata "$directory")"
+  parked_branch_notice="$(report_parked_branch_candidates "$directory")"
+  notice="$(combine_notices "$notice" "$semantic_notice")"
+  notice="$(combine_notices "$notice" "$finished_notice")"
+  notice="$(combine_notices "$notice" "$placeholder_notice")"
+  notice="$(combine_notices "$notice" "$parked_notice")"
+  notice="$(combine_notices "$notice" "$metadata_notice")"
+  notice="$(combine_notices "$notice" "$parked_branch_notice")"
+  if [[ -n "$notice" ]]; then
+    printf '%s\n' "$notice"
+  fi
+}
+
+report_parked_notices() {
+  local root="$1"
+  local placeholder_notice finished_notice metadata_notice parked_branch_notice
+
+  placeholder_notice="$(report_cleanup_placeholders "$root")"
+  finished_notice="$(report_finished_parked_states "$root")"
+  metadata_notice="$(report_parked_metadata "$root")"
+  parked_branch_notice="$(report_parked_branch_candidates "$root")"
+  placeholder_notice="$(combine_notices "$placeholder_notice" "$finished_notice")"
+  placeholder_notice="$(combine_notices "$placeholder_notice" "$metadata_notice")"
+  combine_notices "$placeholder_notice" "$parked_branch_notice"
+}
+
+ensure_private_state_path() {
+  local root="$1"
+  local exclude_file
+
+  if git -C "$root" check-ignore -q -- .task-continuity/state.md 2>/dev/null; then
+    return 0
+  fi
+
+  exclude_file="$(git -C "$root" rev-parse --git-path info/exclude 2>/dev/null || true)"
+  if [[ -z "$exclude_file" ]]; then
+    return 1
+  fi
+
+  # Git for Windows may return a drive-qualified path even when Bash is running in its POSIX
+  # compatibility layer. Resolve relative paths from the repository root and convert drive paths
+  # before using shell file operations; otherwise the exclude is written to a misleading relative
+  # name and the state remains trackable.
+  case "$exclude_file" in
+    /*|[A-Za-z]:/*) ;;
+    *) exclude_file="$root/$exclude_file" ;;
+  esac
+  if [[ "$exclude_file" == [A-Za-z]:/* ]] && command -v cygpath >/dev/null 2>&1; then
+    exclude_file="$(cygpath -u "$exclude_file")"
+  fi
+
+  mkdir -p "$(dirname "$exclude_file")"
+  touch "$exclude_file"
+  for pattern in '/.task-continuity/'; do
+    if ! grep -qxF "$pattern" "$exclude_file"; then
+      printf '\n%s\n' "$pattern" >> "$exclude_file"
+    fi
+  done
+
+  git -C "$root" check-ignore -q -- .task-continuity/state.md 2>/dev/null
+}
+
+# SessionStart reporting. This lives here rather than in a client's own launch hook because it
+# names no client machinery: the same message is what a Claude Code session and a Codex session
+# both need before touching a working tree that already has continuity. Both clients send the
+# same fields and accept the same additionalContext, so one script serves both.
+report_session_start() {
+  local root="$1" state_file="$2"
+  local objective message
+
+  if [[ -f "$state_file" ]]; then
+    # Naming the tracked objective turns "is this the same task?" from something the model has to
+    # remember to ask into a fact it has already been shown. Replacing an unfinished task's state
+    # with an unrelated one is the failure this is here to prevent.
+    objective="$(awk '
+      /^## Objective/ { collecting = 1; next }
+      /^## / { if (collecting) exit }
+      collecting && NF { paragraph = paragraph (paragraph ? " " : "") $0; next }
+      collecting && paragraph { exit }
+      END { print paragraph }
+    ' "$state_file" 2>/dev/null || true)"
+
+    if [[ -n "$objective" ]]; then
+      if (( ${#objective} > 200 )); then
+        objective="${objective:0:200}..."
+      fi
+      message="Task continuity is active in '$root' and tracks this objective:"
+      message="$message \"$objective\". If that is the task you were just asked to do, invoke the"
+      message="$message task-continuity skill and reconcile its state against Git before"
+      message="$message substantive work. If it is not, leave the file untouched, answer the new"
+      message="$message request, and report what this state still tracks - check whether it"
+      message="$message records unfinished work before describing it as unfinished. If a second"
+      message="$message task needs continuity and this one is unfinished, park it before starting"
+      message="$message the second task. If this state is complete, use the completion and cleanup"
+      message="$message procedure instead of parking it."
+      message="$message Do not call it parked unless you actually moved it into parked/;"
+      message="$message parking is a deliberate step, not a word for state you left alone."
+    else
+      message="Task continuity is active in '$root'. Before substantive work, invoke the"
+      message="$message task-continuity skill and reconcile its state against Git."
+    fi
+    message="$message For a task that reaches a continuity reassessment point, evaluate recoverability"
+    message="$message and state 'Continuity: enabled' or 'Continuity: not needed - <reason>' in the next progress update;"
+    message="$message for a lightweight unrelated request, leave this state untouched and skip continuity boilerplate."
+  elif [[ "$session_source" == "compact" ]]; then
+    message="This conversation was compacted without active task continuity in '$root'."
+    message="$message Before resuming substantive work, reassess continuity under the global rule."
+    message="$message If resumed work reaches a continuity reassessment point, evaluate recoverability"
+    message="$message and make the decision visible in the next progress update;"
+    message="$message otherwise keep the response quiet."
+  else
+    message="Task continuity is not active in '$root'. Before the first substantive repository"
+    message="$message action, apply the global continuity rule. For a task that reaches a continuity"
+    message="$message reassessment point, evaluate recoverability and make the decision visible in the"
+    message="$message next progress update; skip this reminder for"
+    message="$message explanation-only or small self-contained work."
+  fi
+
+  message="$message Do not repeat this reminder in later responses."
+  jq -cn --arg context "$message" \
+    '{hookSpecificOutput:{hookEventName:"SessionStart",additionalContext:$context}}'
+}
+
+case "$event_name" in
+  SessionStart)
+    root="$(git -C "$working_directory" rev-parse --show-toplevel 2>/dev/null || true)"
+    if [[ -n "$root" ]]; then
+      if collision_notice="$(report_continuity_directory_collision "$root")"; then
+        if [[ -n "$collision_notice" ]]; then
+          printf '%s\n' "$collision_notice"
+          exit 0
+        fi
+      fi
+      state_file="$(continuity_directory_for "$root")/state.md"
+      if [[ -f "$state_file" ]]; then
+        ensure_private_state_path "$root" || true
+      fi
+      report_session_start "$root" "$state_file"
+    fi
+    ;;
+  Stop)
+    root="$(git -C "$working_directory" rev-parse --show-toplevel 2>/dev/null || true)"
+    if [[ -n "$root" ]]; then
+      if collision_notice="$(report_continuity_directory_collision "$root")"; then
+        if [[ -n "$collision_notice" ]]; then
+          printf '%s\n' "$collision_notice"
+          exit 0
+        fi
+      fi
+    fi
+    if state_file="$(find_state_file)"; then
+      report_continuity_notice "$state_file"
+    else
+      if [[ -n "$root" ]]; then
+        report_parked_notices "$root"
+      fi
+    fi
+    ;;
+esac

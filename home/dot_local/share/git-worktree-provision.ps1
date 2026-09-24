@@ -275,7 +275,7 @@ function Get-FileRejectionReason {
     $lower = $path.ToLowerInvariant()
     $segments = @($lower.Trim("/") -split "/")
     $blockedDirectories = @(
-        ".git", ".project-continuity", "node_modules", "packages", "bin", "obj", ".vs",
+        ".git", ".task-continuity", ".project-continuity", "node_modules", "packages", "bin", "obj", ".vs",
         ".cache", "__pycache__", "coverage", "dist"
     )
     foreach ($segment in $segments) {
@@ -1452,7 +1452,7 @@ function Show-HandoffReminder {
     Write-Host "Handoff reminder: continuity and uncommitted changes stay in this worktree."
     Write-Host "Open this exact path in Claude Code, Codex, or Copilot:"
     Write-Host "  $(Format-DisplayText $WorktreePath)"
-    Write-Host "Then say: Continue from project continuity."
+        Write-Host "Then say: Continue from task continuity."
     Write-Host "Use a separate worktree for another unfinished task."
 }
 

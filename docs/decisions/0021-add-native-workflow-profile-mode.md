@@ -104,7 +104,7 @@ configuration. Users still preview with `chezmoi diff`, review it, and apply sep
 - `home/.chezmoitemplates/ai-profile.yaml` resolves and validates `ai_workflow`.
 - `home/.chezmoitemplates/continuity.md` keeps continuity guidance independent while making native
   mode manual.
-- `home/dot_local/share/maintain-project-continuity.sh.tmpl` makes automatic lifecycle reporting a
+- `home/dot_local/share/maintain-task-continuity.sh.tmpl` makes automatic lifecycle reporting a
   no-op for native mode without changing hook registration.
 - `docs/chezmoi-workflow.md`, `docs/customization-support.md`, and both READMEs document the
   selector and its combinations.

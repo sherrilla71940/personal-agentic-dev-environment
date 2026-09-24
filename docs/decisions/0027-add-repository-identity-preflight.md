@@ -91,10 +91,10 @@ that path without relying on heuristics.
 ## Related files and verification
 
 - [`home/.chezmoitemplates/core.md`](../../home/.chezmoitemplates/core.md) — shared rule
-- [`home/.chezmoitemplates/skills/worktree-task-workflow/invocation.md`](../../home/.chezmoitemplates/skills/worktree-task-workflow/invocation.md) — ordering and identity report
-- [`home/dot_agents/skills/project-continuity/SKILL.md`](../../home/dot_agents/skills/project-continuity/SKILL.md) — continuity boundary
-- [`home/dot_claude/skills/worktree-task-workflow/SKILL.md`](../../home/dot_claude/skills/worktree-task-workflow/SKILL.md) — Claude adapter
-- [`home/dot_agents/skills/worktree-task-workflow/SKILL.md`](../../home/dot_agents/skills/worktree-task-workflow/SKILL.md) — Codex adapter
+- [`home/.chezmoitemplates/skills/task-workflow/invocation.md`](../../home/.chezmoitemplates/skills/task-workflow/invocation.md) — ordering and identity report
+- [`home/dot_agents/skills/task-continuity/SKILL.md`](../../home/dot_agents/skills/task-continuity/SKILL.md) — continuity boundary
+- [`home/dot_claude/skills/task-workflow/SKILL.md`](../../home/dot_claude/skills/task-workflow/SKILL.md) — Claude adapter
+- [`home/dot_agents/skills/task-workflow/SKILL.md`](../../home/dot_agents/skills/task-workflow/SKILL.md) — Codex adapter
 - [`docs/worktree-provisioning.md`](../worktree-provisioning.md) — cross-client behavior and IDE limitation
 - [`scripts/tests/continuity-fixtures/15-repository-identity-mismatch/expected.md`](../../scripts/tests/continuity-fixtures/15-repository-identity-mismatch/expected.md) — manual judgment fixture
 - Run the pre-commit render and link checks, the project-continuity hook suite, and the profile suite.

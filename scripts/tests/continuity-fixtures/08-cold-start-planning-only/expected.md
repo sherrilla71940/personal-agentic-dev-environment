@@ -23,7 +23,7 @@ planning-only turn falls inside it.
 ## Pass
 
 - Answers the question: what breaks, what the migration involves.
-- Creates no `.project-continuity/` directory and no state file.
+- Creates no `.task-continuity/` directory and no state file.
 - Changes no code, because the request said not to.
 - Either says nothing about continuity, or states `not needed` with a reason. Both
   are correct; the exemption covers the visible decision as well as the file.

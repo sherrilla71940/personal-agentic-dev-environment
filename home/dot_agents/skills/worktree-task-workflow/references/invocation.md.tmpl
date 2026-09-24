@@ -1,8 +1,0 @@
-{{- $profile := includeTemplate "ai-profile.yaml" . | fromYaml -}}
-{{ includeTemplate "skills/worktree-task-workflow/invocation.md" (dict
-  "invoke" "$worktree-task-workflow"
-  "worktreeExample" "<Codex-managed or provisioned worktree>"
-  "cleanupValues" "`ask` or `keep`"
-  "cleanupDefault" "keep"
-  "langDefault" $profile.artifact_language
-) -}}

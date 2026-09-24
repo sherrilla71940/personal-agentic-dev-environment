@@ -43,9 +43,9 @@ The modes have these boundaries:
   omits only continuity guidance and continuity hooks; the other managed hooks remain.
 - **Native:** keeps shared instructions and context, reusable skills, the statusline, lightweight
   notifications, required client delivery wrappers and symlinks, and private-file protections. It
-  does not load continuity guidance or register repository-owned continuity or automatic
-  worktree-launch lifecycle hooks. The `project-continuity`, worktree, archive, restore, and delete
-  skills remain installed and explicitly invokable; native mode does not automatically run them.
+does not load continuity guidance or register repository-owned continuity or automatic
+worktree-launch lifecycle hooks. The `task-continuity`, worktree, workflow-deletion, and task
+workflow skills remain explicitly invokable; native mode does not automatically run them.
 
 `ai_context` and `ai_harness` are independent inputs. `ai_continuity` remains stored as a
 managed-mode option. Native mode suppresses its effective guidance and automation without changing
@@ -54,7 +54,7 @@ shell, Git, VS Code, and Windows Terminal configuration remains outside `ai_harn
 removed when native mode is selected.
 
 The harness boundary does not change skill invocation policy. State-changing skills such as
-project continuity, worktree provisioning, archive, restore, delete, and the task workflow remain
+task continuity, worktree provisioning, workflow deletion, and the task workflow remain
 explicit-only in every mode. Managed hooks can report lifecycle events, but they do not implicitly
 start a workflow or alter source state.
 
@@ -107,8 +107,8 @@ is on only in managed mode.
 
 The source still ships dormant hook scripts in native mode because they are repository-managed
 targets and may be needed when the machine returns to managed mode. Only registration is gated.
-Explicit archive, restore, and delete operations remain separate source-management workflows and
-never switch profiles or apply generated targets.
+Workflow deletion remains a separate source-management workflow and never switches profiles or
+applies generated targets. Git history provides recovery for tracked source after deletion.
 
 ## Reconsider when
 
@@ -130,5 +130,5 @@ never switch profiles or apply generated targets.
 - `scripts/tests/test-ai-configuration-profiles.sh` covers the selector matrix, defaults,
   invalid values, legacy compatibility, hook behavior, continuity helper behavior, and both OS
   render branches.
-- Run that profile suite, the continuity and workflow archive suites, `python -m py_compile
-  scripts/workflows/workflow-archive.py`, and the repository pre-commit hook.
+- Run that profile suite, the continuity and workflow deletion suites, `python -m py_compile
+  scripts/workflows/workflow-delete.py`, and the repository pre-commit hook.

@@ -1,7 +1,11 @@
 # ADR-0037: Add an explicit in-place task route
 
-- Status: Accepted
+- Status: Superseded by ADR-0038
 - Date: 2026-09-23
+
+This decision is retained as history. ADR-0038 replaces its current-branch in-place semantics with
+the explicit `workspace=checkout|worktree` contract and adds independent verification and
+continuity policies.
 
 ## Context
 
@@ -71,14 +75,14 @@ that the long command should gain a migration alias.
 
 ## Related files and verification
 
-- [`home/.chezmoitemplates/skills/worktree-task-workflow/invocation.md`](../../home/.chezmoitemplates/skills/worktree-task-workflow/invocation.md)
-- [`home/.chezmoitemplates/skills/worktree-task-workflow/lifecycle.md`](../../home/.chezmoitemplates/skills/worktree-task-workflow/lifecycle.md)
-- [`home/.chezmoitemplates/skills/worktree-task-workflow/publish.md`](../../home/.chezmoitemplates/skills/worktree-task-workflow/publish.md)
-- [`home/dot_agents/skills/worktree-task-workflow/SKILL.md`](../../home/dot_agents/skills/worktree-task-workflow/SKILL.md)
-- [`home/dot_claude/skills/worktree-task-workflow/SKILL.md`](../../home/dot_claude/skills/worktree-task-workflow/SKILL.md)
-- [`home/dot_agents/skills/project-continuity/SKILL.md`](../../home/dot_agents/skills/project-continuity/SKILL.md)
-- [`docs/worktree-provisioning.md`](../worktree-provisioning.md#route-selection-and-continuity-boundary)
-- [`scripts/tests/test-worktree-task-route.sh`](../../scripts/tests/test-worktree-task-route.sh)
+- [`home/.chezmoitemplates/skills/task-workflow/invocation.md`](../../home/.chezmoitemplates/skills/task-workflow/invocation.md)
+- [`home/.chezmoitemplates/skills/task-workflow/lifecycle.md`](../../home/.chezmoitemplates/skills/task-workflow/lifecycle.md)
+- [`home/.chezmoitemplates/skills/task-workflow/publish.md`](../../home/.chezmoitemplates/skills/task-workflow/publish.md)
+- [`home/dot_agents/skills/task-workflow/SKILL.md`](../../home/dot_agents/skills/task-workflow/SKILL.md)
+- [`home/dot_claude/skills/task-workflow/SKILL.md`](../../home/dot_claude/skills/task-workflow/SKILL.md)
+- [`home/dot_agents/skills/task-continuity/SKILL.md`](../../home/dot_agents/skills/task-continuity/SKILL.md)
+- [`docs/worktree-provisioning.md`](../worktree-provisioning.md#workspace-selection-and-continuity-boundary)
+- [`scripts/tests/test-run-task-end-to-end.sh`](../../scripts/tests/test-run-task-end-to-end.sh)
 
 Verify with the route contract test, profile rendering, continuity lifecycle suite, Markdown-link
 validation, and the repository pre-commit hook.

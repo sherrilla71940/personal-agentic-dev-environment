@@ -5,7 +5,7 @@ ports, database instances, queues, caches, service processes, or external servic
 can therefore contain different code while one development server still owns the only configured
 port.
 
-The `worktree-task-workflow` skill provides an opt-in V1 for this boundary. It supports one HTTP
+The `run-task-end-to-end` skill provides an opt-in V1 for this boundary. It supports one HTTP
 development process with a project-defined port range, port injection, and health URL. It does not
 make every task use a server, and it does not claim to isolate resources the project has not
 described.
@@ -16,14 +16,14 @@ Add `runtime=auto` to the explicit workflow invocation when the task includes an
 supports the runtime descriptor:
 
 ```text
-/worktree-task-workflow develop "review the form" runtime=auto
-$worktree-task-workflow develop "review the form" runtime=auto
+/run-task-end-to-end develop "review the form" runtime=auto
+$run-task-end-to-end develop "review the form" runtime=auto
 ```
 
 The equivalent `port=<number>` option requests a particular port within the descriptor's range:
 
 ```text
-/worktree-task-workflow develop "review the form" runtime=auto port=43125
+/run-task-end-to-end develop "review the form" runtime=auto port=43125
 ```
 
 Runtime isolation is not the default. A small or non-UI task can omit it. However, browser or
@@ -31,7 +31,7 @@ runtime testing from an isolated worktree must use `runtime=auto` before startin
 `runtime=off` leaves startup to the project's ordinary procedure only for tasks that do not need
 isolated runtime testing; the workflow must report that it provided no per-worktree port guarantee
 before starting that server. It must not claim that browser/runtime results came from the current
-worktree. An `isolation=in-place` task also cannot claim a separate runtime port unless the
+worktree. A `workspace=checkout` task also cannot claim a separate runtime port unless the
 consuming project explicitly documents a safe current-checkout lease; otherwise leave
 `runtime=off`.
 

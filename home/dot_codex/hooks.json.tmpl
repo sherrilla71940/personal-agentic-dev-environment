@@ -20,10 +20,10 @@
 {{- $pwsh := "powershell.exe -NoProfile -ExecutionPolicy Bypass -File" -}}
 {{- $gitBash := printf "%s/AppData/Local/Programs/Git/bin/bash.exe" .chezmoi.homeDir | replace "/" "\\" -}}
 
-{{- $continuityCommand := "bash \"$HOME/.local/share/maintain-project-continuity.sh\"" -}}
+{{- $continuityCommand := "bash \"$HOME/.local/share/maintain-task-continuity.sh\"" -}}
 {{- $notifyCommand := "" -}}
 {{- if $isWindows -}}
-{{-   $continuityCommand = printf "\"%s\" \"$HOME/.local/share/maintain-project-continuity.sh\"" $gitBash -}}
+{{-   $continuityCommand = printf "\"%s\" \"$HOME/.local/share/maintain-task-continuity.sh\"" $gitBash -}}
 {{-   $notifyCommand = printf "%s \"$HOME/.local/share/show-agent-notification.ps1\"" $pwsh -}}
 {{- else -}}
 {{-   $notifyCommand = "bash \"$HOME/.local/share/show-agent-notification-macos.sh\"" -}}

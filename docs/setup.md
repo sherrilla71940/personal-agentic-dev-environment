@@ -333,7 +333,7 @@ running each script. In PowerShell, pass multiple paths as an array:
 ```powershell
 .\scripts\tests\run-git-bash-tests.ps1 -TestScript @(
     "scripts/tests/test-ai-configuration-profiles.sh",
-    "scripts/tests/test-project-continuity-hook.sh"
+    "scripts/tests/test-task-continuity.sh"
 )
 ```
 
@@ -374,15 +374,15 @@ reads. See the worktree constraint in [`AGENTS.md`](../AGENTS.md#constraints). T
 session check needs `claude` and `jq` on `PATH` and is skipped without them.
 
 That hook is Claude-only, because it shells out to `claude agents --json` and speaks in terms of
-`EnterWorktree`. Project-continuity reporting used to live in it too and no longer does; it is
+`EnterWorktree`. Task-continuity reporting used to live in it too and no longer does; it is
 described next.
 
 When `ai_continuity` is `on` and `ai_harness` is `managed`, the script rendered from
-`home/dot_local/share/maintain-project-continuity.sh.tmpl` adds the
+`home/dot_local/share/maintain-task-continuity.sh.tmpl` adds the
 deterministic reporting that the skill cannot do for itself. On `SessionStart` it reports whether
 continuity exists and, when it does, names the objective it tracks, so the decision about whether
 this is the same task is made against a shown fact rather than from recall; it also ensures
-`.project-continuity/` is excluded from Git. On `Stop` it compares the recorded branch and HEAD
+`.task-continuity/` is excluded from Git. On `Stop` it compares the recorded branch and HEAD
 against the checkout, keeps the completion-gate message when drift is also present, requires the
 cleanup review when the active tracking sections are empty, reports parked files with no unfinished
 sections as closure candidates, and reports parked files with missing or malformed `Parked:`
@@ -399,7 +399,7 @@ managed notifications and Claude's worktree-launch check remain. With `ai_harnes
 continuity guidance and continuity/worktree lifecycle hooks are absent; the statusline, lightweight
 notifications, shared instructions, reusable skills, wrappers, and private-file protections remain.
 The stored continuity preference is not changed, so returning to managed mode with continuity on
-restores the automatic behavior. The `project-continuity` skill remains installed for explicit
+restores the automatic behavior. The `task-continuity` skill remains installed for explicit
 continuity requests. Codex records trust by hook path and content hash, so switching harness modes
 can require a new `/hooks` approval.
 
@@ -421,7 +421,7 @@ the model, so a backstop built on them could only write state, never ask for it 
 In managed mode, the ordinary `SessionStart` report covers the post-compaction case instead. On Windows the hook
 uses Git Bash to avoid paying PowerShell startup cost after every response.
 
-Claude Code, Codex and Copilot can all resume the resulting `.project-continuity/state.md` when
+Claude Code, Codex and Copilot can all resume the resulting `.task-continuity/state.md` when
 started in the same physical working tree. In managed mode with continuity enabled, Claude and
 Codex additionally get the hook reporting above; native mode leaves that protocol available only
 through explicit instructions and skills. Copilot has no hook system, so its entry path is the
@@ -504,9 +504,11 @@ before importing a live application file.
 | --- | --- | --- |
 | Chezmoi source attributes and special files | Filename transformations affect rendered names | [Source attributes](https://www.chezmoi.io/reference/source-state-attributes/) and [special files](https://www.chezmoi.io/reference/special-files/) |
 | Claude rules, skills, agents, and settings | Discovery paths and accepted fields evolve | [Claude Code documentation](https://code.claude.com/docs/en/overview) |
-| Claude Code worktree creation and cleanup | Sweep eligibility, ignored-file provisioning, and entry rules change by patch release, and `worktree-task-workflow` depends on all three | [Worktrees](https://code.claude.com/docs/en/worktrees) and [worktree provisioning](./worktree-provisioning.md) |
+| Claude structured questions | `AskUserQuestion` fields, limits, and availability can change | [Handle approvals and user input](https://code.claude.com/docs/en/agent-sdk/user-input) |
+| Claude Code worktree creation and cleanup | Sweep eligibility, ignored-file provisioning, and entry rules change by patch release, and `run-task-end-to-end` depends on all three | [Worktrees](https://code.claude.com/docs/en/worktrees) and [worktree provisioning](./worktree-provisioning.md) |
 | Codex prompts, agents, config, and skills | Customization surfaces and deprecations evolve | [Codex customization](https://learn.chatgpt.com/docs/agent-configuration/agents-md) |
-| Codex lifecycle hooks | Event names, payload fields and the trust model are newer than the rest of this setup, and `maintain-project-continuity.sh` assumes they stay aligned with Claude's | [Codex hooks](https://learn.chatgpt.com/docs/hooks) |
+| Codex structured user input | `request_user_input` is treated as a current-host capability, not a shared workflow API; the OpenAI Responses API documents application-defined input tools rather than a built-in tool with that name | [Async tool calling](https://developers.openai.com/api/docs/guides/async-tool-calling) |
+| Codex lifecycle hooks | Event names, payload fields and the trust model are newer than the rest of this setup, and `maintain-task-continuity.sh` assumes they stay aligned with Claude's | [Codex hooks](https://learn.chatgpt.com/docs/hooks) |
 | VS Code and Copilot customization | User folders and instruction discovery evolve | [VS Code agent customization](https://code.visualstudio.com/docs/agent-customization/overview) and [Copilot customization](https://docs.github.com/en/copilot/customizing-copilot) |
-| Codex app managed worktrees | `project-continuity` records that the app keeps them under `$CODEX_HOME/worktrees` on a detached HEAD, and that archiving a chat can delete one; that behavior is observed rather than documented, so re-check it in the app | [Codex config](https://learn.chatgpt.com/docs/config-file/config-basic) and direct observation |
-| Copilot instruction reach and memory scope | `project-continuity` depends on `~/.copilot/instructions/**/*.instructions.md` reaching CLI and Agent Host sessions, and on Copilot Memory being repository-scoped and shared rather than machine-local like Claude's and Codex's | [Copilot CLI config dir](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference) and [repository instructions](https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions) |
+| Codex app managed worktrees | `task-continuity` records that the app keeps them under `$CODEX_HOME/worktrees` on a detached HEAD, and that archiving a chat can delete one; that behavior is observed rather than documented, so re-check it in the app | [Codex config](https://learn.chatgpt.com/docs/config-file/config-basic) and direct observation |
+| Copilot instruction reach and memory scope | `task-continuity` depends on `~/.copilot/instructions/**/*.instructions.md` reaching CLI and Agent Host sessions, and on Copilot Memory being repository-scoped and shared rather than machine-local like Claude's and Codex's | [Copilot CLI config dir](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference) and [repository instructions](https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions) |

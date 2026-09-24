@@ -83,5 +83,5 @@ reliable scope boundary.
 - [`AGENTS.md`](../../AGENTS.md) — repository-specific ownership and source rules
 - [`docs/customization-support.md`](../customization-support.md) — project-specific customization surfaces
 - [`docs/decisions/0001-separate-operational-guides-from-decision-records.md`](./0001-separate-operational-guides-from-decision-records.md) — documentation layers
-- [`home/dot_agents/skills/project-continuity/SKILL.md`](../../home/dot_agents/skills/project-continuity/SKILL.md) — continuity promotion boundary
+- [`home/dot_agents/skills/task-continuity/SKILL.md`](../../home/dot_agents/skills/task-continuity/SKILL.md) — continuity promotion boundary
 - [`scripts/tests/test-ai-configuration-profiles.sh`](../../scripts/tests/test-ai-configuration-profiles.sh) — cross-profile rendering coverage

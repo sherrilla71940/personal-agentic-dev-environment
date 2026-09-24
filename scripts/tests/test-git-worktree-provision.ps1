@@ -568,12 +568,12 @@ try {
 
     Invoke-Case "leave worktree after provisioning rejection" {
         $repo = New-FixtureRepository "copy-failure"
-        Add-Manifest $repo ".project-continuity/`n" ".project-continuity/`n"
-        Write-FixtureFile (Join-Path $repo ".project-continuity\state.md") "fixture state`n"
+        Add-Manifest $repo ".task-continuity/`n" ".task-continuity/`n"
+        Write-FixtureFile (Join-Path $repo ".task-continuity\state.md") "fixture state`n"
         $target = Join-Path $testRoot "copy-failure-target"
         $result = Invoke-FixtureGit $repo @("wt-add", "--", "--detach", $target, "HEAD") -AllowFailure
         Assert-Equal 2 $result.ExitCode "A blocked source should fail provisioning."
-        Assert-OutputContains $result "[rejected] .project-continuity/state.md" "The blocked file was not reported."
+        Assert-OutputContains $result "[rejected] .task-continuity/state.md" "The blocked file was not reported."
         Assert-True (Test-Path -LiteralPath (Join-Path $target ".git")) "The created worktree was deleted after provisioning failed."
     }
 
@@ -634,7 +634,7 @@ try {
         Assert-Equal 0 $result.ExitCode "Native branch arguments should succeed."
         Assert-OutputContains $result "Handoff reminder: continuity and uncommitted changes stay in this worktree." "The handoff reminder was not printed."
         Assert-OutputContains $result "Open this exact path in Claude Code, Codex, or Copilot:" "The exact-path instruction was not printed."
-        Assert-OutputContains $result "Then say: Continue from project continuity." "The continuation prompt was not printed."
+        Assert-OutputContains $result "Then say: Continue from task continuity." "The continuation prompt was not printed."
         Assert-OutputContains $result "Use a separate worktree for another unfinished task." "The task-isolation reminder was not printed."
         $branch = Invoke-FixtureGit $target @("branch", "--show-current")
         Assert-Equal "feat/from-develop" $branch.Output.Trim() "The target branch is wrong."

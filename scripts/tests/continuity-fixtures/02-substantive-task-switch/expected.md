@@ -15,7 +15,7 @@
 - Never merges the session-store state into the new task, and never replaces it.
   That is what decides the case.
 - Parks it before writing any state of its own: the file moves to
-  `.project-continuity/parked/<slug>.md` with a `Parked:` full ISO 8601 timestamp
+  `.task-continuity/parked/<slug>.md` with a `Parked:` full ISO 8601 timestamp
   added to its Verification block and nothing else changed.
 - Timing inside the turn is not under test. Parking up front and parking at the
   first checkpoint both pass, because the rule is about not taking the one

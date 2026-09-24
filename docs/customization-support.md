@@ -33,7 +33,8 @@ The columns group surfaces only when they read the same personal configuration:
 | Instructions for this repository | root `CLAUDE.md` imports root `AGENTS.md` | root `AGENTS.md` | root `AGENTS.md` | root `AGENTS.md`, enabled by `chat.useAgentsMdFile` |
 | Path-scoped instructions | `~/.claude/rules/` | not supported by Codex | `~/.copilot/instructions/*.instructions.md` | the same personal files, selected by `applyTo` |
 | Portable shared skills | linked from `~/.agents/skills` | native `~/.agents/skills` discovery | native `~/.agents/skills` discovery | native `~/.agents/skills` discovery |
-| Workflow archive, restore, and delete skills | linked from `~/.agents/skills` | native `~/.agents/skills` discovery | native `~/.agents/skills` discovery | native `~/.agents/skills` discovery |
+| `run-task-end-to-end` invocation | Claude adapter presents guided questions through its native structured question surface when available, then falls back to text | Codex adapter uses `request_user_input` when exposed by the current surface, then falls back to text | unsupported; use the documented compatibility boundaries | unsupported; use the documented compatibility boundaries |
+| Workflow deletion skill | linked from `~/.agents/skills` | native `~/.agents/skills` discovery | native `~/.agents/skills` discovery | native `~/.agents/skills` discovery |
 | Client-only skills | `~/.claude/skills/<name>` | host-gated under `~/.agents/skills/<name>`; Copilot discovers the metadata but cannot invoke it automatically | `~/.copilot/skills/<name>` | `~/.copilot/skills/<name>` |
 | Agent definitions | custom subagents under `~/.claude/agents/` | custom agents under `~/.codex/agents/` | custom agents under `~/.copilot/agents/` | the same personal Copilot agents |
 | Prompts or commands | `~/.claude/commands/` | standalone custom prompts are deprecated; use a skill | no dedicated Copilot CLI command; compatible Claude commands may also be discovered | prompt files in the VS Code user profile |
@@ -88,12 +89,14 @@ repository or project says otherwise. Continuity state remains English.
 Turning continuity off removes the always-loaded continuity instructions and unregisters the
 continuity lifecycle hook, but managed notifications and the Claude worktree-launch check remain.
 Native mode unregisters the continuity and worktree lifecycle hooks but retains lightweight
-notifications. The `project-continuity` skill stays installed, so an explicit continuity request
+notifications. The `task-continuity` skill stays installed, so an explicit continuity request
 can still invoke it; returning to managed mode with continuity on restores the automatic behavior.
 Because Codex records trust for each hook entry by path and content hash, switching harness modes
 may require a new `/hooks` approval. Native mode is lower-opinionated, not notification-free.
-State-changing workflow skills—including project continuity, worktree provisioning, archive, restore,
-and delete—are explicit-only in every client and harness mode. Managed hooks may report lifecycle
+State-changing workflow skills—including task continuity, worktree provisioning, workflow deletion,
+and the task workflow—are explicit-only in every client and harness mode. Git history is the
+recovery mechanism for tracked workflow source; the repository no longer provides archive or restore
+skills. Managed hooks may report lifecycle
 events, but they never start a worktree or change source state.
 Worktree workflow and worktree manifest remain independently available as explicit skills in all
 selector combinations and do not toggle continuity. Broad Copilot integration—skill discovery,
@@ -182,20 +185,19 @@ directory. Represent a reusable Claude workflow as a skill instead:
 - Portable across Claude, Codex, and Copilot: `home/dot_agents/skills/<name>/SKILL.md` plus
   its Claude symlink wrapper.
 
-### Archive, restore, or delete a reusable workflow
+### Delete a reusable workflow
 
-Workflow archive, restore, and delete skills are repository tooling, not another client
-customization directory. They accept a workflow name or description, perform bounded discovery,
-and show the exact source/dependency/target boundary before mutation. The shared engine under
-`scripts/workflows/` archives or removes only the confirmed canonical source files. Archives live
-under `archives/workflows/`, outside `home/` and active skill discovery; generated targets,
-secrets, application state, and `.project-continuity/` stay outside the archive.
+Workflow deletion is repository tooling, not another client customization directory. The
+`workflow-delete` skill accepts a workflow name or description, performs bounded discovery, and
+shows the exact source/dependency/target boundary before mutation. The shared engine under
+`scripts/workflows/` deletes only confirmed canonical source files and queues generated-target
+cleanup through `home/.chezmoiremove`; it never deletes live targets directly or changes
+continuity state.
 
-Archive queues generated-target deletion through `home/.chezmoiremove` after creating the archive;
-delete queues the same cleanup without creating an archive. Neither operation deletes live targets
-directly. Archive-copy deletion is separately confirmed. Read the
-[workflow archive guide](./workflow-archives.md) for the definition fields, discovery boundary,
-archive/delete behavior, restore safety rules, and focused test suite.
+Git is the recovery mechanism for tracked source. Use `git log` to locate the relevant commit and
+`git restore --source <commit> -- <paths>` after reviewing the diff. Read the
+[workflow deletion guide](./workflow-deletion.md) for the definition fields, discovery boundary,
+Git recovery, chezmoi removal behavior, and focused test suite.
 
 ## Add an instruction
 

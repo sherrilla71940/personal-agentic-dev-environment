@@ -34,7 +34,7 @@
 {{-             $remove := false -}}
 {{-             if hasKey $hook "command" -}}
 {{-               $command := toString (index $hook "command") -}}
-{{-               if or (contains "maintain-project-continuity.sh" $command) (contains "show-agent-notification" $command) (contains "check-worktree-launch" $command) -}}{{- $remove = true -}}{{- end -}}
+{{-               if or (contains "maintain-task-continuity.sh" $command) (contains "show-agent-notification" $command) (contains "check-worktree-launch" $command) -}}{{- $remove = true -}}{{- end -}}
 {{-             end -}}
 {{-             if not $remove -}}{{- $filteredHooks = append $filteredHooks $hook -}}{{- end -}}
 {{-           end -}}

@@ -318,7 +318,7 @@ get_file_rejection_reason() {
             rest=""
         fi
         case "$segment" in
-            .git|.project-continuity|node_modules|packages|bin|obj|.vs|.cache|__pycache__|coverage|dist)
+            .git|.task-continuity|.project-continuity|node_modules|packages|bin|obj|.vs|.cache|__pycache__|coverage|dist)
                 rejection_reason="blocked directory '$segment'"
                 return 0
                 ;;
@@ -1654,7 +1654,7 @@ show_handoff_reminder() {
     printf '%s\n' 'Handoff reminder: continuity and uncommitted changes stay in this worktree.'
     printf '%s\n' 'Open this exact path in Claude Code, Codex, or Copilot:'
     printf '  %s\n' "$(display_text "$worktree_path")"
-    printf '%s\n' 'Then say: Continue from project continuity.'
+    printf '%s\n' 'Then say: Continue from task continuity.'
     printf '%s\n' 'Use a separate worktree for another unfinished task.'
 }
 

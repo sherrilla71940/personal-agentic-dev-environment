@@ -6,40 +6,94 @@ files there, but it does not copy ignored local files such as `.env.local` or
 the original working tree. Private agent overrides and client-local settings are a separate,
 explicit-only category because copying them can change agent behavior or permissions.
 
-The `worktree-task-workflow` command now supports an explicit in-place route as well as its
-existing worktree route. Use `isolation=worktree` for parallel or isolation-sensitive work, and
-use `isolation=in-place` for a task that can safely remain on the current branch. `isolation=auto`
-is conservative and must show its selected route before changing anything. The [worktree task
-workflow v2 plan](./worktree-task-workflow-v2-plan.md) records the accepted route contract and the
-remaining command-rename follow-up.
+The `run-task-end-to-end` workflow supports three invocation styles and two workspace modes. The
+historical `task-workflow` and `worktree-task-workflow` commands remain compatibility entry points.
+Use guided no-argument intake to expose the task, workspace, base, and policy choices; use a
+natural-language prompt to resolve only clearly stated values; or use structured arguments for
+deterministic input. Use `workspace=worktree` for parallel or isolation-sensitive work, and use
+`workspace=checkout` for a task that should use the current physical checkout but still establish
+its task branch from the resolved base. An unresolved or contradictory request must ask the user
+before any branch switch, branch creation, or worktree creation. The resolved
+workspace and its source (`argument`, `prompt`, or `user-confirmation`) must be shown before any
+state-changing action.
 
-## Route selection and continuity boundary
+The workflow also separates verification from publishing and continuity:
+`verification=agent|balanced|user` defaults to `agent`, while `continuity=auto|on|off` defaults to
+`auto`. `continuity=auto` inherits the active profile's `ai_continuity` value; it does not run a
+second task-size heuristic. The
+[task workspace and verification ADR](./decisions/0038-generalize-task-workspace-and-verification-policy.md)
+records the current contract. Legacy `isolation` and `agent-test` options remain deprecated
+compatibility aliases; `isolation=auto` requires explicit workspace resolution.
 
-The route changes what the workflow is allowed to isolate; it does not change the task's
-verification or manual-approval gates:
+## Company flow branch policy
 
-| Route | Use when | Guarantees and limits |
+Branch naming follows the effective profile context after repository instructions are applied. In
+effective `company` context, execution tasks that create a task branch use
+`branch_policy=company-flow` and require a named `flow=<digits>` argument. The value must match
+`^[0-9]{1,9}$`, and the task branch is generated as `flow/<flow>-<ascii-description>`. A supplied
+branch must match `^flow/[0-9]{1,9}(?:-[A-Za-z0-9_-]+)?$` and use the same flow number.
+
+This rule applies to both `workspace=checkout` and `workspace=worktree`, and cannot be bypassed by
+`continuity=off`, a verification mode, or publish authorization. Plan-only prompts may omit `flow`,
+but their execution invocation must include it. The resolved echo and continuity `Verification` block
+show `branch_policy`, `flow`, and the resolved task branch.
+
+Effective `personal` context keeps the repository-standard branch naming contract and does not
+require `flow`. A project can explicitly declare `branch_policy=project-exception` in applicable
+repository instructions, name the allowed branch pattern and instruction source, and require an
+explicit `branch=`. The workflow never infers that exception from a branch that happens to look like
+`feat/{series}`. This repository's root instructions explicitly force effective `personal` context,
+so the company-flow requirement applies to company application repositories rather than this
+dotfiles repository.
+
+## Workspace selection and continuity boundary
+
+The workspace changes what the workflow is allowed to isolate, but both modes share the same base,
+task-branch, verification, publishing, and continuity boundaries:
+
+| Workspace | Use when | Guarantees and limits |
 | --- | --- | --- |
 | `worktree` | Parallel work, separate runtime processes, independent uncommitted changes, or a verified base branch is required. | Creates or resumes a separate worktree and task branch, runs the provisioning checks, and can use per-worktree runtime isolation. |
-| `in-place` | A small or sequential task can safely use the current checkout and branch. | Creates no worktree or branch, does not provision ignored files, and does not claim a separate runtime port. |
-| `auto` | The caller wants the workflow to choose from explicit request signals and checkout safety. | Selects `worktree` for isolation signals or a supplied base; selects `in-place` only for a safe current checkout; otherwise stops for a decision. |
+| `checkout` | A sequential task can safely use the current physical checkout. | Creates or switches to the resolved task branch from the recorded base in the current checkout. It does not provision ignored files or create a separate runtime. |
+| unresolved | The caller has not selected a workspace and the prompt does not state one clearly. | Stop before branch or worktree mutation and ask whether to use `checkout` or `worktree`. |
 
 Continuity belongs to one physical checkout, whether that checkout is the primary repository or a
 linked worktree. Each physical checkout has one active task and at most one active
-`.project-continuity/state.md`. A trivial self-contained edit may remain state-free. A substantive
-in-place task can use continuity, but a different unfinished task must be finished, explicitly
-parked, or abandoned before the checkout starts another one. Parking preserves sequential context;
-it does not isolate simultaneous edits, branches, ports, or processes. Use a separate worktree for
-those cases.
+`.task-continuity/state.md`. A task using `continuity=auto` inherits the active profile's
+`ai_continuity` setting; `on` and `off` are explicit task overrides. `continuity=off` does not
+delete, overwrite, or repurpose an existing state. A different unfinished task must be finished,
+explicitly parked, or abandoned before the checkout starts another one. A different completed task
+must go through the completion gate, then the completed state is moved to `.task-continuity/parked/`
+with a non-colliding name before the new task receives a fresh active state when continuity is
+enabled. Completed state is never overwritten, and this preservation move does not require deletion
+confirmation or force `continuity=off`. Deleting the parked completed record remains a separate,
+confirmation-gated cleanup decision. Parking preserves sequential context; it does not isolate
+simultaneous edits, branches, ports, or processes. Use a separate worktree for those cases.
 
-The in-place route also enforces these limits:
+Each new continuity record should retain a short `Task` label, `Branch`, `Base branch`, immutable
+`Base commit`, and compatibility `Started from` value. When a checkout returns to a named branch
+without an active state, the continuity skill may select one parked record only when those identity
+fields form a unique match and the current request agrees with its objective. Legacy, branch-only,
+ambiguous, detached-HEAD, or rebased-away records require explicit selection and reconciliation;
+the lifecycle hook reports candidates but never restores or rewrites them.
 
-- It never switches branches or creates a branch. A supplied `base` is a pull or merge request
-  target only; the current branch remains the code branch.
+The legacy `.project-continuity/` directory is accepted only as a one-time migration input. If it
+is present without `.task-continuity/`, treat it as the active state and migrate the complete
+directory, including `parked/`, only after confirming the canonical directory does not exist. If
+both exist, stop and resolve the collision; never merge, overwrite, or delete either directory
+silently.
+
+The checkout workspace also enforces these limits:
+
+- It establishes the task branch from the resolved base before implementation, unless an explicit
+  repository instruction overrides that transition. It must not continue on an unrelated current
+  branch merely because the checkout is already there.
 - It rejects `runtime=auto` unless the consuming project documents a safe current-checkout lease.
   Otherwise the workflow reports that no separate runtime port is guaranteed.
-- It keeps the same automated verification and user manual-test gate. Commit and publication remain
-  explicit, and request creation requires an explicit target rather than a guessed forge default.
+- It uses the selected verification policy. `agent` is the default: run maximum feasible
+  agent-verifiable coverage and ask the user only for genuinely user-only checks. `balanced` runs
+  the same coverage and then requires explicit user acceptance; `user` leaves browser/manual
+  verification to the user. Verification never authorizes publication by itself.
 
 ## Native-first delegation
 
@@ -71,7 +125,7 @@ fallback for the remaining gaps.
   repository's `.worktreeinclude`; this path is available when Copilot is hosted by VS Code, while
   Copilot CLI has no equivalent client-native worktree adapter.
 - These native setup and verification features do not allocate a per-worktree port or carry
-  portable state to another client. Use the runtime descriptor and project continuity layers for
+  portable state to another client. Use the runtime descriptor and task continuity layers for
   those contracts.
 
 Opening a terminal-created worktree in VS Code is a convenience, not a workspace transfer. VS Code
@@ -87,7 +141,7 @@ Before substantive repository work, every supported client reports a read-only i
 - the execution workspace root and current Git root;
 - the active task repository when the host or user provides it;
 - the current branch, current upstream, and selected workflow base;
-- the physical `.project-continuity/state.md` path and whether it exists; and
+- the physical `.task-continuity/state.md` path and whether it exists; and
 - whether the working tree is clean.
 
 If a known active file or repository resolves to a different Git root, the client warns and stops
@@ -355,7 +409,7 @@ creating a worktree, `git wt-add` prints the exact path and the suggested contin
 as a non-blocking reminder. It also reminds you to use a separate worktree for another
 unfinished task — which is the right answer when the two tasks need separate uncommitted
 changes, and unnecessary when they do not. For a second task in the same directory, the
-`project-continuity` skill parks the first under `.project-continuity/parked/` instead.
+`task-continuity` skill parks the first under `.task-continuity/parked/` instead.
 
 Main-checkout inspection has a timing boundary in Claude Code. Inspect ignored files and other
 source-worktree inventory before `EnterWorktree` whenever possible. After Claude enters an
@@ -366,7 +420,7 @@ and then re-enter the preserved task worktree. Do not remove the worktree or res
 just to perform this inventory.
 
 The machine-local AI profile does not remove worktree capabilities. Both `managed` and `native`
-AI harnesses keep the canonical `worktree-task-workflow` and `worktree-manifest` skills available
+AI harnesses keep the canonical `run-task-end-to-end`, `task-continuity`, and `worktree-manifest` skills available
 for explicit invocation. Both skills are state-changing workflows, so neither client starts them
 implicitly. Managed mode may connect the task workflow to automatic continuity and
 Claude's launch guard; native mode leaves those skills manual and does not register the automatic
@@ -513,7 +567,7 @@ conflicting paths and next Git operation in continuity, then reruns applicable c
 test before publishing. It does not use `git pull` as a strategy selector or silently retarget the
 request when the base moves.
 
-The Claude adapter of `worktree-task-workflow` combines them, because neither alone gives an
+The Claude adapter of `run-task-end-to-end` combines them, because neither alone gives an
 isolated session on a branch taken from an arbitrary remote base. Claude Code's own worktree
 creation branches from the remote default branch (`fresh`), from local `HEAD` (`head`), or from a
 pull or merge request passed to `--worktree` as `"#1234"` or as a GitHub or GitLab URL. Those are
@@ -542,7 +596,7 @@ The exposure is narrow but not theoretical, and it needs every one of these at o
 - a stale background-session record pointing at that path, most likely from an earlier
   `claude --worktree <slug>` session that was backgrounded under the same slug;
 - a worktree that looks empty to the sweep. This is the sharp edge: the sweep spares changed or
-  untracked files and unpushed commits, but `.project-continuity/`, `.env` and `node_modules` are
+  untracked files and unpushed commits, but `.task-continuity/`, `.env` and `node_modules` are
   all ignored, so a `cleanup=keep` worktree whose commits are already pushed looks like nothing
   would be lost;
 - an age past [`cleanupPeriodDays`](https://code.claude.com/docs/en/settings-reference), which
@@ -558,7 +612,7 @@ along with the directory, which is why that path is never used.
 
 ### Codex worktree task workflow
 
-The Codex adapter of `worktree-task-workflow` supports both ways a task can enter isolation. In a
+The Codex adapter of `run-task-end-to-end` supports both ways a task can enter isolation. In a
 [Codex desktop Local chat](https://learn.chatgpt.com/docs/environments/git-worktrees), use the
 native Handoff control to move the chat to Worktree after the skill has resolved the task and base
 branch.
@@ -578,7 +632,7 @@ and IDE sessions a safe automatic entry point.
 Codex-managed worktrees begin detached. After fetching, the skill creates the task branch from
 the requested recorded base commit inside that clean worktree, so the selected starting branch does not
 silently replace the workflow's explicit base. It keeps every operation in that directory and
-uses project continuity so another client can resume there.
+uses task continuity so another client can resume there.
 
 When Codex desktop's selected starting branch, local-environment setup, and native branch controls
 already satisfy the task's requirements, those controls are the preferred mechanism. The workflow
@@ -591,16 +645,16 @@ worktree lifecycle. Neither choice deletes the task branch.
 
 ## What the task workflow does at each step
 
-The root [`README.md`](../README.md#task-lifecycle-and-isolated-worktrees) shows the lifecycle as a
+The root [`README.md`](../README.md#task-lifecycle-and-workspaces) shows the lifecycle as a
 recruiter-facing sequence. This section defines the provisioning and verification behavior behind
 each step.
 
 ### Workflow sequence
 
-The outer gray frame is the manual-test gate, and the inner light frame separates the pass/fail
-branches. Purple participants, yellow notes, and neutral-gray lines preserve the workflow's semantic
-palette. The diagrams use dark text explicitly because their semantic fills are light on both light
-and dark editor canvases.
+The workflow resolves a workspace, verification policy, continuity source, and publish authorization
+before implementation. Purple participants, yellow notes, and neutral-gray lines preserve the
+workflow's semantic palette. The diagrams use dark text explicitly because their semantic fills are
+light on both light and dark editor canvases.
 
 GitHub browser views render Mermaid, but some mobile-app views may not render it reliably. If the
 sequence is missing or hard to read on mobile, open the guide in a browser; the surrounding
@@ -619,36 +673,38 @@ sequenceDiagram
     Note over W,G: <base> branch = task start + PR/MR target
     Note over W: Fetch and resolve exact origin/<base> commit
     W->>G: Run read-only provisioning check<br/>manifest · ignored matches · conflicts
-    W->>G: Create the isolated task worktree only after the check
-    W->>G: Copy only approved ignored local files
+    W->>G: Prepare resolved workspace<br/>checkout or isolated worktree
+    W->>G: Establish task branch from recorded base
+    W->>G: For worktree, provision only approved ignored local files
     Note over W: Implement the scoped change
     W->>C: Update continuity throughout<br/>checkpoint decisions, blockers, verification, and next action
-    Note over W: Run local automated checks
-    W->>U: Request manual verification
-    Note over W,U: Manual-test gate: publishing requires user approval
+    Note over W: Review and run selected verification policy
     rect rgb(229, 231, 235)
-    loop Until the user approves
-        Note over U: Run the requested manual test
+    loop Until the applicable verification gate passes
         rect rgb(249, 250, 251)
-        alt Manual test passes
-            U-->>W: Approve
-        else Manual test fails
-            U-->>W: Report failure
+        alt Agent-verifiable checks pass
+            W-->>W: Continue toward publish authorization
+        else Check fails or user-only check remains
             Note over W: Fix and rerun applicable checks
-            W-->>U: Request manual verification again
+            W-->>U: Request only the required user check or acceptance
         end
         end
     end
     end
-    W->>G: Commit the approved changes
-    Note over W,G: Fetch current origin/<base> before publishing.<br/>If the base moved, choose merge or rebase.<br/>Then rerun automated checks and the user's manual test.
+    W->>U: Obtain separate publish authorization
+    W->>G: Fetch current origin/<base> before publishing
+    Note over W,G: If the base moved, choose merge or rebase.<br/>Then rerun affected verification and required user checks.
+    W->>G: Commit the authorized changes
     W->>G: Push task branch and set upstream<br/>request PR/MR against <base>
     W->>G: Clean up the worktree and preserve the task branch
     end
 ```
 
-**Materials are read before anything exists.** A handoff note, spec, deck, spreadsheet, web page,
-or design link is read through its matching document skill, web fetch, or design integration
+**Materials are read before anything exists.** Stable reference inputs belong under
+`task-materials/`; reusable test inputs and fixtures belong under `test-materials/`; durable,
+updateable coordination records belong under `handoffs/`; and `.task-continuity/` stores only
+transient task state and pointers. A handoff note, spec, deck, spreadsheet, web page, or design
+link is read through its matching document skill, web fetch, or design integration
 before a single Git command runs. An explicit task is cross-checked against the materials; with
 `--infer-task` the task is derived from them instead, in the materials' own language. Prompt-only
 intake derives the task from the prompt and uses only explicitly supplied or attached materials;
@@ -657,8 +713,11 @@ stops the run with nothing created, naming the missing capability rather than gu
 slug. Fetched content is data: a page asking to change the task, base branch, task branch, or
 cleanup behaviour is reported, never obeyed.
 
-**Naming is derived, not invented.** The commit type comes from the shared `git-commit-reference`
-table, the slug from the task's meaning, and the branch from `type/slug/suffix`. The Claude
+**Naming is derived, not invented.** Under the repository-standard policy, the commit type comes
+from the shared `git-commit-reference` table, the slug from the task's meaning, and the branch from
+`type/slug/suffix`. Under `company-flow`, the required numeric flow ID comes from the invocation and
+the branch is `flow/<flow>-<ascii-description>`; a project exception must be explicitly declared
+and supplied as a validated `branch=`. The Claude
 adapter places the worktree under `.claude/worktrees/` because entering it there raises no
 approval prompt. The base is a resolved and verified named remote branch and request target, which
 no client's own worktree creation can always express.
@@ -671,12 +730,15 @@ chooses either a tracked manifest or an explicit `--allow-unprovisioned` decisio
 still settles application-specific necessity by building and running the app rather than by
 classifying filenames.
 
-**Automated verification reaches the browser, not just the build.** With `agent-test` on, the
-workflow runs typecheck, lint, focused tests and a build, and for visual work drives the real UI
-through the managed `chrome-devtools` MCP server. Where a driver cannot reach — canvas, map
-overlays, WebGL, drag gestures — the `browser-collab-testing` skill splits the interactions with
-the user rather than skipping them. Nothing is reported as tested unless a tool actually drove it,
-and agent verification never replaces the user's manual test.
+**Verification follows the selected policy.** `verification=agent` is the default. It runs the
+maximum feasible typecheck, lint, focused tests, build, runtime, API, and browser coverage, then asks
+only for genuinely user-only checks. `verification=balanced` performs the same agent-first coverage
+and then requires explicit user acceptance; `verification=user` runs non-interactive checks and
+leaves browser/manual verification to the user. For visual work, drive the real UI through the
+managed `chrome-devtools` MCP server. Where a driver cannot reach canvas, map overlays, WebGL, or
+drag gestures, the `browser-collab-testing` skill splits the interaction with the user instead of
+skipping it. Nothing is reported as tested unless a tool actually exercised it, and verification
+never authorizes publication by itself.
 
 **Cleanup removes the worktree, never the branch.** The task branch outlives its directory for
 review and CI. The Claude adapter exits with `keep` and then runs `git worktree remove` without
@@ -684,7 +746,7 @@ review and CI. The Claude adapter exits with `keep` and then runs `git worktree 
 would delete a ref is deliberately unused.
 
 **Continuity cleanup is separate, but it is still a required completion step.** After publishing and
-before the final response, the workflow runs the `project-continuity` completion gate even when it
+before the final response, the workflow runs the `task-continuity` completion gate even when it
 also emits a stale HEAD or branch warning. The workflow reconciles active and parked state, validates
 parked timestamps before applying age-based review, asks before deleting completed state, and
 records `Cleanup: declined` when the user keeps it. A clean branch, worktree disposal, or branch
@@ -699,7 +761,7 @@ The terminal workflow never copies:
 - Tracked files from another worktree or branch, including tracked application configuration; those
   require project-specific manual setup or an explicit repository contract.
 - Authentication files, production environment files, private keys, or certificates.
-- Agent history, memory, caches, `.project-continuity/**`, or Codex local state.
+- Agent history, memory, caches, `.task-continuity/**`, or Codex local state.
 - Dependencies or build output such as `node_modules`, `packages`, `bin`, `obj`, `coverage`,
   or `dist`.
 - Database files or backups.
