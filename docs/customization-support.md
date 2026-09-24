@@ -275,6 +275,21 @@ Use the shared body only when the text remains correct for all three clients.
 `chezmoi edit ~/.claude/CLAUDE.md` opens the Claude wrapper, not the included shared body.
 After editing, run `dotf-diff` and `dotf-apply` or the equivalent chezmoi commands.
 
+### Distinguish shared bodies from native skill packages
+
+The repository uses two shared-source layers because they solve different problems:
+
+| Layer | Purpose | Example |
+| --- | --- | --- |
+| `home/.chezmoitemplates/` | Stores reusable text bodies that client wrappers include while rendering. | `rules/accessibility.md`, `core.md`, and continuity guidance |
+| `home/dot_agents/skills/` | Stores complete native skill packages that render to `~/.agents/skills/` and retain discovery metadata, references, and host gates. | `run-task-end-to-end/` and `task-continuity/` |
+
+Do not move every shared skill into `.chezmoitemplates/`. A portable skill still needs a native
+`SKILL.md` directory and client-discovery metadata after rendering. Keep the reusable prose in one
+source body when client wrappers need different frontmatter, but keep a portable skill's native
+package together under `home/dot_agents/skills/`. Claude can then reach that package through its
+native symlink, while Codex and Copilot can discover it from `~/.agents/skills/`.
+
 ## Add a skill
 
 Choose the source path according to who should discover the skill:
